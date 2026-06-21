@@ -1,0 +1,68 @@
+import { useState } from 'react';
+
+const CROP_DATA = {
+  'گندم':   { yield: 35,  price: 1800, cost: 28000 },
+  'چاول':   { yield: 30,  price: 2800, cost: 40000 },
+  'کپاس':   { yield: 12,  price: 6000, cost: 55000 },
+  'گنا':    { yield: 900, price: 425,  cost: 70000 },
+  'مکئی':   { yield: 45,  price: 1200, cost: 30000 },
+  'آلو':    { yield: 120, price: 800,  cost: 65000 },
+  'ٹماٹر':  { yield: 200, price: 600,  cost: 80000 },
+  'پیاز':   { yield: 100, price: 650,  cost: 45000 },
+  'مرچ':    { yield: 15,  price: 5500, cost: 60000 },
+  'سرسوں':  { yield: 20,  price: 2200, cost: 25000 }
+};
+
+export default function ProfitEstimator() {
+  const [crop, setCrop] = useState('');
+  const [acres, setAcres] = useState('');
+  const [result, setResult] = useState(null);
+
+  const calculate = () => {
+    const data = CROP_DATA[crop];
+    if (!data || !acres) return;
+    const a = parseFloat(acres);
+    const income = data.yield * data.price * a;
+    const cost = data.cost * a;
+    const profit = income - cost;
+    setResult({ income, cost, profit, isProfit: profit >= 0 });
+  };
+
+  const fmt = n => n.toLocaleString('ur-PK');
+
+  return (
+    <div className="form-group">
+      <div>
+        <label className="input-label">فصل</label>
+        <select className="input" value={crop} onChange={e => setCrop(e.target.value)} id="profit-crop">
+          <option value="">فصل منتخب کریں</option>
+          {Object.keys(CROP_DATA).map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="input-label">زمین (ایکڑ)</label>
+        <input id="profit-acres" type="number" className="input input-number" placeholder="5" value={acres} onChange={e => setAcres(e.target.value)} min="0.5" step="0.5" dir="ltr" />
+      </div>
+      <button className="btn btn-primary btn-full" onClick={calculate} disabled={!crop || !acres} id="profit-calc-btn">
+        ✓ منافع حساب لگائیں
+      </button>
+      {result && (
+        <div className="result-card">
+          {[
+            { label: 'آمدنی', value: `₨${fmt(result.income)}`, color: 'var(--green-700)' },
+            { label: 'خرچہ', value: `₨${fmt(result.cost)}`, color: 'var(--danger)' },
+            { label: result.isProfit ? 'منافع 🎉' : 'نقصان ⚠️', value: `₨${fmt(Math.abs(result.profit))}`, color: result.isProfit ? 'var(--green-800)' : 'var(--danger)', big: true }
+          ].map(({ label, value, color, big }) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '.4rem 0', borderBottom: '1px solid var(--green-200)' }}>
+              <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{label}</span>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: big ? '1.2rem' : '1rem', color }} dir="ltr">{value}</span>
+            </div>
+          ))}
+          <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginTop: '.5rem', textAlign: 'center' }}>
+            نمونہ حساب — مقامی قیمتیں مختلف ہو سکتی ہیں
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
