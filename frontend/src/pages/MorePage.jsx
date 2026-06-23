@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SprayDoseCalc from '../components/tools/SprayDoseCalc';
 import ProfitEstimator from '../components/tools/ProfitEstimator';
 import SeedRateCalc from '../components/tools/SeedRateCalc';
@@ -14,53 +15,101 @@ import AnimalHealthAdvisor from '../components/tools/AnimalHealthAdvisor';
 import FertilizerRecommender from '../components/tools/FertilizerRecommender';
 import Profile from '../components/tools/Profile';
 
-const TOOLS = [
-  { id: 'market', icon: '📈', name: 'مارکیٹ قیمتیں', component: MarketPrices },
-  { id: 'animal', icon: '🐄', name: 'جانور صحت', component: AnimalHealthAdvisor },
-  { id: 'fertilizer', icon: '🌱', name: 'کھاد سفارش', component: FertilizerRecommender },
-  { id: 'spray', icon: '💧', name: 'سپرے مقدار', component: SprayDoseCalc },
-  { id: 'profit', icon: '💰', name: 'منافع حساب', component: ProfitEstimator },
-  { id: 'seed', icon: '🌾', name: 'بیج مقدار', component: SeedRateCalc },
-  { id: 'tubewell', icon: '⚡', name: 'ٹیوب ویل خرچ', component: TubeWellCost },
-  { id: 'land', icon: '🗺️', name: 'زمین تبدیلی', component: LandConverter },
-  { id: 'loan', icon: '🏦', name: 'قرضہ قسط', component: LoanEMICalc },
-  { id: 'breakeven', icon: '⚖️', name: 'نقصان حد', component: BreakevenCalc },
-  { id: 'harvest', icon: '⏳', name: 'کٹائی گنتی', component: HarvestCountdown },
-  { id: 'rotation', icon: '🔄', name: 'فصل چکر', component: CropRotationAdvisor },
-  { id: 'livestock', icon: '🐮', name: 'دانہ حساب', component: LivestockFeedCalc },
-  { id: 'profile', icon: '👤', name: 'میری پروفائل', component: Profile }
+// Tools that open as bottom sheets
+const SHEET_TOOLS = [
+  { id: 'market',     icon: '📈', name: 'مارکیٹ قیمتیں', component: MarketPrices,         badge: 'LIVE' },
+  { id: 'animal',     icon: '🐄', name: 'جانور صحت',      component: AnimalHealthAdvisor  },
+  { id: 'fertilizer', icon: '🌱', name: 'کھاد سفارش',     component: FertilizerRecommender },
+  { id: 'spray',      icon: '💧', name: 'سپرے مقدار',     component: SprayDoseCalc        },
+  { id: 'profit',     icon: '💰', name: 'منافع حساب',     component: ProfitEstimator      },
+  { id: 'seed',       icon: '🌾', name: 'بیج مقدار',      component: SeedRateCalc         },
+  { id: 'tubewell',   icon: '⚡', name: 'ٹیوب ویل خرچ',  component: TubeWellCost         },
+  { id: 'land',       icon: '🗺️', name: 'زمین تبدیلی',   component: LandConverter        },
+  { id: 'loan',       icon: '🏦', name: 'قرضہ قسط',       component: LoanEMICalc          },
+  { id: 'breakeven',  icon: '⚖️', name: 'نقصان حد',       component: BreakevenCalc        },
+  { id: 'harvest',    icon: '⏳', name: 'کٹائی گنتی',    component: HarvestCountdown     },
+  { id: 'rotation',   icon: '🔄', name: 'فصل چکر',        component: CropRotationAdvisor  },
+  { id: 'livestock',  icon: '🐮', name: 'دانہ حساب',      component: LivestockFeedCalc    },
+  { id: 'profile',    icon: '👤', name: 'میری پروفائل',   component: Profile              },
+];
+
+// Tools that navigate to dedicated pages
+const NAV_TOOLS = [
+  { id: 'crops',       icon: '🌾', name: 'میری فصل',    route: '/crops',        badge: 'نیا' },
+  { id: 'price-alert', icon: '🔔', name: 'قیمت الرٹ',   route: '/price-alert',  badge: 'نیا' },
 ];
 
 export default function MorePage() {
   const [activeTool, setActiveTool] = useState(null);
+  const navigate = useNavigate();
 
-  const tool = TOOLS.find(t => t.id === activeTool);
+  const tool = SHEET_TOOLS.find(t => t.id === activeTool);
   const ToolComponent = tool?.component;
 
   return (
     <div className="page">
       <div className="page-content">
         <div style={{
-          background: 'linear-gradient(135deg, var(--brown-700) 0%, var(--brown-500) 100%)',
+          background: 'linear-gradient(135deg, var(--green-800) 0%, var(--brown-700) 100%)',
           borderRadius: 'var(--radius-xl)', padding: '1.25rem', color: 'white', textAlign: 'center'
         }}>
           <div style={{ fontSize: '2.5rem' }}>⚙️</div>
           <h2 style={{ color: 'white', fontSize: '1.2rem', margin: '.3rem 0' }}>زرعی آلات</h2>
-          <p style={{ opacity: .85, fontSize: '.82rem' }}>کیلکولیٹرز اور AI مشورے</p>
+          <p style={{ opacity: .85, fontSize: '.82rem' }}>کیلکولیٹرز، AI مشورے اور مزید</p>
         </div>
 
-        <div className="tools-grid">
-          {TOOLS.map(t => (
-            <button
-              key={t.id}
-              className="tool-card"
-              onClick={() => setActiveTool(t.id)}
-              id={`tool-${t.id}`}
-            >
-              <div className="tool-icon">{t.icon}</div>
-              <div className="tool-name">{t.name}</div>
-            </button>
-          ))}
+        {/* New dedicated-page tools */}
+        <div>
+          <div className="section-title" style={{ marginBottom: '.6rem' }}>خاص صفحات</div>
+          <div className="tools-grid">
+            {NAV_TOOLS.map(t => (
+              <button
+                key={t.id}
+                className="tool-card"
+                onClick={() => navigate(t.route)}
+                id={`tool-${t.id}`}
+                style={{ position: 'relative', borderColor: 'rgba(251,192,45,.5)', background: 'linear-gradient(135deg, #fffdf7, var(--gold-100))' }}
+              >
+                {t.badge && (
+                  <span style={{
+                    position: 'absolute', top: '.4rem', left: '.4rem',
+                    background: 'var(--gold)', color: '#1a2f0e',
+                    fontSize: '.58rem', fontWeight: 800, padding: '.1rem .35rem',
+                    borderRadius: 'var(--radius-full)'
+                  }}>{t.badge}</span>
+                )}
+                <div className="tool-icon" style={{ background: 'var(--gold-100)' }}>{t.icon}</div>
+                <div className="tool-name">{t.name}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* All other tools */}
+        <div>
+          <div className="section-title" style={{ marginBottom: '.6rem' }}>سب آلات</div>
+          <div className="tools-grid">
+            {SHEET_TOOLS.map(t => (
+              <button
+                key={t.id}
+                className="tool-card"
+                onClick={() => setActiveTool(t.id)}
+                id={`tool-${t.id}`}
+                style={{ position: 'relative' }}
+              >
+                {t.badge && (
+                  <span style={{
+                    position: 'absolute', top: '.4rem', left: '.4rem',
+                    background: 'var(--green-700)', color: 'white',
+                    fontSize: '.58rem', fontWeight: 800, padding: '.1rem .35rem',
+                    borderRadius: 'var(--radius-full)'
+                  }}>{t.badge}</span>
+                )}
+                <div className="tool-icon">{t.icon}</div>
+                <div className="tool-name">{t.name}</div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

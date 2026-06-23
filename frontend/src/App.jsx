@@ -12,6 +12,8 @@ import WeatherPage from './pages/WeatherPage';
 import SchemesPage from './pages/SchemesPage';
 import ChatPage from './pages/ChatPage';
 import MorePage from './pages/MorePage';
+import CropsPage from './pages/CropsPage';
+import PriceAlertPage from './pages/PriceAlertPage';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -53,6 +55,8 @@ function AppShell() {
           <Route path="/schemes" element={<ProtectedRoute><SchemesPage /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
           <Route path="/more" element={<ProtectedRoute><MorePage /></ProtectedRoute>} />
+          <Route path="/crops" element={<ProtectedRoute><CropsPage /></ProtectedRoute>} />
+          <Route path="/price-alert" element={<ProtectedRoute><PriceAlertPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
