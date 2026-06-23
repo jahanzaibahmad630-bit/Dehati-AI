@@ -6,8 +6,7 @@ const { aiLimiter } = require('../middleware/rateLimit');
 const router = express.Router();
 
 let genAI = null;
-let flashModel = null;   // gemini-2.0-flash — fast, free-tier, vision-capable
-let flashThinkModel = null;
+let flashModel = null;
 
 if (process.env.GEMINI_API_KEY) {
   genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -17,37 +16,65 @@ if (process.env.GEMINI_API_KEY) {
   console.warn('⚠️  GEMINI_API_KEY not set — AI features disabled');
 }
 
-// ─── System prompt (Urdu farming assistant) ──────────────────────────────────
-const FARMING_SYSTEM = `آپ DehatiAI ہیں — پنجاب، پاکستان کے کسانوں کا ذہین مددگار۔
-آپ کا کردار: فصلوں، کھادوں، بیماریوں، آبپاشی، منڈی کی قیمتوں، اور سرکاری اسکیموں کے بارے میں عملی مشورے دینا۔
+// ─── Dynamic system prompt with real date/season context ─────────────────────
+function buildFarmingSystem() {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const hour = now.getHours();
+  const season = (month >= 5 && month <= 10)
+    ? 'خریف (چاول، مکئی، گنا، کپاس، مونگ، ماش)'
+    : 'ربیع (گندم، سرسوں، آلو، چنا، مٹر، تارا میرہ)';
+  const timeOfDay = hour < 12 ? 'صبح' : hour < 17 ? 'دوپہر' : 'شام';
+  const dateStr = now.toLocaleDateString('ur-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  return `آپ DehatiAI ہیں — پنجاب، پاکستان کے کسانوں کا ماہر AI مددگار۔
+آج: ${dateStr} (${timeOfDay})
+موجودہ زرعی موسم: ${season}
+مقام: پنجاب، پاکستان
+
+آپ کا کردار — فصلوں، کھادوں، بیماریوں، آبپاشی، منڈی کی قیمتوں اور سرکاری اسکیموں میں ماہرانہ رہنمائی:
 
 اہم ہدایات:
-- جواب آسان، عام فہم اردو میں دیں جو ایک گاؤں کا کسان بھی سمجھ سکے
-- تکنیکی الفاظ سے پرہیز کریں، عام بول چال کا انداز اپنائیں
-- جواب مختصر اور عملی ہو (200 الفاظ سے کم)
-- پاکستان میں دستیاب دوائیاں اور کھادیں تجویز کریں
-- اگر کوئی بات یقینی نہ ہو تو صاف کہیں: "مقامی زرعی افسر سے مشورہ کریں"
-- کبھی غلط یا من گھڑت معلومات نہ دیں`;
-
-const CHAT_SYSTEM = `آپ DehatiAI ہیں — پنجاب کے کسانوں کا دوستانہ AI ساتھی۔
-بالکل WhatsApp پر کسی قریبی دوست سے بات کرنے جیسا انداز اپنائیں — آرام سے، خلوص سے۔
-مختصر جوابات دیں۔ لمبے لیکچر سے بچیں۔
-کسان کی زبان میں جواب دیں — اگر وہ پنجابی میں لکھے تو پنجابی میں، اردو میں تو اردو میں۔
-سنجیدہ بیماری یا مالی نقصان کی بات آئے تو فوری ماہر سے ملنے کا مشورہ دیں۔`;
-
-function aiUnavailable() {
-  return {
-    answer: '⚠️ AI سروس ابھی دستیاب نہیں ہے۔ ایڈمن سے GEMINI_API_KEY ترتیب دلوائیں۔',
-    disabled: true
-  };
+- جواب آسان، عام فہم اردو میں دیں جو ایک گاؤں کا ان پڑھ کسان بھی سمجھ سکے
+- مختصر اور عملی جواب دیں (250 الفاظ سے کم) — بلٹ پوائنٹس استعمال کریں
+- صرف پاکستان میں آسانی سے ملنے والی دوائیں اور کھادیں تجویز کریں (DAP، یوریا، پوٹاش، سنگل سپر فاسفیٹ وغیرہ)
+- موسم اور وقت کے مطابق مشورہ دیں
+- اگر بات یقینی نہ ہو تو کہیں: "مقامی زرعی افسر سے ملیں" یا "زراعت ہیلپ لائن 0800-15000 پر کال کریں"
+- کبھی من گھڑت یا غلط معلومات نہ دیں
+- اعداد اور مقدار واضح لکھیں (مثلاً: 1 بوری DAP فی ایکڑ)`;
 }
 
-// Helper: generate with system instruction prepended
-async function generate(prompt, systemPrompt = FARMING_SYSTEM, maxTokens = 700) {
-  const fullPrompt = `${systemPrompt}\n\n---\n\n${prompt}`;
+function buildChatSystem(language) {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const season = (month >= 5 && month <= 10) ? 'خریف' : 'ربیع';
+
+  const base = `آپ DehatiAI ہیں — پنجاب کے کسانوں کا دوستانہ AI ساتھی۔
+موجودہ موسم: ${season}
+سال: ${now.getFullYear()}
+
+انداز: بالکل WhatsApp پر کسی قریبی دوست کی طرح بات کریں — سادہ، دوستانہ، خلوص سے۔
+- مختصر اور عملی جوابات دیں (3-5 جملے کافی ہیں)
+- لمبے لیکچر سے پرہیز کریں
+- کسان جس زبان میں لکھے اسی میں جواب دیں
+- سنجیدہ بیماری یا بڑے نقصان پر فوری ماہر سے ملنے کا مشورہ دیں
+- زراعت ہیلپ لائن: 0800-15000 (مفت)`;
+
+  if (language === 'pj') return base + '\nپنجابی یا سرائیکی میں جواب دینا قبول ہے۔';
+  if (language === 'en') return 'You are DehatiAI, a friendly expert farming assistant for Punjab, Pakistan farmers. Current season: ' + season + '. Keep responses short, practical, and friendly. Recommend Pakistani-available products only. Helpline: 0800-15000';
+  return base;
+}
+
+function aiUnavailable() {
+  return { answer: '⚠️ AI سروس ابھی دستیاب نہیں — GEMINI_API_KEY ترتیب دیں', disabled: true };
+}
+
+// Helper: single-turn generation
+async function generate(prompt, systemPrompt, maxTokens = 700) {
+  const sys = systemPrompt || buildFarmingSystem();
   const result = await flashModel.generateContent({
-    contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-    generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 }
+    contents: [{ role: 'user', parts: [{ text: `${sys}\n\n---\n\n${prompt}` }] }],
+    generationConfig: { maxOutputTokens: maxTokens, temperature: 0.6, topP: 0.9 }
   });
   return result.response.text();
 }
@@ -56,16 +83,14 @@ async function generate(prompt, systemPrompt = FARMING_SYSTEM, maxTokens = 700) 
 router.post('/ask', aiLimiter, authenticateToken, async (req, res) => {
   try {
     const { question } = req.body;
-    if (!question?.trim()) {
-      return res.status(400).json({ error: 'سوال خالی نہیں ہونا چاہیے' });
-    }
+    if (!question?.trim()) return res.status(400).json({ error: 'سوال خالی نہیں ہونا چاہیے' });
     if (!flashModel) return res.json(aiUnavailable());
 
-    const text = await generate(question.trim());
+    const text = await generate(question.trim(), buildFarmingSystem(), 700);
     res.json({ answer: text });
   } catch (err) {
     console.error('AI ask error:', err.message);
-    res.status(500).json({ error: 'AI جواب دینے میں ناکام رہا — دوبارہ کوشش کریں' });
+    res.status(500).json({ error: 'AI جواب دینے میں ناکام — دوبارہ کوشش کریں' });
   }
 });
 
@@ -74,28 +99,24 @@ router.post('/disease', aiLimiter, authenticateToken, async (req, res) => {
   try {
     const { imageBase64, cropName, mimeType = 'image/jpeg' } = req.body;
     if (!imageBase64) return res.status(400).json({ error: 'تصویر ضروری ہے' });
+    if (!flashModel) return res.json({ disease: 'AI دستیاب نہیں', cause: '', treatment: '', prevention: '', disabled: true });
 
-    if (!flashModel) {
-      return res.json({
-        disease: 'AI دستیاب نہیں',
-        cause: 'API کی چابی ترتیب نہیں دی گئی',
-        treatment: 'ایڈمن سے رابطہ کریں',
-        prevention: 'GEMINI_API_KEY ترتیب دیں',
-        disabled: true
-      });
-    }
-
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const season = (month >= 5 && month <= 10) ? 'خریف' : 'ربیع';
     const cropText = cropName ? `فصل: ${cropName}\n` : '';
-    const prompt = `${FARMING_SYSTEM}\n\n${cropText}
-اس تصویر میں فصل کی حالت دیکھ کر بتائیں:
 
-جواب صرف اس مخصوص فارمیٹ میں دیں:
-بیماری: [بیماری یا کیڑے کا نام، یا "صحت مند فصل"]
-وجہ: [بیماری کی بنیادی وجہ]
-علاج: [پاکستان میں دستیاب دوائی اور طریقہ]
+    const prompt = `آپ ایک ماہر زرعی پیتھالوجسٹ ہیں۔ پنجاب پاکستان کا موسم ${season} ہے۔
+${cropText}
+اس تصویر میں فصل کی حالت غور سے دیکھ کر بتائیں:
+
+صرف اس فارمیٹ میں جواب دیں (ہر لائن نئی لائن پر):
+بیماری: [بیماری/کیڑے کا نام — یا "صحت مند فصل"]
+وجہ: [بیماری کی بنیادی وجہ — پھپھوندی/بیکٹیریا/کیڑا/موسم وغیرہ]
+علاج: [پاکستان میں ملنے والی دوائی، مقدار، اور طریقہ]
 بچاؤ: [آئندہ کے لیے احتیاطی تدابیر]
 
-آسان اردو میں، ہر حصہ ایک یا دو جملوں میں لکھیں۔`;
+آسان اردو میں، ہر حصہ 1-2 جملوں میں۔`;
 
     const result = await flashModel.generateContent({
       contents: [{
@@ -105,7 +126,7 @@ router.post('/disease', aiLimiter, authenticateToken, async (req, res) => {
           { text: prompt }
         ]
       }],
-      generationConfig: { maxOutputTokens: 900, temperature: 0.4 }
+      generationConfig: { maxOutputTokens: 1000, temperature: 0.3, topP: 0.85 }
     });
 
     const text = result.response.text();
@@ -123,39 +144,27 @@ router.post('/disease', aiLimiter, authenticateToken, async (req, res) => {
     });
   } catch (err) {
     console.error('Disease error:', err.message);
-    res.status(500).json({ error: 'تصویر کا تجزیہ ناکام رہا — دوبارہ کوشش کریں' });
+    res.status(500).json({ error: 'تصویر کا تجزیہ ناکام — دوبارہ کوشش کریں' });
   }
 });
 
-// ─── POST /api/ai/chat ────────────────────────────────────────────────────────
+// ─── POST /api/ai/chat (standard) ────────────────────────────────────────────
 router.post('/chat', aiLimiter, authenticateToken, async (req, res) => {
   try {
     const { messages, language = 'ur' } = req.body;
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: 'پیغامات ضروری ہیں' });
-    }
+    if (!Array.isArray(messages) || messages.length === 0) return res.status(400).json({ error: 'پیغامات ضروری ہیں' });
     if (!flashModel) return res.json({ reply: '⚠️ AI سروس دستیاب نہیں' });
 
-    const systemMap = {
-      ur: CHAT_SYSTEM,
-      pj: CHAT_SYSTEM + '\nپنجابی یا سرائیکی میں جواب دینا قبول ہے۔',
-      en: 'You are DehatiAI, a friendly farming assistant for Punjab, Pakistan. Keep responses concise and practical.'
-    };
-
-    const sys = systemMap[language] || systemMap.ur;
-
-    // Build Gemini chat history (all but last message)
     const history = messages.slice(0, -1).map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
     }));
-
     const lastMsg = messages[messages.length - 1];
 
     const chat = flashModel.startChat({
-      systemInstruction: sys,
+      systemInstruction: buildChatSystem(language),
       history,
-      generationConfig: { maxOutputTokens: 450, temperature: 0.8 }
+      generationConfig: { maxOutputTokens: 500, temperature: 0.85, topP: 0.92 }
     });
 
     const result = await chat.sendMessage(lastMsg.content);
@@ -166,6 +175,60 @@ router.post('/chat', aiLimiter, authenticateToken, async (req, res) => {
   }
 });
 
+// ─── POST /api/ai/chat/stream (Server-Sent Events streaming) ──────────────────
+router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
+  try {
+    const { messages, language = 'ur' } = req.body;
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'پیغامات ضروری ہیں' });
+    }
+    if (!flashModel) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.write(`data: ${JSON.stringify({ text: '⚠️ AI سروس دستیاب نہیں' })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      return res.end();
+    }
+
+    // SSE headers
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    const history = messages.slice(0, -1).map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
+    const lastMsg = messages[messages.length - 1];
+
+    const chat = flashModel.startChat({
+      systemInstruction: buildChatSystem(language),
+      history,
+      generationConfig: { maxOutputTokens: 500, temperature: 0.85, topP: 0.92 }
+    });
+
+    const streamResult = await chat.sendMessageStream(lastMsg.content);
+
+    for await (const chunk of streamResult.stream) {
+      const text = chunk.text();
+      if (text) {
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      }
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+  } catch (err) {
+    console.error('Chat stream error:', err.message);
+    try {
+      res.write(`data: ${JSON.stringify({ error: 'جواب دینے میں مسئلہ ہوا' })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } catch {}
+  }
+});
+
 // ─── POST /api/ai/animal ─────────────────────────────────────────────────────
 router.post('/animal', aiLimiter, authenticateToken, async (req, res) => {
   try {
@@ -173,17 +236,18 @@ router.post('/animal', aiLimiter, authenticateToken, async (req, res) => {
     if (!flashModel) return res.json({ answer: '⚠️ AI سروس دستیاب نہیں' });
 
     const prompt = `جانور: ${animalType || 'نامعلوم'}
-علامات: ${symptoms || question || 'نامعلوم'}
+علامات: ${symptoms || 'نامعلوم'}
+اضافی معلومات: ${question || 'کوئی نہیں'}
 
-جانوروں کے ڈاکٹر کی طرح بتائیں:
-1. ممکنہ بیماری
-2. گھر پر ابتدائی علاج
-3. احتیاط
-4. کیا فوری ڈاکٹر بلانا ضروری ہے؟
+پاکستانی جانوروں کے ڈاکٹر کی طرح بتائیں:
+1. ممکنہ بیماری یا مسئلہ
+2. گھر پر فوری علاج (آسانی سے ملنے والی دوا)
+3. کیا کھانا پلانا ہے یا نہیں
+4. کیا فوری ڈاکٹر ضروری ہے؟ (ہاں/نہیں اور وجہ)
 
-مختصر، آسان اردو میں۔`;
+مختصر، واضح اردو میں — فی پوائنٹ ایک جملہ کافی ہے۔`;
 
-    const text = await generate(prompt, FARMING_SYSTEM, 550);
+    const text = await generate(prompt, buildFarmingSystem(), 600);
     res.json({ answer: text });
   } catch (err) {
     console.error('Animal error:', err.message);
@@ -197,19 +261,24 @@ router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {
     const { crop, soilType, cropAge } = req.body;
     if (!flashModel) return res.json({ answer: '⚠️ AI سروس دستیاب نہیں' });
 
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const season = (month >= 5 && month <= 10) ? 'خریف' : 'ربیع';
+
     const prompt = `فصل: ${crop || 'نامعلوم'}
-مٹی: ${soilType || 'عام'}
-فصل کی عمر: ${cropAge || 'نامعلوم'} دن
+مٹی کی قسم: ${soilType || 'عام دوہمی مٹی'}
+بڑھوتری کا مرحلہ: ${cropAge || 'نامعلوم'}
+موسم: ${season}
 
-پاکستان میں دستیاب کھادوں کی بنیاد پر بتائیں:
-1. کھاد کا نام (اردو/عام نام)
-2. فی ایکڑ مقدار
-3. ڈالنے کا وقت اور طریقہ
-4. خاص احتیاط
+پاکستان میں دستیاب کھادوں کے مطابق بتائیں:
+1. ابھی کون سی کھاد ڈالیں (نام، مقدار فی ایکڑ)
+2. ڈالنے کا طریقہ (زمین میں یا پانی کے ساتھ)
+3. اگلا مرحلہ کب اور کیا کریں
+4. ایک خاص احتیاط
 
-مختصر، عملی مشورہ دیں۔`;
+مختصر اور واضح — قیمت اور دستیابی کا خیال رکھیں۔`;
 
-    const text = await generate(prompt, FARMING_SYSTEM, 550);
+    const text = await generate(prompt, buildFarmingSystem(), 600);
     res.json({ answer: text });
   } catch (err) {
     console.error('Fertilizer error:', err.message);

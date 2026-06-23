@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getWeatherByCoords, getWeatherByCity, askAI } from '../services/api';
 import { usePermission, PERMISSION_MESSAGES } from '../hooks/usePermission';
 import { useOffline } from '../hooks/useOffline';
@@ -27,6 +27,14 @@ export default function WeatherPage() {
   const [selectedCity, setSelectedCity] = useState('');
   const { isOffline } = useOffline();
   const locPerm = usePermission('geolocation');
+
+  // Auto-load last city on mount
+  useEffect(() => {
+    const lastCity = localStorage.getItem('dehati_last_city');
+    if (lastCity && !isOffline) {
+      handleCitySelect(lastCity);
+    }
+  }, []); // eslint-disable-line
 
   const fetchWeatherAndAdvice = async (weatherData) => {
     setWeather(weatherData);
@@ -62,6 +70,7 @@ export default function WeatherPage() {
     if (!city) return;
     if (isOffline) { setError('انٹرنیٹ نہیں — موسم نہیں مل سکتا'); return; }
     setSelectedCity(city); setLoading(true); setError('');
+    localStorage.setItem('dehati_last_city', city);
     try {
       const data = await getWeatherByCity(city);
       await fetchWeatherAndAdvice(data);
