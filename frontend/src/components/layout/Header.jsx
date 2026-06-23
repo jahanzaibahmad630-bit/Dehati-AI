@@ -1,9 +1,7 @@
-import { useNavigate } from 'react-router-dom';
-import { useLanguage } from '../../context/LanguageContext';
+import { useLanguage } from '../../hooks/useLanguage';
 import { useOffline } from '../../hooks/useOffline';
 
-export default function Header({ title, showBack = false, rightAction }) {
-  const navigate = useNavigate();
+export default function Header({ rightAction }) {
   const { largeText, toggleLargeText } = useLanguage();
   const { isOffline } = useOffline();
 

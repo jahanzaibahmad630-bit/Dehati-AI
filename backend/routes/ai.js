@@ -194,12 +194,12 @@ router.post('/animal', aiLimiter, authenticateToken, async (req, res) => {
 // ─── POST /api/ai/fertilizer ──────────────────────────────────────────────────
 router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {
   try {
-    const { crop, soilType, cropAge } = req.body;
+    const { crop, soilType, stage } = req.body;
     if (!flashModel) return res.json({ answer: '⚠️ AI سروس دستیاب نہیں' });
 
     const prompt = `فصل: ${crop || 'نامعلوم'}
 مٹی: ${soilType || 'عام'}
-فصل کی عمر: ${cropAge || 'نامعلوم'} دن
+بڑھوتری کا مرحلہ: ${stage || 'نامعلوم'}
 
 پاکستان میں دستیاب کھادوں کی بنیاد پر بتائیں:
 1. کھاد کا نام (اردو/عام نام)

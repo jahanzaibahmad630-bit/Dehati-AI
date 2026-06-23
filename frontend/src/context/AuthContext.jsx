@@ -1,27 +1,19 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-
-const AuthContext = createContext(null);
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { useState, useEffect } from 'react';
+import * as api from '../services/api';
+import { AuthContext } from './AuthContextCore';
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('dehati_user');
+    if (savedUser) {
+      try { return JSON.parse(savedUser); } catch { return null; }
+    }
+    return null;
+  });
+  const [token, setToken] = useState(() => localStorage.getItem('dehati_token'));
+  const [loading] = useState(false);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('dehati_token');
-    const savedUser = localStorage.getItem('dehati_user');
-    if (savedToken && savedUser) {
-      try {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
-      } catch {
-        localStorage.removeItem('dehati_token');
-        localStorage.removeItem('dehati_user');
-      }
-    }
-    setLoading(false);
   }, []);
 
   const saveSession = (token, user) => {
@@ -32,36 +24,19 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (name, phone, district, landSize, password) => {
-    const res = await fetch(`${API_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone, district, landSize, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'رجسٹریشن ناکام');
+    const data = await api.register({ name, phone, district, landSize, password });
     saveSession(data.token, data.user);
     return data;
   };
 
   const login = async (phone, password) => {
-    const res = await fetch(`${API_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'لاگ ان ناکام');
+    const data = await api.login({ phone, password });
     saveSession(data.token, data.user);
     return data;
   };
 
   const guestLogin = async () => {
-    const res = await fetch(`${API_URL}/api/auth/guest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'مہمان لاگ ان ناکام');
+    const data = await api.guestLogin();
     saveSession(data.token, data.user);
     return data;
   };
@@ -91,8 +66,3 @@ export function AuthProvider({ children }) {
   );
 }
 
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be inside AuthProvider');
-  return ctx;
-};

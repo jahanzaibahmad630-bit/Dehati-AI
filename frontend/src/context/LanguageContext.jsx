@@ -1,12 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-
-const LanguageContext = createContext(null);
-
-export const LANGUAGES = {
-  ur: { label: 'اردو', dir: 'rtl' },
-  pj: { label: 'پنجابی', dir: 'rtl' },
-  en: { label: 'English', dir: 'ltr' }
-};
+import { useState, useEffect } from 'react';
+import { LanguageContext, LANGUAGES } from './LanguageContextCore';
 
 export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState(() =>
@@ -43,8 +36,3 @@ export function LanguageProvider({ children }) {
   );
 }
 
-export const useLanguage = () => {
-  const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error('useLanguage must be inside LanguageProvider');
-  return ctx;
-};

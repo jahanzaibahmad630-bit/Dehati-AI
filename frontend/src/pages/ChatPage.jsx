@@ -56,7 +56,7 @@ export default function ChatPage() {
       const history = [...messages, newMsg].slice(-8).map(m => ({ role: m.role, content: m.content }));
       const data = await chatWithAI(history, language);
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply, time: new Date() }]);
-    } catch (err) {
+    } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: '⚠️ جواب نہیں آیا — دوبارہ کوشش کریں',
@@ -115,7 +115,7 @@ export default function ChatPage() {
               alignItems: msg.role === 'user' ? 'flex-start' : 'flex-end'
             }}
           >
-            <div className={`chat-bubble ${msg.role === 'user' ? 'bubble-user' : 'bubble-ai'}`}>
+            <div className={`chat-bubble ${msg.role === 'user' ? 'bubble-user' : 'bubble-ai'}`} style={{ whiteSpace: 'pre-wrap' }}>
               {msg.content}
             </div>
             <div

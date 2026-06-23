@@ -1,17 +1,5 @@
 import { useState } from 'react';
-
-const CROP_DAYS = {
-  'گندم':   { days: 140, sow: 'نومبر' },
-  'چاول':   { days: 145, sow: 'جون' },
-  'کپاس':   { days: 165, sow: 'مئی-جون' },
-  'مکئی':   { days: 100, sow: 'مارچ یا جولائی' },
-  'گنا':    { days: 330, sow: 'اکتوبر-نومبر' },
-  'آلو':    { days: 100, sow: 'اکتوبر' },
-  'ٹماٹر':  { days: 80,  sow: 'جولائی یا جنوری' },
-  'پیاز':   { days: 135, sow: 'ستمبر-اکتوبر' },
-  'سرسوں':  { days: 110, sow: 'اکتوبر' },
-  'مرچ':    { days: 120, sow: 'جولائی یا جنوری' }
-};
+import { CROP_DATA } from '../../data/crops';
 
 export default function HarvestCountdown() {
   const [crop, setCrop] = useState('');
@@ -19,7 +7,7 @@ export default function HarvestCountdown() {
   const [result, setResult] = useState(null);
 
   const calculate = () => {
-    const cropInfo = CROP_DAYS[crop];
+    const cropInfo = CROP_DATA[crop];
     if (!cropInfo || !sowDate) return;
     const { days } = cropInfo;
     const sow = new Date(sowDate);
@@ -42,7 +30,7 @@ export default function HarvestCountdown() {
         <label className="input-label">فصل</label>
         <select className="input" value={crop} onChange={e => setCrop(e.target.value)} id="harvest-crop">
           <option value="">فصل منتخب کریں</option>
-          {Object.entries(CROP_DAYS).map(([c, { days, sow }]) => (
+          {Object.entries(CROP_DATA).map(([c, { days, sow }]) => (
             <option key={c} value={c}>{c} ({days} دن — {sow})</option>
           ))}
         </select>

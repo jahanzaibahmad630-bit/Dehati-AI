@@ -1,5 +1,5 @@
-import { useAuth } from '../../context/AuthContext';
-import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../hooks/useLanguage';
 
 export default function Profile() {
   const { user, logout, isGuest } = useAuth();

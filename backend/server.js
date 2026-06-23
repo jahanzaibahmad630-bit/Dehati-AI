@@ -7,6 +7,7 @@ const { apiLimiter } = require('./middleware/rateLimit');
 const authRoutes = require('./routes/auth');
 const aiRoutes = require('./routes/ai');
 const weatherRoutes = require('./routes/weather');
+const marketRoutes = require('./routes/market');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -54,6 +55,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/weather', weatherRoutes);
+app.use('/api/market', marketRoutes);
 
 // 404
 app.use((req, res) => {

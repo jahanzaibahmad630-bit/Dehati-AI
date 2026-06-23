@@ -1,22 +1,8 @@
-import { useState } from 'react';
-import { getWeatherByCoords, getWeatherByCity, askAI } from '../services/api';
+import { useState, useEffect } from 'react';
+import { getWeatherByCoords, getWeatherByCity, askAI, getCities } from '../services/api';
 import { usePermission, PERMISSION_MESSAGES } from '../hooks/usePermission';
 import { useOffline } from '../hooks/useOffline';
 import AIDisclaimer from '../components/ui/AIDisclaimer';
-
-const CITIES = [
-  'lahore','faisalabad','multan','rawalpindi','gujranwala','sialkot',
-  'bahawalpur','sargodha','jhang','rahim yar khan','sahiwal','okara',
-  'dera ghazi khan','mianwali','khanewal','vehari','hafizabad'
-];
-const CITY_LABELS = {
-  'lahore':'لاہور','faisalabad':'فیصل آباد','multan':'ملتان',
-  'rawalpindi':'راولپنڈی','gujranwala':'گجرانوالہ','sialkot':'سیالکوٹ',
-  'bahawalpur':'بہاولپور','sargodha':'سرگودھا','jhang':'جھنگ',
-  'rahim yar khan':'رحیم یار خان','sahiwal':'ساہیوال','okara':'اوکاڑہ',
-  'dera ghazi khan':'ڈیرہ غازی خان','mianwali':'میانوالی',
-  'khanewal':'خانیوال','vehari':'وہاڑی','hafizabad':'حافظ آباد'
-};
 
 export default function WeatherPage() {
   const [weather, setWeather] = useState(null);
@@ -25,8 +11,21 @@ export default function WeatherPage() {
   const [adviceLoading, setAdviceLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
+  const [cities, setCities] = useState([]);
   const { isOffline } = useOffline();
   const locPerm = usePermission('geolocation');
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const data = await getCities();
+        setCities(data.cities);
+      } catch (err) {
+        console.error('Failed to fetch cities:', err);
+      }
+    };
+    fetchCities();
+  }, []);
 
   const fetchWeatherAndAdvice = async (weatherData) => {
     setWeather(weatherData);
@@ -98,7 +97,7 @@ export default function WeatherPage() {
             id="weather-city-select"
           >
             <option value="">شہر منتخب کریں</option>
-            {CITIES.map(c => <option key={c} value={c}>{CITY_LABELS[c] || c}</option>)}
+            {cities.map(c => <option key={c.key} value={c.key}>{c.nameUrdu || c.key}</option>)}
           </select>
         </div>
 

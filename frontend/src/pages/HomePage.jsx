@@ -96,7 +96,7 @@ export default function HomePage() {
   };
 
   const copyText = async (text) => {
-    try { await navigator.clipboard.writeText(text); } catch {}
+    try { await navigator.clipboard.writeText(text); } catch (e) { console.error(e); }
   };
 
   return (
@@ -232,7 +232,7 @@ export default function HomePage() {
               <span style={{ fontWeight: 700, fontSize: '.9rem' }}>🌾 DehatiAI کا جواب</span>
               <AIDisclaimer small />
             </div>
-            <div className="ai-response-body">{answer}</div>
+            <div className="ai-response-body" style={{ whiteSpace: 'pre-wrap' }}>{answer}</div>
             <div className="ai-response-actions">
               <button className="btn btn-sm btn-whatsapp" onClick={() => shareWhatsApp(answer)} id="home-share-btn">📤 WhatsApp</button>
               <button className="btn btn-sm btn-outline" onClick={() => speak(answer)} id="home-speak-btn">🔊 سنیں</button>

@@ -61,11 +61,11 @@ export async function askAnimalHealth(animalType, symptoms, question) {
   return handleResponse(res);
 }
 
-export async function askFertilizer(crop, soilType, cropAge) {
+export async function askFertilizer(crop, soilType, stage) {
   const res = await fetch(`${API_URL}/api/ai/fertilizer`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ crop, soilType, cropAge })
+    body: JSON.stringify({ crop, soilType, stage })
   });
   return handleResponse(res);
 }
@@ -87,6 +87,14 @@ export async function getWeatherByCity(city) {
 
 export async function getCities() {
   const res = await fetch(`${API_URL}/api/weather/cities`);
+  return handleResponse(res);
+}
+
+// === Market API ===
+export async function getMarketPrices() {
+  const res = await fetch(`${API_URL}/api/market`, {
+    headers: authHeaders()
+  });
   return handleResponse(res);
 }
 

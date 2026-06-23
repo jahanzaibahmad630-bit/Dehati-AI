@@ -93,7 +93,7 @@ export default function AnimalHealthAdvisor() {
             <span style={{ fontWeight: 700 }}>💊 AI مشورہ</span>
             <AIDisclaimer small />
           </div>
-          <div className="ai-response-body">{result}</div>
+          <div className="ai-response-body" style={{ whiteSpace: 'pre-wrap' }}>{result}</div>
           <div style={{ marginTop: '.5rem', background: 'var(--danger-light)', borderRadius: 'var(--radius-sm)', padding: '.5rem .75rem', fontSize: '.72rem', color: 'var(--danger)', fontWeight: 700 }}>
             ⚠️ یہ ابتدائی معلومات ہیں — سنگین بیماری میں جانوروں کے ڈاکٹر سے ملیں
           </div>

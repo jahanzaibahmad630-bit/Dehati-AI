@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 
 export default function PrivacyNotice() {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
+  const [show, setShow] = useState(() => {
     const seen = localStorage.getItem('dehati_privacy_seen');
-    if (!seen) setShow(true);
-  }, []);
+    return !seen;
+  });
 
   const dismiss = () => {
     localStorage.setItem('dehati_privacy_seen', '1');

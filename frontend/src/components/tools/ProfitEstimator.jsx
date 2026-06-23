@@ -1,17 +1,5 @@
 import { useState } from 'react';
-
-const CROP_DATA = {
-  'گندم':   { yield: 35,  price: 1800, cost: 28000 },
-  'چاول':   { yield: 30,  price: 2800, cost: 40000 },
-  'کپاس':   { yield: 12,  price: 6000, cost: 55000 },
-  'گنا':    { yield: 900, price: 425,  cost: 70000 },
-  'مکئی':   { yield: 45,  price: 1200, cost: 30000 },
-  'آلو':    { yield: 120, price: 800,  cost: 65000 },
-  'ٹماٹر':  { yield: 200, price: 600,  cost: 80000 },
-  'پیاز':   { yield: 100, price: 650,  cost: 45000 },
-  'مرچ':    { yield: 15,  price: 5500, cost: 60000 },
-  'سرسوں':  { yield: 20,  price: 2200, cost: 25000 }
-};
+import { CROP_DATA } from '../../data/crops';
 
 export default function ProfitEstimator() {
   const [crop, setCrop] = useState('');

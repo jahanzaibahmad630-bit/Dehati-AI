@@ -28,7 +28,14 @@ const PUNJAB_CITIES = {
   'narowal': { lat: 32.1023, lon: 74.8702, name: 'نارووال' },
   'nankana sahib': { lat: 31.4500, lon: 73.7167, name: 'ننکانہ صاحب' },
   'toba tek singh': { lat: 30.9700, lon: 72.4833, name: 'ٹوبہ ٹیک سنگھ' },
-  'wah cantt': { lat: 33.7667, lon: 72.7833, name: 'واہ کینٹ' }
+  'wah cantt': { lat: 33.7667, lon: 72.7833, name: 'واہ کینٹ' },
+  'bhakkar': { lat: 31.6268, lon: 71.0650, name: 'بھکر' },
+  'bahawalnagar': { lat: 29.9982, lon: 73.2636, name: 'بہاولنگر' },
+  'khushab': { lat: 32.2965, lon: 72.3525, name: 'خوشاب' },
+  'layyah': { lat: 30.9648, lon: 70.9399, name: 'لیہ' },
+  'lodhran': { lat: 29.5405, lon: 71.6335, name: 'لودھراں' },
+  'mandi bahauddin': { lat: 32.5870, lon: 73.4912, name: 'منڈی بہاؤالدین' },
+  'rajanpur': { lat: 29.1035, lon: 70.3250, name: 'راجن پور' }
 };
 
 module.exports = { PUNJAB_CITIES };
