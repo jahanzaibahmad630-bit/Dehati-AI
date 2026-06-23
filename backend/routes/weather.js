@@ -82,6 +82,10 @@ router.get('/', async (req, res) => {
     }
 
     const weather = await fetchWeather(parseFloat(lat), parseFloat(lon));
+    if (city) {
+      const key = city.toLowerCase().trim();
+      weather.cityName = PUNJAB_CITIES[key]?.name || city;
+    }
     res.json(weather);
   } catch (err) {
     console.error('Weather error:', err.message);
