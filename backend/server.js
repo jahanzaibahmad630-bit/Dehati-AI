@@ -11,6 +11,9 @@ const weatherRoutes = require('./routes/weather');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust Railway's reverse proxy (fixes express-rate-limit X-Forwarded-For warning)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
