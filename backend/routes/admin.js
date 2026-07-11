@@ -62,8 +62,9 @@ router.get('/stats', requireAdmin, async (req, res) => {
       newToday,
       uptime,
       serverStart: SERVER_START.toISOString(),
-      geminiConfigured: !!process.env.GEMINI_API_KEY,
+      claudeConfigured: !!process.env.CLAUDE_API_KEY,
       supabaseConfigured: !!process.env.SUPABASE_URL,
+
       nodeVersion: process.version,
       environment: process.env.NODE_ENV || 'production'
     });
@@ -138,20 +139,23 @@ router.get('/health', requireAdmin, async (req, res) => {
   // Backend self
   checks.backend = { status: 'ok', latency: 0 };
 
-  // Gemini
-  if (process.env.GEMINI_API_KEY) {
+  // Claude
+  if (process.env.CLAUDE_API_KEY) {
     const start = Date.now();
     try {
-      const { GoogleGenerativeAI } = require('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-      await model.generateContent({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }], generationConfig: { maxOutputTokens: 5 } });
-      checks.gemini = { status: 'ok', latency: Date.now() - start };
+      const Anthropic = require('@anthropic-ai/sdk');
+      const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
+      await client.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 5,
+        messages: [{ role: 'user', content: 'ping' }]
+      });
+      checks.claude = { status: 'ok', latency: Date.now() - start };
     } catch (e) {
-      checks.gemini = { status: 'error', error: e.message, latency: Date.now() - start };
+      checks.claude = { status: 'error', error: e.message, latency: Date.now() - start };
     }
   } else {
-    checks.gemini = { status: 'not_configured' };
+    checks.claude = { status: 'not_configured' };
   }
 
   // Open-Meteo

@@ -77,8 +77,9 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`✅ DehatiAI API running on port ${PORT}`);
-  console.log(`   Gemini API: ${process.env.GEMINI_API_KEY ? '✅ configured' : '⚠️  not set (AI features disabled)'}`);
+  console.log(`   Claude API: ${process.env.CLAUDE_API_KEY ? '✅ configured' : '⚠️  not set (AI features disabled)'}`);
   console.log(`   Supabase:   ${process.env.SUPABASE_URL ? '✅ configured' : '⚠️  not set (dev mode)'}`);
   console.log(`   Admin:      ${process.env.ADMIN_EMAIL || 'admin@dehati.ai'} (set ADMIN_EMAIL/ADMIN_PASSWORD to override)`);
 });
+
 

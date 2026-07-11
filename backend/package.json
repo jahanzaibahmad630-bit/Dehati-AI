@@ -8,7 +8,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
+    "@anthropic-ai/sdk": "^0.27.3",
     "@supabase/supabase-js": "^2.45.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",

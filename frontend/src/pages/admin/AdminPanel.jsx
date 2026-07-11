@@ -256,8 +256,8 @@ function HealthTab() {
   if (loading) return <Spinner />;
 
   const services = [
-    { name: 'Backend (Railway)',  key: 'backend',   icon: '⚡' },
-    { name: 'Gemini AI',          key: 'gemini',    icon: '🤖' },
+    { name: 'Backend (Railway)',  key: 'backend', icon: '⚡' },
+    { name: 'Claude AI',          key: 'claude',  icon: '🤖' },
     { name: 'Open-Meteo Weather', key: 'openMeteo', icon: '🌤️' },
     { name: 'Supabase Database',  key: 'supabase',  icon: '🗄️' },
   ];
@@ -446,7 +446,7 @@ export default function AdminPanel({ onLogout }) {
               <div style={{ background: 'white', borderRadius: 16, padding: '1.25rem', border: '1px solid #f0f0f0', boxShadow: '0 2px 8px rgba(0,0,0,.05)' }}>
                 <h3 style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: '1rem' }}>🔧 Services</h3>
                 {[
-                  { label: 'Gemini AI',  ok: stats?.geminiConfigured   },
+                  { label: 'Claude AI',  ok: stats?.claudeConfigured   },
                   { label: 'Supabase',   ok: stats?.supabaseConfigured },
                 ].map(s => (
                   <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '.6rem 0', borderBottom: '1px solid #f0f0f0' }}>
