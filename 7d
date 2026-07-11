@@ -1,0 +1,2 @@
+[main 4128a15] Security audit fixes: remove hardcoded creds from UI fix CORS allowlist add admin rate-limit remove JWT_SECRET export timing-safe login remove dev-mode leak fix market price disclosure reduce JWT expiry 30d-
+ 7 files changed, 75 insertions(+), 59 deletions(-)

@@ -3,6 +3,7 @@ const bcrypt  = require('bcryptjs');
 const { requireAdmin, signAdminToken } = require('../middleware/auth');
 const { adminLoginLimiter } = require('../middleware/rateLimit');
 const { supabase } = require('../lib/supabase');
+const { getMemUsers, getRecentRegistrations } = require('../lib/memStore');
 
 const router = express.Router();
 
@@ -40,7 +41,7 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
   res.json({ token, email, role: 'admin' });
 });
 
-// ─── GET /api/admin/stats ─────────────────────────────────────────────────────
+// ─── GET /api/admin/stats ─────────────────────────────────────────────────────────────────
 router.get('/stats', requireAdmin, async (req, res) => {
   try {
     const uptimeSeconds = Math.floor((new Date() - SERVER_START) / 1000);
@@ -48,23 +49,35 @@ router.get('/stats', requireAdmin, async (req, res) => {
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const uptime  = `${hours}h ${minutes}m`;
 
-    let totalUsers = 0, guestUsers = 0, newToday = 0;
+    const memUsersList = getMemUsers();
+    let totalUsers = memUsersList.length;
+    let guestUsers = 0;
+    let newToday = 0;
 
     if (supabase) {
-      const { count: total } = await supabase
-        .from('users').select('*', { count: 'exact', head: true });
-      totalUsers = total || 0;
+      try {
+        const { count: total } = await supabase
+          .from('users').select('*', { count: 'exact', head: true });
+        totalUsers = (total || 0) + memUsersList.length;
 
-      const { count: guests } = await supabase
-        .from('users').select('*', { count: 'exact', head: true })
-        .eq('is_guest', true);
-      guestUsers = guests || 0;
+        const { count: guests } = await supabase
+          .from('users').select('*', { count: 'exact', head: true })
+          .eq('is_guest', true);
+        guestUsers = guests || 0;
 
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { count: todayCount } = await supabase
-        .from('users').select('*', { count: 'exact', head: true })
-        .gte('created_at', since);
-      newToday = todayCount || 0;
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { count: todayCount } = await supabase
+          .from('users').select('*', { count: 'exact', head: true })
+          .gte('created_at', since);
+        newToday = (todayCount || 0) + memUsersList.filter(u => {
+          return u.created_at && new Date(u.created_at) > new Date(since);
+        }).length;
+      } catch (dbErr) {
+        // Supabase unavailable — show memory counts only
+        newToday = memUsersList.length;
+      }
+    } else {
+      newToday = memUsersList.length;
     }
 
     res.json({
@@ -72,11 +85,11 @@ router.get('/stats', requireAdmin, async (req, res) => {
       guestUsers,
       registeredUsers: totalUsers - guestUsers,
       newToday,
+      memOnlyUsers: memUsersList.length,
       uptime,
       serverStart: SERVER_START.toISOString(),
       claudeConfigured: !!process.env.CLAUDE_API_KEY,
       supabaseConfigured: !!process.env.SUPABASE_URL,
-
       nodeVersion: process.version,
       environment: process.env.NODE_ENV || 'production'
     });
@@ -86,23 +99,19 @@ router.get('/stats', requireAdmin, async (req, res) => {
   }
 });
 
-// ─── GET /api/admin/users ─────────────────────────────────────────────────────
+// ─── GET /api/admin/users ─────────────────────────────────────────────────────────────────
 router.get('/users', requireAdmin, async (req, res) => {
   try {
+    const memUsersList = getMemUsers().map(u => ({ ...u, password_hash: undefined, source: 'memory' }));
+
     if (!supabase) {
-      return res.json({
-        users: [
-          { id: 'dev-1', name: 'Test Farmer', phone: '03001234567', district: 'Lahore', land_size: 5, created_at: new Date().toISOString(), is_guest: false }
-        ],
-        total: 1,
-        devMode: true
-      });
+      return res.json({ users: memUsersList, total: memUsersList.length, devMode: true });
     }
 
-    const page  = parseInt(req.query.page  || '1');
-    const limit = parseInt(req.query.limit || '20');
+    const page   = parseInt(req.query.page  || '1');
+    const limit  = parseInt(req.query.limit || '20');
     const search = req.query.search || '';
-    const from = (page - 1) * limit;
+    const from   = (page - 1) * limit;
 
     let query = supabase
       .from('users')
@@ -114,10 +123,18 @@ router.get('/users', requireAdmin, async (req, res) => {
       query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`);
     }
 
-    const { data: users, count, error } = await query;
-    if (error) throw error;
+    const { data: dbUsers, count, error } = await query;
+    if (error) {
+      // Supabase failed — return memory users only
+      return res.json({ users: memUsersList, total: memUsersList.length, memOnly: true });
+    }
 
-    res.json({ users: users || [], total: count || 0, page, limit });
+    // Merge: Supabase users + in-memory users (avoid duplicates by phone)
+    const dbPhones = new Set((dbUsers || []).map(u => u.phone));
+    const uniqueMemUsers = memUsersList.filter(u => !dbPhones.has(u.phone));
+    const allUsers = [...(dbUsers || []), ...uniqueMemUsers];
+
+    res.json({ users: allUsers, total: (count || 0) + uniqueMemUsers.length, page, limit });
   } catch (err) {
     console.error('Admin users error:', err.message);
     res.status(500).json({ error: 'Failed to fetch users' });
@@ -243,22 +260,36 @@ router.delete('/prices/reset', requireAdmin, (req, res) => {
 // ─── GET /api/admin/recent ────────────────────────────────────────────────────
 router.get('/recent', requireAdmin, async (req, res) => {
   try {
+    const memRecent = getRecentRegistrations(20);
+
     if (!supabase) {
-      return res.json({ recent: [], devMode: true });
+      return res.json({ recent: memRecent, memOnly: true });
     }
 
     const { data, error } = await supabase
       .from('users')
-      .select('id, name, phone, district, created_at, is_guest')
+      .select('id, name, phone, district, land_size, created_at, is_guest')
       .order('created_at', { ascending: false })
       .limit(20);
 
-    if (error) throw error;
-    res.json({ recent: data || [] });
+    if (error) {
+      // Supabase failed — show in-memory registrations
+      return res.json({ recent: memRecent, memOnly: true });
+    }
+
+    // Merge Supabase + memory (deduplicate by phone)
+    const dbPhones = new Set((data || []).map(u => u.phone));
+    const uniqueMem = memRecent.filter(u => !dbPhones.has(u.phone));
+    const merged = [...(data || []), ...uniqueMem]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 20);
+
+    res.json({ recent: merged });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch recent activity' });
   }
 });
+
 
 // ─── PUBLIC: GET /api/admin/announcements/public ────────────────────────────
 // Called by the farmer app (no admin auth needed)

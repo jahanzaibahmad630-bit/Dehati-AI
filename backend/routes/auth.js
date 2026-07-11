@@ -2,12 +2,13 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { supabase } = require('../lib/supabase');
 const { signToken } = require('../middleware/auth');
+const { memUsers, addMemUser } = require('../lib/memStore');
 
 const router = express.Router();
 const SALT_ROUNDS = 10; // reduced from 12 for faster response on free tier
 
 // ─── In-memory fallback store (when Supabase table missing/fails) ─────────────
-const memUsers = new Map(); // phone -> user object
+// memUsers is now shared with admin.js via lib/memStore.js
 
 function makeMockUser(data) {
   return {
@@ -99,13 +100,12 @@ router.post('/register', async (req, res) => {
     }
 
     const mockUser = makeMockUser({ name: name.trim(), phone: cleanPhone, district, landSize, password_hash: passwordHash });
-    memUsers.set(cleanPhone, mockUser);
+    addMemUser(mockUser); // use shared store
 
     const token = signToken(mockUser);
     return res.status(201).json({
       token,
       user: { name: mockUser.name, phone: cleanPhone, district: mockUser.district, landSize: mockUser.land_size }
-      // note: 'dev-mode' removed — never leak deployment mode to client
     });
 
   } catch (err) {
