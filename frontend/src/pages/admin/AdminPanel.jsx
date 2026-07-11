@@ -236,7 +236,175 @@ function PricesTab() {
   );
 }
 
-// ── Health Tab ─────────────────────────────────────────────────────────────────
+// ── Announcements Tab ─────────────────────────────────────────────────────────
+function AnnouncementsTab() {
+  const [list, setList]         = useState([]);
+  const [title, setTitle]       = useState('');
+  const [message, setMessage]   = useState('');
+  const [type, setType]         = useState('info');
+  const [expiresAt, setExpires] = useState('');
+  const [link, setLink]         = useState('');
+  const [saving, setSaving]     = useState(false);
+  const [msg, setMsg]           = useState('');
+
+  const load = async () => {
+    try {
+      const res = await adminFetch('/announcements');
+      const data = await res.json();
+      setList(data.announcements || []);
+    } catch {}
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+    setSaving(true);
+    try {
+      await adminFetch('/announcements', {
+        method: 'POST',
+        body: JSON.stringify({ title, message, type, expiresAt: expiresAt || null, link })
+      });
+      setTitle(''); setMessage(''); setType('info'); setExpires(''); setLink('');
+      flash('✅ Announcement published!');
+      load();
+    } catch { flash('❌ Failed to publish'); }
+    setSaving(false);
+  };
+
+  const handleToggle = async (id) => {
+    try {
+      await adminFetch(`/announcements/${id}/toggle`, { method: 'PATCH' });
+      load();
+    } catch {}
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this announcement?')) return;
+    try {
+      await adminFetch(`/announcements/${id}`, { method: 'DELETE' });
+      flash('✅ Deleted');
+      load();
+    } catch { flash('❌ Delete failed'); }
+  };
+
+  const TYPE_OPTIONS = [
+    { value: 'info',    label: 'ℹ️ Info (Blue)',    color: '#1d4ed8' },
+    { value: 'success', label: '✅ Success (Green)', color: '#15803d' },
+    { value: 'warning', label: '⚠️ Warning (Gold)', color: '#b45309' },
+    { value: 'urgent',  label: '🔴 Urgent (Red)',   color: '#dc2626' },
+  ];
+
+  const TYPE_BADGE = { info: '#dbeafe', success: '#dcfce7', warning: '#fef3c7', urgent: '#fee2e2' };
+  const TYPE_COLOR = { info: '#1d4ed8', success: '#15803d', warning: '#b45309', urgent: '#dc2626' };
+
+  return (
+    <div>
+      {msg && <div style={{ background: '#f0fdf4', color: '#16a34a', padding: '.6rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '.875rem', fontWeight: 600 }}>{msg}</div>}
+
+      {/* Create form */}
+      <div style={{ background: 'white', borderRadius: 16, padding: '1.5rem', border: '1.5px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,.05)', marginBottom: '1.5rem' }}>
+        <h3 style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: '1rem' }}>📢 New Announcement</h3>
+        <form onSubmit={handleCreate}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', marginBottom: '.75rem' }}>
+            <div>
+              <label style={labelStyle}>Title (Optional)</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. DAP Price Update" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Type</label>
+              <select value={type} onChange={e => setType(e.target.value)} style={inputStyle}>
+                {TYPE_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '.75rem' }}>
+            <label style={labelStyle}>Message (Urdu or English) *</label>
+            <textarea
+              value={message} onChange={e => setMessage(e.target.value)}
+              placeholder="گندم کی قیمت آج ₨3,950 ہو گئی — منڈی میں بیچنے کا اچھا وقت ہے۔"
+              required rows={3}
+              style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit', direction: 'rtl' }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', marginBottom: '1rem' }}>
+            <div>
+              <label style={labelStyle}>Expires At (Optional)</label>
+              <input type="datetime-local" value={expiresAt} onChange={e => setExpires(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Link URL (Optional)</label>
+              <input value={link} onChange={e => setLink(e.target.value)} placeholder="https://..." style={inputStyle} />
+            </div>
+          </div>
+
+          <button type="submit" disabled={saving || !message.trim()} style={btnStyle('#2e5a27', saving || !message.trim())}>
+            {saving ? 'Publishing...' : '📢 Publish Announcement'}
+          </button>
+        </form>
+      </div>
+
+      {/* List */}
+      <h3 style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: '.75rem' }}>
+        All Announcements ({list.length})
+      </h3>
+
+      {list.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af', background: 'white', borderRadius: 16, border: '1px solid #f0f0f0' }}>
+          📢 No announcements yet. Create one above.
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+        {list.map(ann => (
+          <div key={ann.id} style={{
+            background: 'white', borderRadius: 14, padding: '1rem 1.1rem',
+            border: `1.5px solid ${ann.active ? '#86efac' : '#e5e7eb'}`,
+            boxShadow: '0 1px 6px rgba(0,0,0,.05)',
+            opacity: ann.active ? 1 : .6
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.3rem', flexWrap: 'wrap' }}>
+                  <span style={{ background: TYPE_BADGE[ann.type], color: TYPE_COLOR[ann.type], borderRadius: 20, padding: '.15rem .6rem', fontSize: '.72rem', fontWeight: 700 }}>
+                    {ann.type.toUpperCase()}
+                  </span>
+                  {ann.title && <span style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827' }}>{ann.title}</span>}
+                  <span style={{ background: ann.active ? '#dcfce7' : '#f3f4f6', color: ann.active ? '#16a34a' : '#9ca3af', borderRadius: 20, padding: '.1rem .5rem', fontSize: '.68rem', fontWeight: 700 }}>
+                    {ann.active ? '● Live' : '○ Hidden'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '.875rem', color: '#374151', direction: 'rtl', lineHeight: 1.5 }}>{ann.message}</div>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '.4rem', fontSize: '.72rem', color: '#9ca3af', fontFamily: 'monospace', flexWrap: 'wrap' }}>
+                  <span>Created: {new Date(ann.createdAt).toLocaleString()}</span>
+                  {ann.expiresAt && <span>Expires: {new Date(ann.expiresAt).toLocaleString()}</span>}
+                  {ann.link && <span>Link: {ann.link}</span>}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0 }}>
+                <button onClick={() => handleToggle(ann.id)} style={{ ...btnStyle(ann.active ? '#6b7280' : '#16a34a'), padding: '.35rem .7rem', fontSize: '.75rem' }}>
+                  {ann.active ? 'Hide' : 'Show'}
+                </button>
+                <button onClick={() => handleDelete(ann.id)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '.35rem .7rem', cursor: 'pointer', fontSize: '.75rem', fontWeight: 700 }}>
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const labelStyle = { display: 'block', fontSize: '.78rem', fontWeight: 700, color: '#374151', marginBottom: '.3rem' };
+const inputStyle = { width: '100%', padding: '.6rem .875rem', borderRadius: 8, border: '2px solid #e5e7eb', fontSize: '.875rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', outline: 'none' };
+
 function HealthTab() {
   const [health, setHealth]   = useState(null);
   const [loading, setLoading] = useState(true);
@@ -362,11 +530,12 @@ function btnStyle(color, disabled = false) {
 
 // ── Main Admin Panel ───────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'dashboard', label: '📊 Dashboard' },
-  { id: 'users',     label: '👥 Users'     },
-  { id: 'prices',    label: '📈 Prices'    },
-  { id: 'health',    label: '🏥 Health'    },
-  { id: 'recent',    label: '🕒 Activity'  },
+  { id: 'dashboard',     label: '📊 Dashboard'      },
+  { id: 'users',         label: '👥 Users'          },
+  { id: 'announcements', label: '📢 Announcements'  },
+  { id: 'prices',        label: '📈 Prices'         },
+  { id: 'health',        label: '🏥 Health'         },
+  { id: 'recent',        label: '🕒 Activity'       },
 ];
 
 export default function AdminPanel({ onLogout }) {
@@ -472,10 +641,11 @@ export default function AdminPanel({ onLogout }) {
           </div>
         )}
 
-        {tab === 'users'   && <><h2 style={h2}>Users Management</h2><UsersTab /></>}
-        {tab === 'prices'  && <><h2 style={h2}>Market Prices Editor</h2><PricesTab /></>}
-        {tab === 'health'  && <><h2 style={h2}>System Health</h2><HealthTab /></>}
-        {tab === 'recent'  && <><h2 style={h2}>Recent Registrations</h2><RecentTab /></>}
+        {tab === 'users'         && <><h2 style={h2}>Users Management</h2><UsersTab /></>}
+        {tab === 'announcements' && <><h2 style={h2}>Announcements</h2><AnnouncementsTab /></>}
+        {tab === 'prices'        && <><h2 style={h2}>Market Prices Editor</h2><PricesTab /></>}
+        {tab === 'health'        && <><h2 style={h2}>System Health</h2><HealthTab /></>}
+        {tab === 'recent'        && <><h2 style={h2}>Recent Registrations</h2><RecentTab /></>}
       </div>
     </div>
   );

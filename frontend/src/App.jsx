@@ -17,6 +17,8 @@ import CropsPage from './pages/CropsPage';
 import PriceAlertPage from './pages/PriceAlertPage';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminPanel from './pages/admin/AdminPanel';
+import AnnouncementBanner from './components/ui/AnnouncementBanner';
+
 
 // ── Admin Shell (completely isolated — no farmer Header/Nav) ──────────────────
 function AdminShell() {
@@ -63,7 +65,9 @@ function AppShell() {
     <div className="app-container">
       <Header />
       <OfflineBanner />
+      <AnnouncementBanner />
       <PrivacyNotice />
+
       <main>
         <Routes>
           <Route path="/"             element={<ProtectedRoute><HomePage /></ProtectedRoute>} />

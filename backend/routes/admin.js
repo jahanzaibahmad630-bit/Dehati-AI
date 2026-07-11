@@ -9,6 +9,11 @@ const SERVER_START = new Date();
 // In-memory price overrides (reset on redeploy)
 let priceOverrides = {};
 
+// In-memory announcements (reset on redeploy)
+let announcements = [];
+let announcementIdCounter = 1;
+
+
 // ─── POST /api/admin/login ────────────────────────────────────────────────────
 router.post('/login', (req, res) => {
   const { email, password } = req.body;
@@ -248,5 +253,61 @@ router.get('/recent', requireAdmin, async (req, res) => {
   }
 });
 
+// ─── PUBLIC: GET /api/admin/announcements/public ────────────────────────────
+// Called by the farmer app (no admin auth needed)
+router.get('/announcements/public', (req, res) => {
+  const now = Date.now();
+  const active = announcements.filter(a => {
+    if (!a.active) return false;
+    if (a.expiresAt && new Date(a.expiresAt).getTime() < now) return false;
+    return true;
+  });
+  res.json({ announcements: active });
+});
+
+// ─── ADMIN: GET /api/admin/announcements ─────────────────────────────────────
+router.get('/announcements', requireAdmin, (req, res) => {
+  res.json({ announcements, total: announcements.length });
+});
+
+// ─── ADMIN: POST /api/admin/announcements ────────────────────────────────────
+router.post('/announcements', requireAdmin, (req, res) => {
+  const { title, message, type = 'info', expiresAt = null, link = '' } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message is required' });
+
+  const ann = {
+    id: announcementIdCounter++,
+    title: title?.trim() || '',
+    message: message.trim(),
+    type, // 'info' | 'warning' | 'success' | 'urgent'
+    link: link?.trim() || '',
+    expiresAt: expiresAt || null,
+    active: true,
+    createdAt: new Date().toISOString()
+  };
+
+  announcements.unshift(ann); // newest first
+  res.json({ success: true, announcement: ann });
+});
+
+// ─── ADMIN: PATCH /api/admin/announcements/:id/toggle ────────────────────────
+router.patch('/announcements/:id/toggle', requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id);
+  const ann = announcements.find(a => a.id === id);
+  if (!ann) return res.status(404).json({ error: 'Not found' });
+  ann.active = !ann.active;
+  res.json({ success: true, announcement: ann });
+});
+
+// ─── ADMIN: DELETE /api/admin/announcements/:id ──────────────────────────────
+router.delete('/announcements/:id', requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id);
+  const idx = announcements.findIndex(a => a.id === id);
+  if (idx === -1) return res.status(404).json({ error: 'Not found' });
+  announcements.splice(idx, 1);
+  res.json({ success: true, deletedId: id });
+});
+
 module.exports = router;
 module.exports.getPriceOverrides = () => ({ ...priceOverrides });
+
