@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 
+// JWT_SECRET is NEVER exported — kept module-private
 const JWT_SECRET = process.env.JWT_SECRET || 'dehati-ai-dev-secret-CHANGE-IN-PRODUCTION-use-32-chars';
 
 function authenticateToken(req, res, next) {
@@ -65,7 +66,7 @@ function signToken(user) {
       isGuest: user.is_guest || false
     },
     JWT_SECRET,
-    { expiresIn: '30d' }
+    { expiresIn: '7d' }  // Reduced from 30d to 7d
   );
 }
 
@@ -73,8 +74,9 @@ function signAdminToken(email) {
   return jwt.sign(
     { email, isAdmin: true, role: 'admin' },
     JWT_SECRET,
-    { expiresIn: '12h' }
+    { expiresIn: '8h' }
   );
 }
 
-module.exports = { authenticateToken, optionalAuth, requireAdmin, signToken, signAdminToken, JWT_SECRET };
+// SECURITY: JWT_SECRET is NOT exported — it stays module-private
+module.exports = { authenticateToken, optionalAuth, requireAdmin, signToken, signAdminToken };

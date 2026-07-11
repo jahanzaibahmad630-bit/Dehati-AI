@@ -1,6 +1,7 @@
-// Market prices — June 2026 rates from Punjab mandis
-// Source: AMIS Punjab / Trade Development Authority Pakistan
-// Auto-updated: prices reflect current season (Kharif 2026)
+// Market prices — estimated reference rates based on Punjab mandi averages (2025-26)
+// ⚠️ DISCLOSURE: These are ESTIMATED/REFERENCE prices, NOT a live AMIS/government feed.
+// Real-time integration requires official AMIS Punjab API access.
+// These figures are updated manually and used for guidance only.
 
 const BASE_PRICES = [
   { id: 1,  nameUrdu: 'گندم',        nameEn: 'Wheat',       base: 3900,  unit: 'من (40 کلو)', category: 'اناج' },
@@ -20,12 +21,12 @@ const BASE_PRICES = [
   { id: 15, nameUrdu: 'یوریا',       nameEn: 'Urea',        base: 3900,  unit: 'بوری (50 کلو)', category: 'کھاد' },
 ];
 
-// Simulate realistic daily market variation (±3%)
-function getPrice(base) {
+// Deterministic daily variation ±3% (cosmetic, not real-time data)
+function getEstimatedPrice(base) {
   const day = new Date().getDate();
   const seed = base * day;
-  const variation = ((seed % 7) - 3) / 100; // -3% to +3%
-  return Math.round(base * (1 + variation) / 50) * 50; // round to nearest 50
+  const variation = ((seed % 7) - 3) / 100;
+  return Math.round(base * (1 + variation) / 50) * 50;
 }
 
 function getTrend(base) {
@@ -36,15 +37,17 @@ function getTrend(base) {
   return         { trend: 'stable', trendIcon: '→', color: '#92400e' };
 }
 
+// Returns estimated prices with honest disclosure
 export function getLiveMarketPrices() {
   const now = new Date();
   const dateLabel = now.toLocaleDateString('ur-PK', { day: 'numeric', month: 'long', year: 'numeric' });
   return BASE_PRICES.map(item => ({
     ...item,
-    price: getPrice(item.base),
+    price: getEstimatedPrice(item.base),
     ...getTrend(item.base),
-    updatedAt: dateLabel
+    updatedAt: dateLabel,
+    isEstimated: true  // flag so UI can show disclosure
   }));
 }
 
-export const PRICE_NOTE = 'یہ قیمتیں پنجاب منڈیوں کے اوسط نرخ ہیں — حتمی قیمت مقامی منڈی میں مختلف ہو سکتی ہے';
+export const PRICE_NOTE = '⚠️ یہ تخمینی حوالہ قیمتیں ہیں — یہ AMIS یا سرکاری منڈی کا براہ راست ڈیٹا نہیں۔ حتمی قیمت مقامی منڈی سے معلوم کریں';

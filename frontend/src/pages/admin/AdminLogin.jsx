@@ -121,8 +121,9 @@ export default function AdminLogin({ onLogin }) {
         </form>
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.78rem', color: '#9ca3af' }}>
-          Default: admin@dehati.ai / Admin@12345
+          DehatiAI &copy; {new Date().getFullYear()} — Authorised Personnel Only
         </p>
+
       </div>
     </div>
   );

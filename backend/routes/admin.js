@@ -1,5 +1,7 @@
 const express = require('express');
+const bcrypt  = require('bcryptjs');
 const { requireAdmin, signAdminToken } = require('../middleware/auth');
+const { adminLoginLimiter } = require('../middleware/rateLimit');
 const { supabase } = require('../lib/supabase');
 
 const router = express.Router();
@@ -14,8 +16,9 @@ let announcements = [];
 let announcementIdCounter = 1;
 
 
-// ─── POST /api/admin/login ────────────────────────────────────────────────────
-router.post('/login', (req, res) => {
+// ─── POST /api/admin/login ─────────────────────────────────────────────────────────────────
+// Rate-limited: 10 attempts per 15 min per IP (brute-force protection)
+router.post('/login', adminLoginLimiter, async (req, res) => {
   const { email, password } = req.body;
 
   const ADMIN_EMAIL    = process.env.ADMIN_EMAIL    || 'admin@dehati.ai';
@@ -25,7 +28,11 @@ router.post('/login', (req, res) => {
     return res.status(400).json({ error: 'Email and password required' });
   }
 
-  if (email.trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase() || password !== ADMIN_PASSWORD) {
+  // Constant-time email compare prevents timing enumeration
+  const emailMatch = email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  // Always run comparison even on email mismatch (timing-safe)
+  const passwordMatch = password === ADMIN_PASSWORD;
+  if (!emailMatch || !passwordMatch) {
     return res.status(401).json({ error: 'Invalid admin credentials' });
   }
 

@@ -104,8 +104,8 @@ router.post('/register', async (req, res) => {
     const token = signToken(mockUser);
     return res.status(201).json({
       token,
-      user: { name: mockUser.name, phone: cleanPhone, district: mockUser.district, landSize: mockUser.land_size },
-      note: 'dev-mode'
+      user: { name: mockUser.name, phone: cleanPhone, district: mockUser.district, landSize: mockUser.land_size }
+      // note: 'dev-mode' removed — never leak deployment mode to client
     });
 
   } catch (err) {
@@ -159,12 +159,11 @@ router.post('/login', async (req, res) => {
 
     // ── Memory fallback ─────────────────────────────────────────────────────────
     const memUser = memUsers.get(cleanPhone);
-    if (!memUser) {
-      return res.status(401).json({ error: 'فون نمبر یا پاسورڈ غلط ہے' });
-    }
-
-    const isMatch = await bcrypt.compare(password, memUser.password_hash);
-    if (!isMatch) {
+    // Timing-safe: always run bcrypt even if user not found (prevents user enumeration)
+    const dummyHash = '$2b$10$invalidhashtopreventtimingattacksonusernotfound00000000';
+    const hashToCheck = memUser ? memUser.password_hash : dummyHash;
+    const isMatch = await bcrypt.compare(password, hashToCheck);
+    if (!memUser || !isMatch) {
       return res.status(401).json({ error: 'فون نمبر یا پاسورڈ غلط ہے' });
     }
 
