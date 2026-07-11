@@ -406,7 +406,150 @@ function AnnouncementsTab() {
 const labelStyle = { display: 'block', fontSize: '.78rem', fontWeight: 700, color: '#374151', marginBottom: '.3rem' };
 const inputStyle = { width: '100%', padding: '.6rem .875rem', borderRadius: 8, border: '2px solid #e5e7eb', fontSize: '.875rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', outline: 'none' };
 
+// -- Schemes Tab --
+function SchemesTab() {
+  const [schemes, setSchemes] = useState([]);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm]       = useState({});
+  const [saving, setSaving]   = useState(false);
+  const [msg, setMsg]         = useState('');
+
+  const load = async () => {
+    try {
+      const res  = await adminFetch('/schemes');
+      const data = await res.json();
+      setSchemes(data.schemes || []);
+    } catch {}
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+
+  const openNew = () => {
+    setForm({ name: '', icon: '📋', tagline: '', amount: '', amountDetail: '', subsidy: '',
+      eligibility: '', documents: '', howToApply: '', applyPhone: '', applyUrl: '',
+      source: '', lastVerified: new Date().toISOString().split('T')[0] });
+    setEditing('new');
+  };
+
+  const openEdit = (s) => {
+    setForm({ ...s, documents: Array.isArray(s.documents) ? s.documents.join('\n') : (s.documents || '') });
+    setEditing(s);
+  };
+
+  const closeForm = () => { setEditing(null); setForm({}); };
+
+  const handleSave = async () => {
+    if (!form.name?.trim()) return;
+    setSaving(true);
+    try {
+      if (editing === 'new') {
+        await adminFetch('/schemes', { method: 'POST', body: JSON.stringify(form) });
+        flash('Scheme added!');
+      } else {
+        await adminFetch(`/schemes/${editing.id}`, { method: 'PUT', body: JSON.stringify(form) });
+        flash('Scheme updated!');
+      }
+      closeForm(); load();
+    } catch { flash('Save failed'); }
+    setSaving(false);
+  };
+
+  const handleToggle = async (id) => { await adminFetch(`/schemes/${id}/toggle`, { method: 'PATCH' }); load(); };
+
+  const handleDelete = async (id, name) => {
+    if (!confirm(`Delete "${name}"?`)) return;
+    await adminFetch(`/schemes/${id}`, { method: 'DELETE' });
+    flash('Deleted'); load();
+  };
+
+  const Field = ({ field, label, placeholder, type = 'text', rtl = false }) => (
+    <div style={{ marginBottom: '.6rem' }}>
+      <label style={labelStyle}>{label}</label>
+      {type === 'textarea'
+        ? <textarea value={form[field] || ''} onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
+            placeholder={placeholder} rows={3}
+            style={{ ...inputStyle, resize: 'vertical', direction: rtl ? 'rtl' : 'ltr', fontFamily: 'inherit' }} />
+        : <input type={type} value={form[field] || ''} onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
+            placeholder={placeholder} style={inputStyle} />}
+    </div>
+  );
+
+  return (
+    <div>
+      {msg && <div style={{ background: '#f0fdf4', color: '#16a34a', padding: '.6rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '.875rem', fontWeight: 600 }}>{msg}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <p style={{ color: '#6b7280', fontSize: '.875rem' }}>{schemes.length} schemes total — edit, hide, or add new</p>
+        <button onClick={openNew} style={btnStyle('#2e5a27')}>+ Add New Scheme</button>
+      </div>
+
+      {editing && (
+        <div style={{ background: 'white', borderRadius: 16, padding: '1.5rem', border: '1.5px solid #86efac', marginBottom: '1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,.08)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ fontWeight: 700, color: '#111827', fontSize: '1rem' }}>
+              {editing === 'new' ? '+ New Scheme' : `Edit: ${editing.name}`}
+            </h3>
+            <button onClick={closeForm} style={{ background: '#f3f4f6', border: 'none', borderRadius: 8, padding: '.4rem .75rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Cancel</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+            <Field field="name" label="Scheme Name *" placeholder="CM Punjab Kisan Card" />
+            <div style={{ display: 'flex', gap: '.5rem' }}>
+              <div style={{ flex: '0 0 60px' }}><Field field="icon" label="Icon" placeholder="📋" /></div>
+              <div style={{ flex: 1 }}><Field field="tagline" label="Tagline (Urdu)" placeholder="سود کے بغیر قرضہ" /></div>
+            </div>
+            <Field field="amount" label="Amount" placeholder="₨1 لاکھ سے ₨2 لاکھ" />
+            <Field field="subsidy" label="Subsidy" placeholder="کھاد سبسڈی" />
+          </div>
+          <Field field="amountDetail" label="Amount Detail (Urdu)" placeholder="تفصیلات..." type="textarea" rtl />
+          <Field field="eligibility" label="Eligibility اہلیت (Urdu)" placeholder="پنجاب میں زمین ہو..." type="textarea" rtl />
+          <Field field="documents" label="Documents (one per line, Urdu)" placeholder="CNIC&#10;زمین کی فرد&#10;بینک اکاؤنٹ" type="textarea" rtl />
+          <Field field="howToApply" label="How to Apply (Urdu)" placeholder="درخواست کا طریقہ..." type="textarea" rtl />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+            <Field field="applyPhone" label="Phone" placeholder="0800-15000" />
+            <Field field="applyUrl" label="Website URL" placeholder="https://" />
+            <Field field="source" label="Source" placeholder="Punjab Government" />
+            <Field field="lastVerified" label="Last Verified" type="date" />
+          </div>
+          <button onClick={handleSave} disabled={saving || !form.name?.trim()} style={{ ...btnStyle('#2e5a27', saving || !form.name?.trim()), marginTop: '.5rem' }}>
+            {saving ? 'Saving...' : 'Save Scheme'}
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+        {schemes.map(s => (
+          <div key={s.id} style={{ background: 'white', borderRadius: 14, padding: '1rem 1.1rem',
+            border: `1.5px solid ${s.active !== false ? '#86efac' : '#e5e7eb'}`,
+            opacity: s.active !== false ? 1 : .6, boxShadow: '0 1px 6px rgba(0,0,0,.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
+              <span style={{ fontSize: '1.8rem', flexShrink: 0 }}>{s.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827' }}>{s.name}</span>
+                  <span style={{ background: s.active !== false ? '#dcfce7' : '#f3f4f6', color: s.active !== false ? '#16a34a' : '#9ca3af', borderRadius: 20, padding: '.1rem .5rem', fontSize: '.68rem', fontWeight: 700 }}>
+                    {s.active !== false ? 'Live' : 'Hidden'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '.78rem', color: '#6b7280', direction: 'rtl' }}>{s.tagline} — {s.amount}</div>
+              </div>
+              <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0 }}>
+                <button onClick={() => openEdit(s)} style={{ ...btnStyle('#2563eb'), padding: '.3rem .65rem', fontSize: '.75rem' }}>Edit</button>
+                <button onClick={() => handleToggle(s.id)} style={{ ...btnStyle(s.active !== false ? '#6b7280' : '#16a34a'), padding: '.3rem .65rem', fontSize: '.75rem' }}>
+                  {s.active !== false ? 'Hide' : 'Show'}
+                </button>
+                <button onClick={() => handleDelete(s.id, s.name)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '.3rem .65rem', cursor: 'pointer', fontSize: '.75rem', fontWeight: 700 }}>Del</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function HealthTab() {
+
   const [health, setHealth]   = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -531,13 +674,15 @@ function btnStyle(color, disabled = false) {
 
 // ── Main Admin Panel ───────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'dashboard',     label: '📊 Dashboard'      },
-  { id: 'users',         label: '👥 Users'          },
-  { id: 'announcements', label: '📢 Announcements'  },
-  { id: 'prices',        label: '📈 Prices'         },
-  { id: 'health',        label: '🏥 Health'         },
-  { id: 'recent',        label: '🕒 Activity'       },
+  { id: 'dashboard',     label: '📊 Dashboard'     },
+  { id: 'users',         label: '👥 Users'         },
+  { id: 'announcements', label: '📢 Announcements' },
+  { id: 'schemes',       label: '🏛️ Schemes'      },
+  { id: 'prices',        label: '📈 Prices'        },
+  { id: 'health',        label: '🏥 Health'        },
+  { id: 'recent',        label: '🕒 Activity'      },
 ];
+
 
 export default function AdminPanel({ onLogout }) {
   const [tab, setTab]     = useState('dashboard');
@@ -644,9 +789,11 @@ export default function AdminPanel({ onLogout }) {
 
         {tab === 'users'         && <><h2 style={h2}>Users Management</h2><UsersTab /></>}
         {tab === 'announcements' && <><h2 style={h2}>Announcements</h2><AnnouncementsTab /></>}
+        {tab === 'schemes'       && <><h2 style={h2}>Government Schemes</h2><SchemesTab /></>}
         {tab === 'prices'        && <><h2 style={h2}>Market Prices Editor</h2><PricesTab /></>}
         {tab === 'health'        && <><h2 style={h2}>System Health</h2><HealthTab /></>}
         {tab === 'recent'        && <><h2 style={h2}>Recent Registrations</h2><RecentTab /></>}
+
       </div>
     </div>
   );

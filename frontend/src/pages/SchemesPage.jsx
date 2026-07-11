@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { SCHEMES } from '../data/schemes';
+import { useState, useEffect } from 'react';
+import { SCHEMES as STATIC_SCHEMES } from '../data/schemes';
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 function SchemeCard({ scheme }) {
   const [open, setOpen] = useState(false);
@@ -31,7 +33,7 @@ function SchemeCard({ scheme }) {
             <div style={{ fontSize: '.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{scheme.eligibility}</div>
           </div>
 
-          {scheme.documents && (
+          {scheme.documents?.length > 0 && (
             <div style={{ marginBottom: '.6rem' }}>
               <div style={{ fontWeight: 700, fontSize: '.85rem', marginBottom: '.3rem' }}>📄 ضروری کاغذات</div>
               {scheme.documents.map((d, i) => (
@@ -71,6 +73,19 @@ function SchemeCard({ scheme }) {
 }
 
 export default function SchemesPage() {
+  const [schemes, setSchemes] = useState(STATIC_SCHEMES);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API}/api/admin/schemes/public`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.schemes?.length) setSchemes(data.schemes);
+      })
+      .catch(() => {}) // silently fall back to static
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="page">
       <div className="page-content">
@@ -84,8 +99,14 @@ export default function SchemesPage() {
           ⚠️ اسکیم کی شرائط ہر سال بدلتی ہیں — درخواست سے پہلے تاریخ تصدیق دیکھیں
         </div>
 
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '1rem', fontSize: '.85rem', color: 'var(--text-muted)' }}>
+            لوڈ ہو رہا ہے...
+          </div>
+        )}
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
-          {SCHEMES.map(scheme => <SchemeCard key={scheme.id} scheme={scheme} />)}
+          {schemes.map(scheme => <SchemeCard key={scheme.id} scheme={scheme} />)}
         </div>
       </div>
     </div>
