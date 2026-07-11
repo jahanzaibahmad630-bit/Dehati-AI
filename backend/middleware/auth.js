@@ -22,6 +22,26 @@ function authenticateToken(req, res, next) {
   }
 }
 
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Admin authentication required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    req.admin = decoded;
+    next();
+  } catch (err) {
+    return res.status(403).json({ error: 'Invalid or expired admin token' });
+  }
+}
+
 function optionalAuth(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -49,4 +69,12 @@ function signToken(user) {
   );
 }
 
-module.exports = { authenticateToken, optionalAuth, signToken, JWT_SECRET };
+function signAdminToken(email) {
+  return jwt.sign(
+    { email, isAdmin: true, role: 'admin' },
+    JWT_SECRET,
+    { expiresIn: '12h' }
+  );
+}
+
+module.exports = { authenticateToken, optionalAuth, requireAdmin, signToken, signAdminToken, JWT_SECRET };

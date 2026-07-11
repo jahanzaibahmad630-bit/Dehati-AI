@@ -4,9 +4,11 @@ const helmet = require('helmet');
 const cors = require('cors');
 const { apiLimiter } = require('./middleware/rateLimit');
 
-const authRoutes = require('./routes/auth');
-const aiRoutes = require('./routes/ai');
+const authRoutes  = require('./routes/auth');
+const aiRoutes    = require('./routes/ai');
 const weatherRoutes = require('./routes/weather');
+const adminRoutes = require('./routes/admin');
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -59,6 +61,8 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/weather', weatherRoutes);
+app.use('/api/admin', adminRoutes);
+
 
 // 404
 app.use((req, res) => {
@@ -75,4 +79,6 @@ app.listen(PORT, () => {
   console.log(`✅ DehatiAI API running on port ${PORT}`);
   console.log(`   Gemini API: ${process.env.GEMINI_API_KEY ? '✅ configured' : '⚠️  not set (AI features disabled)'}`);
   console.log(`   Supabase:   ${process.env.SUPABASE_URL ? '✅ configured' : '⚠️  not set (dev mode)'}`);
+  console.log(`   Admin:      ${process.env.ADMIN_EMAIL || 'admin@dehati.ai'} (set ADMIN_EMAIL/ADMIN_PASSWORD to override)`);
 });
+

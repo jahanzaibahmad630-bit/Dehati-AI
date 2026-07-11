@@ -1,0 +1,484 @@
+import { useState, useEffect, useCallback } from 'react';
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+function adminFetch(path, options = {}) {
+  const token = sessionStorage.getItem('dehati_admin_token');
+  return fetch(`${API}/api/admin${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {})
+    }
+  });
+}
+
+// ── Stat Card ──────────────────────────────────────────────────────────────────
+function StatCard({ icon, label, value, sub, color = '#2e5a27' }) {
+  return (
+    <div style={{
+      background: 'white', borderRadius: 16, padding: '1.25rem',
+      boxShadow: '0 2px 12px rgba(0,0,0,.06)', border: '1px solid #f0f0f0',
+      display: 'flex', flexDirection: 'column', gap: '.35rem'
+    }}>
+      <div style={{
+        width: 44, height: 44, borderRadius: 12, background: `${color}18`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem'
+      }}>{icon}</div>
+      <div style={{ fontSize: '.78rem', fontWeight: 600, color: '#6b7280' }}>{label}</div>
+      <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{value ?? '—'}</div>
+      {sub && <div style={{ fontSize: '.72rem', color: '#9ca3af' }}>{sub}</div>}
+    </div>
+  );
+}
+
+// ── Health Badge ───────────────────────────────────────────────────────────────
+function HealthBadge({ status, latency }) {
+  const cfg = {
+    ok:             { bg: '#dcfce7', color: '#16a34a', label: 'Online' },
+    error:          { bg: '#fee2e2', color: '#dc2626', label: 'Error'  },
+    not_configured: { bg: '#fef3c7', color: '#d97706', label: 'Not Set'},
+  }[status] || { bg: '#f3f4f6', color: '#6b7280', label: 'Unknown' };
+
+  return (
+    <span style={{
+      background: cfg.bg, color: cfg.color, borderRadius: 20,
+      padding: '.2rem .7rem', fontSize: '.75rem', fontWeight: 700, display: 'inline-flex', gap: '.3rem'
+    }}>
+      {cfg.label}{latency != null ? ` (${latency}ms)` : ''}
+    </span>
+  );
+}
+
+// ── Users Tab ──────────────────────────────────────────────────────────────────
+function UsersTab() {
+  const [users, setUsers]     = useState([]);
+  const [total, setTotal]     = useState(0);
+  const [page, setPage]       = useState(1);
+  const [search, setSearch]   = useState('');
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(null);
+  const [msg, setMsg]         = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminFetch(`/users?page=${page}&limit=15&search=${encodeURIComponent(search)}`);
+      const data = await res.json();
+      setUsers(data.users || []);
+      setTotal(data.total || 0);
+    } catch {}
+    setLoading(false);
+  }, [page, search]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleDelete = async (id, name) => {
+    if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+    setDeleting(id);
+    try {
+      await adminFetch(`/users/${id}`, { method: 'DELETE' });
+      setMsg(`✅ User "${name}" deleted`);
+      load();
+    } catch { setMsg('❌ Delete failed'); }
+    setDeleting(null);
+    setTimeout(() => setMsg(''), 3000);
+  };
+
+  const exportCSV = () => {
+    const csv = [
+      ['Name','Phone','District','Land (acres)','Registered','Guest'],
+      ...users.map(u => [u.name, u.phone, u.district||'', u.land_size||'', u.created_at?.split('T')[0]||'', u.is_guest?'Yes':'No'])
+    ].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'dehati_users.csv'; a.click();
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          placeholder="🔍 Search name or phone..."
+          value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+          style={{ flex: 1, minWidth: 200, padding: '.6rem 1rem', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: '.875rem', fontFamily: 'Inter, sans-serif' }}
+        />
+        <span style={{ color: '#6b7280', fontSize: '.875rem', whiteSpace: 'nowrap' }}>{total} users</span>
+        <button onClick={exportCSV} style={btnStyle('#2e5a27')}>⬇ Export CSV</button>
+      </div>
+
+      {msg && <div style={{ background: '#f0fdf4', color: '#16a34a', padding: '.6rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '.875rem', fontWeight: 600 }}>{msg}</div>}
+
+      {loading ? <Spinner /> : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.875rem' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb' }}>
+                {['Name','Phone','District','Land','Joined','Type','Action'].map(h => (
+                  <th key={h} style={{ padding: '.75rem 1rem', textAlign: 'left', fontWeight: 700, color: '#374151', borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u, i) => (
+                <tr key={u.id} style={{ background: i % 2 ? '#fafafa' : 'white', transition: 'background .15s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f0fdf4'}
+                  onMouseLeave={e => e.currentTarget.style.background = i % 2 ? '#fafafa' : 'white'}
+                >
+                  <td style={tdStyle}><strong>{u.name}</strong></td>
+                  <td style={{ ...tdStyle, fontFamily: 'monospace' }}>{u.phone}</td>
+                  <td style={tdStyle}>{u.district || '—'}</td>
+                  <td style={tdStyle}>{u.land_size ? `${u.land_size} acres` : '—'}</td>
+                  <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: '#6b7280' }}>
+                    {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={{ background: u.is_guest ? '#fef3c7' : '#dcfce7', color: u.is_guest ? '#d97706' : '#16a34a', padding: '.15rem .5rem', borderRadius: 20, fontSize: '.72rem', fontWeight: 700 }}>
+                      {u.is_guest ? 'Guest' : 'Registered'}
+                    </span>
+                  </td>
+                  <td style={tdStyle}>
+                    <button
+                      onClick={() => handleDelete(u.id, u.name)}
+                      disabled={deleting === u.id}
+                      style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '.35rem .7rem', cursor: 'pointer', fontSize: '.78rem', fontWeight: 700 }}
+                    >
+                      {deleting === u.id ? '...' : 'Delete'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 && (
+                <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af' }}>No users found</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      <div style={{ display: 'flex', gap: '.5rem', marginTop: '1rem', justifyContent: 'center' }}>
+        <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1} style={btnStyle('#6b7280', page === 1)}>← Prev</button>
+        <span style={{ padding: '.5rem 1rem', fontSize: '.875rem', color: '#374151' }}>Page {page}</span>
+        <button onClick={() => setPage(p => p+1)} disabled={users.length < 15} style={btnStyle('#6b7280', users.length < 15)}>Next →</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Prices Tab ─────────────────────────────────────────────────────────────────
+function PricesTab() {
+  const [prices, setPrices]   = useState({});
+  const [editing, setEditing] = useState({});
+  const [saving, setSaving]   = useState('');
+  const [msg, setMsg]         = useState('');
+
+  useEffect(() => {
+    adminFetch('/prices').then(r => r.json()).then(d => {
+      setPrices(d.prices || {});
+      const init = {};
+      Object.entries(d.prices || {}).forEach(([k, v]) => { init[k] = v.effective; });
+      setEditing(init);
+    });
+  }, []);
+
+  const save = async (crop) => {
+    setSaving(crop);
+    try {
+      await adminFetch('/prices', { method: 'PUT', body: JSON.stringify({ crop, price: Number(editing[crop]) }) });
+      setMsg(`✅ ${crop} updated to ₨${Number(editing[crop]).toLocaleString()}`);
+      setTimeout(() => setMsg(''), 3000);
+    } catch { setMsg('❌ Save failed'); }
+    setSaving('');
+  };
+
+  const resetAll = async () => {
+    if (!confirm('Reset all prices to defaults?')) return;
+    await adminFetch('/prices/reset', { method: 'DELETE' });
+    setMsg('✅ All prices reset to defaults');
+    setTimeout(() => setMsg(''), 3000);
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <p style={{ color: '#6b7280', fontSize: '.875rem' }}>Edit base prices (in-memory, resets on redeploy)</p>
+        <button onClick={resetAll} style={btnStyle('#dc2626')}>🔄 Reset All</button>
+      </div>
+      {msg && <div style={{ background: '#f0fdf4', color: '#16a34a', padding: '.6rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '.875rem', fontWeight: 600 }}>{msg}</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '.75rem' }}>
+        {Object.entries(prices).map(([crop, data]) => (
+          <div key={crop} style={{ background: 'white', borderRadius: 12, padding: '1rem', border: '1.5px solid #e5e7eb', boxShadow: '0 1px 6px rgba(0,0,0,.05)' }}>
+            <div style={{ fontWeight: 700, marginBottom: '.5rem', fontSize: '.9rem' }}>{crop}</div>
+            <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+              <span style={{ color: '#6b7280', fontSize: '.75rem', fontFamily: 'monospace' }}>Base: ₨{data.base?.toLocaleString()}</span>
+            </div>
+            <div style={{ display: 'flex', gap: '.5rem', marginTop: '.5rem' }}>
+              <input
+                type="number"
+                value={editing[crop] || ''}
+                onChange={e => setEditing(prev => ({ ...prev, [crop]: e.target.value }))}
+                style={{ flex: 1, padding: '.5rem .75rem', borderRadius: 8, border: '2px solid #e5e7eb', fontSize: '.875rem', fontFamily: 'Inter, sans-serif' }}
+              />
+              <button
+                onClick={() => save(crop)}
+                disabled={saving === crop}
+                style={btnStyle('#2e5a27', saving === crop)}
+              >
+                {saving === crop ? '...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Health Tab ─────────────────────────────────────────────────────────────────
+function HealthTab() {
+  const [health, setHealth]   = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await adminFetch('/health');
+      const data = await res.json();
+      setHealth(data);
+    } catch {}
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, []);
+
+  if (loading) return <Spinner />;
+
+  const services = [
+    { name: 'Backend (Railway)',  key: 'backend',   icon: '⚡' },
+    { name: 'Gemini AI',          key: 'gemini',    icon: '🤖' },
+    { name: 'Open-Meteo Weather', key: 'openMeteo', icon: '🌤️' },
+    { name: 'Supabase Database',  key: 'supabase',  icon: '🗄️' },
+  ];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <p style={{ color: '#6b7280', fontSize: '.875rem' }}>Auto-refreshes every 30 seconds</p>
+        <button onClick={load} style={btnStyle('#2e5a27')}>🔄 Refresh Now</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+        {services.map(s => {
+          const data = health?.checks?.[s.key] || {};
+          return (
+            <div key={s.key} style={{ background: 'white', borderRadius: 16, padding: '1.25rem', border: '1.5px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '1.5rem', marginBottom: '.3rem' }}>{s.icon}</div>
+                  <div style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827' }}>{s.name}</div>
+                </div>
+                <HealthBadge status={data.status} latency={data.latency} />
+              </div>
+              {data.error && <div style={{ marginTop: '.5rem', fontSize: '.72rem', color: '#dc2626', fontFamily: 'monospace', wordBreak: 'break-all' }}>{data.error}</div>}
+            </div>
+          );
+        })}
+      </div>
+      {health?.timestamp && (
+        <p style={{ textAlign: 'center', marginTop: '1.25rem', color: '#9ca3af', fontSize: '.75rem' }}>
+          Last checked: {new Date(health.timestamp).toLocaleTimeString()}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Recent Tab ─────────────────────────────────────────────────────────────────
+function RecentTab() {
+  const [recent, setRecent] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    adminFetch('/recent').then(r => r.json()).then(d => { setRecent(d.recent || []); setLoading(false); });
+  }, []);
+
+  const timeAgo = (iso) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+      {recent.length === 0 && <p style={{ color: '#9ca3af', textAlign: 'center', padding: '2rem' }}>No recent registrations</p>}
+      {recent.map(u => (
+        <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '.875rem', background: 'white', borderRadius: 12, padding: '.875rem 1rem', border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,.04)' }}>
+          <div style={{ width: 42, height: 42, borderRadius: '50%', background: u.is_guest ? '#fef3c7' : '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
+            {u.is_guest ? '👤' : '👨‍🌾'}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827' }}>{u.name}</div>
+            <div style={{ fontSize: '.78rem', color: '#6b7280', fontFamily: 'monospace' }}>{u.phone} {u.district ? `• ${u.district}` : ''}</div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: '.72rem', color: '#9ca3af' }}>{u.created_at ? timeAgo(u.created_at) : ''}</div>
+            <span style={{ background: u.is_guest ? '#fef3c7' : '#dcfce7', color: u.is_guest ? '#d97706' : '#16a34a', padding: '.1rem .45rem', borderRadius: 20, fontSize: '.68rem', fontWeight: 700 }}>
+              {u.is_guest ? 'Guest' : 'Registered'}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function Spinner() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+      <div style={{ width: 36, height: 36, border: '3px solid #e5e7eb', borderTopColor: '#2e5a27', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+const tdStyle = { padding: '.75rem 1rem', borderBottom: '1px solid #f0f0f0', color: '#374151', verticalAlign: 'middle' };
+
+function btnStyle(color, disabled = false) {
+  return {
+    padding: '.5rem 1rem', borderRadius: 8, border: 'none',
+    background: disabled ? '#e5e7eb' : color, color: disabled ? '#9ca3af' : 'white',
+    fontSize: '.8rem', fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
+    fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
+    transition: 'all .2s'
+  };
+}
+
+// ── Main Admin Panel ───────────────────────────────────────────────────────────
+const TABS = [
+  { id: 'dashboard', label: '📊 Dashboard' },
+  { id: 'users',     label: '👥 Users'     },
+  { id: 'prices',    label: '📈 Prices'    },
+  { id: 'health',    label: '🏥 Health'    },
+  { id: 'recent',    label: '🕒 Activity'  },
+];
+
+export default function AdminPanel({ onLogout }) {
+  const [tab, setTab]     = useState('dashboard');
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    adminFetch('/stats').then(r => r.json()).then(setStats).catch(() => {});
+  }, []);
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('dehati_admin_token');
+    onLogout();
+  };
+
+  return (
+    <div style={{ minHeight: '100dvh', background: '#f8fafc', fontFamily: 'Inter, sans-serif' }}>
+      {/* Top Bar */}
+      <div style={{
+        background: 'linear-gradient(135deg, #162410, #2e5a27)', color: 'white',
+        padding: '0 1.5rem', display: 'flex', alignItems: 'center', height: 60,
+        boxShadow: '0 2px 12px rgba(0,0,0,.2)', position: 'sticky', top: 0, zIndex: 100
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', flex: 1 }}>
+          <div style={{ width: 36, height: 36, background: '#fbc02d', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🌾</div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '1rem', lineHeight: 1 }}>DehatiAI Admin</div>
+            <div style={{ fontSize: '.7rem', opacity: .75 }}>Management Panel</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span style={{ fontSize: '.78rem', opacity: .8 }}>
+            {stats ? `${stats.totalUsers} users • ${stats.uptime} uptime` : 'Loading...'}
+          </span>
+          <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,.15)', border: '1px solid rgba(255,255,255,.3)', color: 'white', borderRadius: 8, padding: '.4rem .875rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>
+            Sign Out
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Bar */}
+      <div style={{ background: 'white', borderBottom: '1px solid #e5e7eb', padding: '0 1.5rem', display: 'flex', gap: '.25rem', overflowX: 'auto' }}>
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              padding: '.875rem 1.1rem', border: 'none', background: 'none', cursor: 'pointer',
+              fontWeight: tab === t.id ? 700 : 500, fontSize: '.875rem', whiteSpace: 'nowrap',
+              color: tab === t.id ? '#2e5a27' : '#6b7280', fontFamily: 'Inter, sans-serif',
+              borderBottom: tab === t.id ? '2px solid #2e5a27' : '2px solid transparent',
+              transition: 'all .2s'
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem' }}>
+
+        {/* ── Dashboard ── */}
+        {tab === 'dashboard' && (
+          <div>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#111827', marginBottom: '1.25rem' }}>Overview</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+              <StatCard icon="👥" label="Total Users"       value={stats?.totalUsers}       sub="All registrations" />
+              <StatCard icon="👨‍🌾" label="Registered"       value={stats?.registeredUsers}  sub="Signed up" color="#16a34a" />
+              <StatCard icon="👤" label="Guest Users"       value={stats?.guestUsers}       sub="Trial mode" color="#d97706" />
+              <StatCard icon="📅" label="New Today"         value={stats?.newToday}         sub="Last 24 hours" color="#2563eb" />
+              <StatCard icon="⏱️" label="Uptime"            value={stats?.uptime}           sub="Server running" color="#7c3aed" />
+              <StatCard icon="🔗" label="Node.js"           value={stats?.nodeVersion}      sub={stats?.environment} color="#374151" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ background: 'white', borderRadius: 16, padding: '1.25rem', border: '1px solid #f0f0f0', boxShadow: '0 2px 8px rgba(0,0,0,.05)' }}>
+                <h3 style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: '1rem' }}>🔧 Services</h3>
+                {[
+                  { label: 'Gemini AI',  ok: stats?.geminiConfigured   },
+                  { label: 'Supabase',   ok: stats?.supabaseConfigured },
+                ].map(s => (
+                  <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '.6rem 0', borderBottom: '1px solid #f0f0f0' }}>
+                    <span style={{ fontSize: '.875rem', color: '#374151' }}>{s.label}</span>
+                    <span style={{ fontWeight: 700, fontSize: '.8rem', color: s.ok ? '#16a34a' : '#dc2626' }}>{s.ok ? '✅ Configured' : '⚠️ Not Set'}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ background: 'white', borderRadius: 16, padding: '1.25rem', border: '1px solid #f0f0f0', boxShadow: '0 2px 8px rgba(0,0,0,.05)' }}>
+                <h3 style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: '1rem' }}>🚀 Quick Actions</h3>
+                {[
+                  { label: 'View All Users',    action: () => setTab('users'),   color: '#2e5a27' },
+                  { label: 'Edit Market Prices',action: () => setTab('prices'),  color: '#d97706' },
+                  { label: 'Check Health',      action: () => setTab('health'),  color: '#7c3aed' },
+                  { label: 'Recent Activity',   action: () => setTab('recent'),  color: '#2563eb' },
+                ].map(a => (
+                  <button key={a.label} onClick={a.action} style={{ display: 'block', width: '100%', marginBottom: '.5rem', padding: '.6rem 1rem', borderRadius: 8, border: 'none', background: `${a.color}12`, color: a.color, fontSize: '.875rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}>
+                    → {a.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'users'   && <><h2 style={h2}>Users Management</h2><UsersTab /></>}
+        {tab === 'prices'  && <><h2 style={h2}>Market Prices Editor</h2><PricesTab /></>}
+        {tab === 'health'  && <><h2 style={h2}>System Health</h2><HealthTab /></>}
+        {tab === 'recent'  && <><h2 style={h2}>Recent Registrations</h2><RecentTab /></>}
+      </div>
+    </div>
+  );
+}
+
+const h2 = { fontSize: '1.2rem', fontWeight: 800, color: '#111827', marginBottom: '1.25rem' };
