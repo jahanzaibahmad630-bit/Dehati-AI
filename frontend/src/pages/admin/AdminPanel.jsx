@@ -618,16 +618,30 @@ function HealthTab() {
 
 // ── Recent Tab ─────────────────────────────────────────────────────────────────
 function RecentTab() {
-  const [recent, setRecent] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [recent, setRecent]     = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  const load = async () => {
+    try {
+      const r = await adminFetch('/recent');
+      const d = await r.json();
+      setRecent(d.recent || []);
+      setLastUpdated(new Date());
+    } catch {}
+    setLoading(false);
+  };
 
   useEffect(() => {
-    adminFetch('/recent').then(r => r.json()).then(d => { setRecent(d.recent || []); setLoading(false); });
+    load();
+    const t = setInterval(load, 30000); // auto-refresh every 30s
+    return () => clearInterval(t);
   }, []);
 
   const timeAgo = (iso) => {
     const diff = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
+    if (mins < 1)  return 'just now';
     if (mins < 60) return `${mins}m ago`;
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h ago`;
@@ -638,7 +652,21 @@ function RecentTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-      {recent.length === 0 && <p style={{ color: '#9ca3af', textAlign: 'center', padding: '2rem' }}>No recent registrations</p>}
+      {/* Header with refresh button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
+        <span style={{ fontSize: '.78rem', color: '#9ca3af' }}>
+          {lastUpdated ? `Updated: ${lastUpdated.toLocaleTimeString()} • auto-refreshes every 30s` : 'Loading...'}
+        </span>
+        <button onClick={load} style={btnStyle('#2e5a27')}>🔄 Refresh</button>
+      </div>
+
+      {recent.length === 0 && (
+        <div style={{ background: '#f9fafb', border: '1.5px dashed #d1d5db', borderRadius: 12, padding: '2rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>👤</div>
+          <div style={{ color: '#6b7280', fontWeight: 600, marginBottom: '.3rem' }}>No registrations yet</div>
+          <div style={{ color: '#9ca3af', fontSize: '.8rem' }}>Ask a farmer to register at <strong>dehati-ai.vercel.app</strong> — they will appear here instantly</div>
+        </div>
+      )}
       {recent.map(u => (
         <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '.875rem', background: 'white', borderRadius: 12, padding: '.875rem 1rem', border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,.04)' }}>
           <div style={{ width: 42, height: 42, borderRadius: '50%', background: u.is_guest ? '#fef3c7' : '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
@@ -697,17 +725,20 @@ const TABS = [
 export default function AdminPanel({ onLogout }) {
   const [tab, setTab]     = useState('dashboard');
   const [stats, setStats] = useState(null);
-
   const [statsError, setStatsError] = useState(false);
 
-  useEffect(() => {
+  const loadStats = () => {
     adminFetch('/stats')
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(d => { setStats(d); setStatsError(false); })
       .catch(() => setStatsError(true));
+  };
+
+  useEffect(() => {
+    loadStats();
+    // Auto-refresh stats every 30 seconds
+    const t = setInterval(loadStats, 30000);
+    return () => clearInterval(t);
   }, []);
 
   const handleLogout = () => {
@@ -779,9 +810,17 @@ export default function AdminPanel({ onLogout }) {
               <StatCard icon="🔗" label="Node.js"           value={stats?.nodeVersion}      sub={stats?.environment} color="#374151" />
             </div>
 
+            {/* Storage mode warning */}
+            {stats && !stats.persistentDB && (
+              <div style={{ background: '#fffbeb', border: '1.5px solid #fbbf24', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem', fontSize: '.875rem', lineHeight: 1.6 }}>
+                <div style={{ fontWeight: 700, color: '#92400e', marginBottom: '.3rem' }}>⚠️ Memory-Only Storage — Data Lost on Restart</div>
+                <div style={{ color: '#78350f' }}>User registrations are stored in RAM only. To save permanently: go to <strong>railway.app → your project → + New → Database → PostgreSQL</strong>. Railway will auto-set <code>DATABASE_URL</code> and data will persist forever.</div>
+              </div>
+            )}
+
             {statsError && (
               <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem', color: '#dc2626', fontWeight: 600, fontSize: '.875rem' }}>
-                ⚠️ Cannot reach backend API. Check Railway deployment and ensure <code>FRONTEND_ORIGIN=https://dehati-ai.vercel.app</code> and <code>CLAUDE_API_KEY</code> are set in Railway Variables.
+                ⚠️ Cannot reach backend. Check Railway deployment → ensure <code>FRONTEND_ORIGIN=https://dehati-ai.vercel.app</code> is set in Railway Variables.
               </div>
             )}
 
@@ -789,11 +828,13 @@ export default function AdminPanel({ onLogout }) {
               <div style={{ background: 'white', borderRadius: 16, padding: '1.25rem', border: '1px solid #f0f0f0', boxShadow: '0 2px 8px rgba(0,0,0,.05)' }}>
                 <h3 style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: '1rem' }}>🔧 Services</h3>
                 {[
-                  { label: 'Claude AI',  ok: stats?.claudeConfigured   },
-                  { label: 'Supabase',   ok: stats?.supabaseConfigured },
+                  { label: 'Claude AI',    ok: stats?.claudeConfigured   },
+                  { label: 'PostgreSQL DB',ok: stats?.postgresConfigured },
+                  { label: 'Supabase',     ok: stats?.supabaseConfigured },
+                  { label: 'Persistent DB',ok: stats?.persistentDB       },
                 ].map(s => (
-                  <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '.6rem 0', borderBottom: '1px solid #f0f0f0' }}>
-                    <span style={{ fontSize: '.875rem', color: '#374151' }}>{s.label}</span>
+                  <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '.5rem 0', borderBottom: '1px solid #f0f0f0' }}>
+                    <span style={{ fontSize: '.85rem', color: '#374151' }}>{s.label}</span>
                     <span style={{ fontWeight: 700, fontSize: '.8rem', color: s.ok ? '#16a34a' : '#dc2626' }}>{s.ok ? '✅ Configured' : '⚠️ Not Set'}</span>
                   </div>
                 ))}
