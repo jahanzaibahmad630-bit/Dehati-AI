@@ -20,7 +20,9 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // ─── CORS: strict allowlist — no wildcard *.vercel.app / *.railway.app ─────────
 const ALLOWED_ORIGINS = new Set([
-  process.env.FRONTEND_ORIGIN,          // e.g. https://dehati-ai.vercel.app
+  process.env.FRONTEND_ORIGIN,              // e.g. https://dehati-ai.vercel.app (set in Railway)
+  'https://dehati-ai.vercel.app',           // hardcoded production fallback
+  'https://www.dehati-ai.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',
   'http://localhost:3000',

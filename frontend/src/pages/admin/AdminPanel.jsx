@@ -688,8 +688,16 @@ export default function AdminPanel({ onLogout }) {
   const [tab, setTab]     = useState('dashboard');
   const [stats, setStats] = useState(null);
 
+  const [statsError, setStatsError] = useState(false);
+
   useEffect(() => {
-    adminFetch('/stats').then(r => r.json()).then(setStats).catch(() => {});
+    adminFetch('/stats')
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(d => { setStats(d); setStatsError(false); })
+      .catch(() => setStatsError(true));
   }, []);
 
   const handleLogout = () => {
@@ -714,7 +722,11 @@ export default function AdminPanel({ onLogout }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <span style={{ fontSize: '.78rem', opacity: .8 }}>
-            {stats ? `${stats.totalUsers} users • ${stats.uptime} uptime` : 'Loading...'}
+            {statsError
+              ? '⚠️ Backend unreachable'
+              : stats
+                ? `${stats.totalUsers} users • ${stats.uptime} uptime`
+                : 'Loading...'}
           </span>
           <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,.15)', border: '1px solid rgba(255,255,255,.3)', color: 'white', borderRadius: 8, padding: '.4rem .875rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>
             Sign Out
@@ -756,6 +768,12 @@ export default function AdminPanel({ onLogout }) {
               <StatCard icon="⏱️" label="Uptime"            value={stats?.uptime}           sub="Server running" color="#7c3aed" />
               <StatCard icon="🔗" label="Node.js"           value={stats?.nodeVersion}      sub={stats?.environment} color="#374151" />
             </div>
+
+            {statsError && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1rem', color: '#dc2626', fontWeight: 600, fontSize: '.875rem' }}>
+                ⚠️ Cannot reach backend API. Check Railway deployment and ensure <code>FRONTEND_ORIGIN=https://dehati-ai.vercel.app</code> and <code>CLAUDE_API_KEY</code> are set in Railway Variables.
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div style={{ background: 'white', borderRadius: 16, padding: '1.25rem', border: '1px solid #f0f0f0', boxShadow: '0 2px 8px rgba(0,0,0,.05)' }}>
