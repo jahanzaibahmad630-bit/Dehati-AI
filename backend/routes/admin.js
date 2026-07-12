@@ -175,7 +175,7 @@ router.get('/health', requireAdmin, async (req, res) => {
       const Anthropic = require('@anthropic-ai/sdk');
       const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
       await client.messages.create({
-        model: 'claude-3-haiku-20240307',  // Tier 1 compatible — available on all plans
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 5,
         messages: [{ role: 'user', content: 'ping' }]
       });

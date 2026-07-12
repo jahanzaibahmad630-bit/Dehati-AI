@@ -10,14 +10,14 @@ let claude = null;
 
 if (process.env.CLAUDE_API_KEY) {
   claude = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
-  console.log('✅ Claude API configured — model: claude-3-haiku-20240307');
+  console.log('✅ Claude API configured — model: claude-3-5-sonnet-20241022');
 } else {
   console.warn('⚠️  CLAUDE_API_KEY not set — AI features disabled');
 }
 
-// claude-3-haiku-20240307 = fast, cheap, available on ALL API tiers (Tier 1+)
-const CLAUDE_MODEL     = 'claude-3-haiku-20240307';
-const CLAUDE_MODEL_VIS = 'claude-3-haiku-20240307'; // supports vision
+// claude-3-5-sonnet-20241022 — most capable Claude 3.5 model
+const CLAUDE_MODEL     = 'claude-3-5-sonnet-20241022';
+const CLAUDE_MODEL_VIS = 'claude-3-5-sonnet-20241022'; // supports vision
 
 // ─── Agriculture keyword guard (saves API calls for obvious off-topic) ─────────
 const AGRI_KEYWORDS_UR = [
