@@ -1,5 +1,5 @@
 /**
- * lib/db.js — Persistent database layer
+ * lib/db.js — Persistent database layer (production-grade)
  *
  * Priority:
  *  1. Railway PostgreSQL  (DATABASE_URL auto-set when you add Postgres plugin)
@@ -8,157 +8,255 @@
  */
 
 const { Pool } = require('pg');
-const { memUsers, addMemUser, getMemUsers, getRecentRegistrations } = require('./memStore');
+const { addMemUser, getMemUsers, getRecentRegistrations } = require('./memStore');
 
 let pool = null;
 
-// ─── Try PostgreSQL (Railway DATABASE_URL) ────────────────────────────────────
+// ─── PostgreSQL (Railway DATABASE_URL) ────────────────────────────────────────
 if (process.env.DATABASE_URL) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL.includes('railway') || process.env.NODE_ENV === 'production'
-      ? { rejectUnauthorized: false }
-      : false
+    ssl: { rejectUnauthorized: false }
   });
-  console.log('✅ PostgreSQL connected via DATABASE_URL');
-} else {
-  console.warn('⚠️  DATABASE_URL not set — user data stored in memory (lost on restart)');
+  pool.on('error', (err) => console.error('PG pool error:', err.message));
+  console.log('✅ PostgreSQL pool created from DATABASE_URL');
 }
 
-// ─── Auto-create tables on first run ──────────────────────────────────────────
+// ─── Supabase helper ──────────────────────────────────────────────────────────
+function getSupabase() {
+  try { return require('./supabase').supabase; } catch { return null; }
+}
+
+// ─── Auto-create PostgreSQL tables on first run ───────────────────────────────
 async function initDB() {
   if (!pool) return;
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-        name        TEXT NOT NULL,
-        phone       TEXT UNIQUE NOT NULL,
-        district    TEXT,
-        land_size   NUMERIC,
+        id            TEXT PRIMARY KEY,
+        name          TEXT NOT NULL,
+        phone         TEXT UNIQUE NOT NULL,
+        district      TEXT,
+        land_size     NUMERIC,
         password_hash TEXT NOT NULL,
-        is_guest    BOOLEAN DEFAULT FALSE,
-        created_at  TIMESTAMPTZ DEFAULT NOW()
+        is_guest      BOOLEAN DEFAULT FALSE,
+        created_at    TIMESTAMPTZ DEFAULT NOW()
       );
-      CREATE INDEX IF NOT EXISTS users_phone_idx ON users(phone);
+      CREATE INDEX IF NOT EXISTS users_phone_idx   ON users(phone);
       CREATE INDEX IF NOT EXISTS users_created_idx ON users(created_at DESC);
     `);
-    console.log('✅ DB tables ready');
+    console.log('✅ PostgreSQL users table ready');
   } catch (err) {
-    console.error('DB init error:', err.message);
+    console.error('❌ initDB error:', err.message);
   }
 }
 
-// ─── User operations ─────────────────────────────────────────────────────────
+// ─── Test connection (used by admin diagnostic endpoint) ──────────────────────
+async function testConnection() {
+  const result = { postgres: null, supabase: null };
 
+  if (pool) {
+    try {
+      const { rows } = await pool.query('SELECT COUNT(*) as c FROM users');
+      result.postgres = { ok: true, userCount: parseInt(rows[0].c, 10) };
+    } catch (e) {
+      result.postgres = { ok: false, error: e.message };
+    }
+  } else {
+    result.postgres = { ok: false, error: 'DATABASE_URL not set' };
+  }
+
+  const supabase = getSupabase();
+  if (supabase) {
+    try {
+      // Test 1: count
+      const { count, error: countErr } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+      if (countErr) throw new Error(`count: ${countErr.message}`);
+
+      // Test 2: insert a probe record
+      const probePhone = '__db_test_' + Date.now();
+      const { error: insErr } = await supabase.from('users').insert({
+        id: require('crypto').randomUUID(),
+        name: 'DB Test',
+        phone: probePhone,
+        password_hash: 'test',
+        created_at: new Date().toISOString()
+      });
+      if (insErr) throw new Error(`insert: ${insErr.code} — ${insErr.message}`);
+
+      // Clean up probe
+      await supabase.from('users').delete().eq('phone', probePhone);
+
+      result.supabase = { ok: true, userCount: count || 0 };
+    } catch (e) {
+      result.supabase = { ok: false, error: e.message };
+    }
+  } else {
+    result.supabase = { ok: false, error: 'SUPABASE_URL or SERVICE_ROLE_KEY not set' };
+  }
+
+  return result;
+}
+
+// ─── findUserByPhone ──────────────────────────────────────────────────────────
 async function findUserByPhone(phone) {
   if (pool) {
     const { rows } = await pool.query('SELECT * FROM users WHERE phone=$1 LIMIT 1', [phone]);
     return rows[0] || null;
   }
-  // Supabase fallback
-  const { supabase } = require('./supabase');
+  const supabase = getSupabase();
   if (supabase) {
-    const { data } = await supabase.from('users').select('*').eq('phone', phone).single();
+    // maybeSingle() returns null (not error) when 0 rows
+    const { data, error } = await supabase.from('users').select('*').eq('phone', phone).maybeSingle();
+    if (error) console.error('❌ findUserByPhone error:', error.code, error.message);
     return data || null;
   }
-  // In-memory
-  return memUsers.get(phone) || null;
+  const all = getMemUsers();
+  return all.find(u => u.phone === phone) || null;
 }
 
+// ─── createUser ───────────────────────────────────────────────────────────────
 async function createUser(user) {
   // user = { id, name, phone, district, land_size, password_hash, is_guest, created_at }
+
+  // ── PostgreSQL path ──────────────────────────────────────────────────────────
   if (pool) {
-    const { rows } = await pool.query(
-      `INSERT INTO users (id, name, phone, district, land_size, password_hash, is_guest, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-       ON CONFLICT (phone) DO NOTHING
-       RETURNING *`,
-      [user.id, user.name, user.phone, user.district, user.land_size,
-       user.password_hash, user.is_guest || false, user.created_at || new Date()]
-    );
-    return rows[0] || null;
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO users (id, name, phone, district, land_size, password_hash, is_guest, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         ON CONFLICT (phone) DO NOTHING
+         RETURNING *`,
+        [user.id, user.name, user.phone, user.district,
+         user.land_size, user.password_hash, user.is_guest || false,
+         user.created_at || new Date()]
+      );
+      if (rows[0]) {
+        console.log('✅ PostgreSQL: user saved', user.phone);
+        return rows[0];
+      }
+      return null; // phone already exists
+    } catch (e) {
+      console.error('❌ PostgreSQL createUser error:', e.message);
+      // fall through to Supabase
+    }
   }
-  // Supabase fallback
-  const { supabase } = require('./supabase');
+
+  // ── Supabase path ────────────────────────────────────────────────────────────
+  const supabase = getSupabase();
   if (supabase) {
-    const { data, error } = await supabase.from('users').insert([user]).select().single();
-    if (!error) return data;
+    try {
+      // Don't send `id` — let Supabase auto-generate UUID (avoids type mismatch)
+      const payload = {
+        name:          user.name,
+        phone:         user.phone,
+        district:      user.district || null,
+        land_size:     user.land_size || null,
+        password_hash: user.password_hash,
+        is_guest:      user.is_guest || false,
+        created_at:    user.created_at || new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('users')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Supabase createUser error:', error.code, error.message, error.details);
+        // Fall through to memory
+      } else {
+        console.log('✅ Supabase: user saved', user.phone, 'id:', data.id);
+        return data;
+      }
+    } catch (e) {
+      console.error('❌ Supabase createUser exception:', e.message);
+    }
   }
-  // In-memory fallback
+
+  // ── Memory fallback ──────────────────────────────────────────────────────────
+  console.warn('⚠️  Saving to memory only (will be lost on restart):', user.phone);
   addMemUser(user);
   return user;
 }
 
+// ─── getAllUsers ──────────────────────────────────────────────────────────────
 async function getAllUsers({ page = 1, limit = 20, search = '' } = {}) {
   const offset = (page - 1) * limit;
 
   if (pool) {
-    let q, params;
-    if (search) {
-      q = `SELECT id,name,phone,district,land_size,created_at,is_guest
-           FROM users WHERE name ILIKE $1 OR phone ILIKE $1
-           ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
-      params = [`%${search}%`, limit, offset];
-    } else {
-      q = `SELECT id,name,phone,district,land_size,created_at,is_guest
-           FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`;
-      params = [limit, offset];
-    }
+    const params = search ? [`%${search}%`, limit, offset] : [limit, offset];
+    const where  = search ? 'WHERE name ILIKE $1 OR phone ILIKE $1' : '';
+    const pOffset = search ? '$3' : '$2';
+    const pLimit  = search ? '$2' : '$1';
+    const q = `SELECT id,name,phone,district,land_size,created_at,is_guest
+               FROM users ${where}
+               ORDER BY created_at DESC LIMIT ${pLimit} OFFSET ${pOffset}`;
     const { rows } = await pool.query(q, params);
-    const countQ = search
+    const cQ = search
       ? `SELECT COUNT(*) FROM users WHERE name ILIKE $1 OR phone ILIKE $1`
       : `SELECT COUNT(*) FROM users`;
-    const { rows: cr } = await pool.query(countQ, search ? [`%${search}%`] : []);
+    const { rows: cr } = await pool.query(cQ, search ? [`%${search}%`] : []);
     return { users: rows, total: parseInt(cr[0].count, 10) };
   }
 
-  // Supabase fallback
-  const { supabase } = require('./supabase');
+  const supabase = getSupabase();
   if (supabase) {
-    let q = supabase.from('users')
+    let q = supabase
+      .from('users')
       .select('id,name,phone,district,land_size,created_at,is_guest', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
     if (search) q = q.or(`name.ilike.%${search}%,phone.ilike.%${search}%`);
-    const { data, count } = await q;
+    const { data, count, error } = await q;
+    if (error) console.error('❌ getAllUsers error:', error.message);
     return { users: data || [], total: count || 0 };
   }
 
-  // In-memory
   const all = getMemUsers();
-  return { users: all.slice(offset, offset + limit), total: all.length };
+  const filtered = search
+    ? all.filter(u => u.name?.includes(search) || u.phone?.includes(search))
+    : all;
+  return { users: filtered.slice(offset, offset + limit), total: filtered.length };
 }
 
+// ─── getTotalUserCount ────────────────────────────────────────────────────────
 async function getTotalUserCount() {
   if (pool) {
     const { rows } = await pool.query('SELECT COUNT(*) FROM users');
     return parseInt(rows[0].count, 10);
   }
-  const { supabase } = require('./supabase');
+  const supabase = getSupabase();
   if (supabase) {
-    const { count } = await supabase.from('users').select('*', { count: 'exact', head: true });
+    const { count, error } = await supabase.from('users').select('*', { count: 'exact', head: true });
+    if (error) console.error('❌ getTotalUserCount error:', error.message);
     return count || 0;
   }
   return getMemUsers().length;
 }
 
+// ─── getNewTodayCount ─────────────────────────────────────────────────────────
 async function getNewTodayCount() {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   if (pool) {
     const { rows } = await pool.query('SELECT COUNT(*) FROM users WHERE created_at>=$1', [since]);
     return parseInt(rows[0].count, 10);
   }
-  const { supabase } = require('./supabase');
+  const supabase = getSupabase();
   if (supabase) {
-    const { count } = await supabase.from('users')
+    const { count, error } = await supabase.from('users')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', since.toISOString());
+    if (error) console.error('❌ getNewTodayCount error:', error.message);
     return count || 0;
   }
   return getMemUsers().filter(u => new Date(u.created_at) >= since).length;
 }
 
+// ─── getRecentUsers ───────────────────────────────────────────────────────────
 async function getRecentUsers(limit = 20) {
   if (pool) {
     const { rows } = await pool.query(
@@ -167,43 +265,34 @@ async function getRecentUsers(limit = 20) {
     );
     return rows;
   }
-  const { supabase } = require('./supabase');
+  const supabase = getSupabase();
   if (supabase) {
-    const { data } = await supabase.from('users')
+    const { data, error } = await supabase.from('users')
       .select('id,name,phone,district,land_size,created_at,is_guest')
       .order('created_at', { ascending: false })
       .limit(limit);
+    if (error) console.error('❌ getRecentUsers error:', error.message);
     return data || [];
   }
   return getRecentRegistrations(limit);
 }
 
+// ─── deleteUser ───────────────────────────────────────────────────────────────
 async function deleteUser(id) {
-  if (pool) {
-    await pool.query('DELETE FROM users WHERE id=$1', [id]);
-    return true;
-  }
-  const { supabase } = require('./supabase');
-  if (supabase) {
-    await supabase.from('users').delete().eq('id', id);
-    return true;
-  }
+  if (pool) { await pool.query('DELETE FROM users WHERE id=$1', [id]); return true; }
+  const supabase = getSupabase();
+  if (supabase) { await supabase.from('users').delete().eq('id', id); return true; }
   return false;
 }
 
+// ─── isUsingPersistentDB ──────────────────────────────────────────────────────
 function isUsingPersistentDB() {
-  return !!pool || !!(require('./supabase').supabase);
+  return !!pool || !!getSupabase();
 }
 
 module.exports = {
-  pool,
-  initDB,
-  findUserByPhone,
-  createUser,
-  getAllUsers,
-  getTotalUserCount,
-  getNewTodayCount,
-  getRecentUsers,
-  deleteUser,
-  isUsingPersistentDB
+  pool, initDB, testConnection,
+  findUserByPhone, createUser, getAllUsers,
+  getTotalUserCount, getNewTodayCount, getRecentUsers,
+  deleteUser, isUsingPersistentDB
 };

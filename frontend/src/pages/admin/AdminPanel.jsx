@@ -552,6 +552,8 @@ function HealthTab() {
 
   const [health, setHealth]   = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dbTest, setDbTest]   = useState(null);
+  const [dbTesting, setDbTesting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -561,6 +563,19 @@ function HealthTab() {
       setHealth(data);
     } catch {}
     setLoading(false);
+  };
+
+  const runDbTest = async () => {
+    setDbTesting(true);
+    setDbTest(null);
+    try {
+      const res = await adminFetch('/db-test');
+      const data = await res.json();
+      setDbTest(data);
+    } catch (e) {
+      setDbTest({ error: e.message });
+    }
+    setDbTesting(false);
   };
 
   useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, []);
@@ -578,8 +593,31 @@ function HealthTab() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <p style={{ color: '#6b7280', fontSize: '.875rem' }}>Auto-refreshes every 30 seconds</p>
-        <button onClick={load} style={btnStyle('#2e5a27')}>🔄 Refresh Now</button>
+        <div style={{ display: 'flex', gap: '.5rem' }}>
+          <button onClick={runDbTest} disabled={dbTesting} style={btnStyle('#7c3aed')}>
+            {dbTesting ? '⏳ Testing...' : '🗄️ Test DB Write'}
+          </button>
+          <button onClick={load} style={btnStyle('#2e5a27')}>🔄 Refresh Now</button>
+        </div>
       </div>
+
+      {/* DB Test Result */}
+      {dbTest && (
+        <div style={{ background: 'white', border: '1.5px solid #e5e7eb', borderRadius: 16, padding: '1.25rem', marginBottom: '1.25rem' }}>
+          <div style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827', marginBottom: '.75rem' }}>🗄️ Database Write Test Results</div>
+          {['postgres', 'supabase'].map(key => (
+            <div key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '.75rem', padding: '.6rem 0', borderBottom: '1px solid #f3f4f6' }}>
+              <span style={{ minWidth: 90, fontWeight: 700, fontSize: '.8rem', color: '#374151', textTransform: 'capitalize' }}>{key}</span>
+              {dbTest[key] ? (
+                dbTest[key].ok
+                  ? <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '.8rem' }}>✅ Working — {dbTest[key].userCount} users in DB</span>
+                  : <span style={{ color: '#dc2626', fontSize: '.78rem', fontFamily: 'monospace', wordBreak: 'break-all' }}>❌ {dbTest[key].error}</span>
+              ) : <span style={{ color: '#9ca3af', fontSize: '.8rem' }}>Not configured</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
         {services.map(s => {
           const data = health?.checks?.[s.key] || {};

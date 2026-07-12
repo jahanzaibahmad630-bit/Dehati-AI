@@ -102,6 +102,12 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// ─── GET /api/admin/db-test ───────────────────────────────────────────────────
+router.get('/db-test', requireAdmin, async (req, res) => {
+  const result = await db.testConnection();
+  res.json(result);
+});
+
 // ─── GET /api/admin/health ────────────────────────────────────────────────────
 router.get('/health', requireAdmin, async (req, res) => {
   const checks = {};
