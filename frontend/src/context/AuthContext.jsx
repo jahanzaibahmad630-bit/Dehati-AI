@@ -9,16 +9,32 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Decode JWT payload (no crypto — just parse base64) to check expiry
+  function isTokenExpired(token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp && payload.exp * 1000 < Date.now();
+    } catch {
+      return true; // malformed token → treat as expired
+    }
+  }
+
   useEffect(() => {
     const savedToken = localStorage.getItem('dehati_token');
-    const savedUser = localStorage.getItem('dehati_user');
+    const savedUser  = localStorage.getItem('dehati_user');
     if (savedToken && savedUser) {
-      try {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
-      } catch {
+      if (isTokenExpired(savedToken)) {
+        // Token expired while offline — clear session, send to login
         localStorage.removeItem('dehati_token');
         localStorage.removeItem('dehati_user');
+      } else {
+        try {
+          setToken(savedToken);
+          setUser(JSON.parse(savedUser));
+        } catch {
+          localStorage.removeItem('dehati_token');
+          localStorage.removeItem('dehati_user');
+        }
       }
     }
     setLoading(false);

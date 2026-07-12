@@ -21,9 +21,8 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // ─── CORS: strict allowlist — no wildcard *.vercel.app / *.railway.app ─────────
 const ALLOWED_ORIGINS = new Set([
-  process.env.FRONTEND_ORIGIN,              // e.g. https://dehati-ai.vercel.app (set in Railway)
-  'https://dehati-ai.vercel.app',           // hardcoded production fallback
-  'https://www.dehati-ai.vercel.app',
+  process.env.FRONTEND_ORIGIN,
+  'https://dehati-ai.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',
   'http://localhost:3000',
@@ -73,17 +72,20 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, async () => {
-  // SECURITY: do NOT log admin email or credentials at startup
-  const claudeReady    = !!process.env.CLAUDE_API_KEY;
-  const supabaseReady  = !!process.env.SUPABASE_URL;
-  const jwtConfigured  = process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32;
-  const dbReady        = !!process.env.DATABASE_URL;
+  const claudeReady   = !!process.env.CLAUDE_API_KEY;
+  const supabaseReady = !!process.env.SUPABASE_URL;
+  const jwtSet        = !!process.env.JWT_SECRET;   // warn if missing, not just short
+  const dbReady       = !!process.env.DATABASE_URL;
   console.log(`✅ DehatiAI API running on port ${PORT}`);
   console.log(`   Claude API : ${claudeReady   ? '✅ configured' : '⚠️  not set — AI disabled'}`);
   console.log(`   PostgreSQL : ${dbReady        ? '✅ configured' : '⚠️  not set — data lost on restart'}`);
   console.log(`   Supabase   : ${supabaseReady  ? '✅ configured' : '⚠️  not set'}`);
-  console.log(`   JWT Secret : ${jwtConfigured  ? '✅ configured' : '⚠️  using dev fallback'}`);
-  // Init DB tables (safe to call multiple times — uses IF NOT EXISTS)
-  await initDB();
+  console.log(`   JWT Secret : ${jwtSet         ? '✅ configured' : '⚠️  MISSING — using insecure dev fallback!'}`);
+  // Init DB tables (safe — uses IF NOT EXISTS)
+  try {
+    await initDB();
+  } catch (e) {
+    console.error('⚠️  initDB failed (non-fatal):', e.message);
+  }
 });
 

@@ -62,6 +62,13 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  // Stop + cleanup recognition on unmount
+  useEffect(() => {
+    return () => {
+      try { recognitionRef.current?.stop(); } catch {}
+    };
+  }, []);
+
   // ── One-tap start / one-tap stop voice input ──────────────────────────────
   const toggleSpeech = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -107,6 +114,12 @@ export default function ChatPage() {
   const sendMessage = useCallback(async (text) => {
     const msg = text.trim();
     if (!msg || isStreaming) return;
+
+    // Stop voice recording if active before sending
+    if (isListening) {
+      try { recognitionRef.current?.stop(); } catch {}
+      setIsListening(false);
+    }
 
     if (isOffline) {
       setMessages(prev => [...prev,

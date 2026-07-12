@@ -81,7 +81,13 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'lat اور lon یا city پیرامیٹر ضروری ہے' });
     }
 
-    const weather = await fetchWeather(parseFloat(lat), parseFloat(lon));
+    const parsedLat = parseFloat(lat);
+    const parsedLon = parseFloat(lon);
+    if (isNaN(parsedLat) || isNaN(parsedLon)) {
+      return res.status(400).json({ error: 'lat اور lon مناسب نمبر ہونے چاہیں' });
+    }
+
+    const weather = await fetchWeather(parsedLat, parsedLon);
     if (city) {
       const key = city.toLowerCase().trim();
       weather.cityName = PUNJAB_CITIES[key]?.name || city;

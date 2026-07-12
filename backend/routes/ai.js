@@ -140,7 +140,7 @@ async function claudeAsk(prompt, systemPrompt, maxTokens = 700, temperature = 0.
     system: systemPrompt || buildFarmingSystem(),
     messages: [{ role: 'user', content: prompt }]
   });
-  return response.content[0].text;
+  return response.content?.[0]?.text ?? '';
 }
 
 // ─── POST /api/ai/ask ──────────────────────────────────────────────────────────
@@ -170,6 +170,9 @@ router.post('/disease', aiLimiter, authenticateToken, async (req, res) => {
     if (!imageBase64) return res.status(400).json({ error: 'تصویر ضروری ہے' });
     if (!claude)       return res.json({ disease: 'AI دستیاب نہیں', cause: '', treatment: '', prevention: '', disabled: true });
 
+    // Security: whitelist MIME types — never pass user input directly to Claude
+    const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const safeMime = ALLOWED_MIME.includes(mimeType) ? mimeType : 'image/jpeg';
     const month  = new Date().getMonth() + 1;
     const season = (month >= 5 && month <= 10) ? 'خریف' : 'ربیع';
     const cropText = cropName ? `فصل: ${cropName}\n` : '';
@@ -196,7 +199,7 @@ ${cropText}
         content: [
           {
             type: 'image',
-            source: { type: 'base64', media_type: mimeType, data: imageBase64 }
+            source: { type: 'base64', media_type: safeMime, data: imageBase64 }
           },
           { type: 'text', text: prompt }
         ]
@@ -246,12 +249,12 @@ router.post('/chat', aiLimiter, authenticateToken, async (req, res) => {
     const response = await claude.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 500,
-      temperature: 0.85,
+      temperature: 0.65,
       system: buildChatSystem(language),
       messages: claudeMessages
     });
 
-    res.json({ reply: response.content[0].text });
+    res.json({ reply: response.content?.[0]?.text ?? '' });
   } catch (err) {
     console.error('Chat error:', err.message);
     res.status(500).json({ error: 'جواب دینے میں مسئلہ ہوا' });
@@ -292,11 +295,14 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
       content: m.content
     }));
 
+    // Keep-alive heartbeat — prevents Railway/Nginx 30s timeout during Claude think time
+    const heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
+
     // Stream with Claude
     const stream = claude.messages.stream({
       model: CLAUDE_MODEL,
       max_tokens: 500,
-      temperature: 0.85,
+      temperature: 0.65,
       system: buildChatSystem(language),
       messages: claudeMessages
     });
@@ -306,11 +312,13 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
     });
 
     await stream.finalMessage();
+    clearInterval(heartbeat);
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (err) {
     console.error('Chat stream error:', err.message);
     try {
+      clearInterval(heartbeat);
       res.write(`data: ${JSON.stringify({ error: 'جواب دینے میں مسئلہ ہوا' })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
@@ -322,6 +330,8 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
 router.post('/animal', aiLimiter, authenticateToken, async (req, res) => {
   try {
     const { animalType, symptoms, question } = req.body;
+    if (!animalType && !symptoms && !question)
+      return res.status(400).json({ error: 'جانور کی قسم یا علامات ضروری ہیں' });
     if (!claude) return res.json({ answer: '⚠️ AI سروس دستیاب نہیں' });
 
     const prompt = `جانور: ${animalType || 'نامعلوم'}
