@@ -47,18 +47,62 @@ export default function ChatPage() {
       time: new Date()
     }
   ]);
-  const [input, setInput] = useState('');
-  const [language, setLanguage] = useState('ur');
-  const [isTyping, setIsTyping] = useState(false);
+  const [input, setInput]           = useState('');
+  const [language, setLanguage]     = useState('ur');
+  const [isTyping, setIsTyping]     = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const bottomRef = useRef(null);
-  const inputRef = useRef(null);
-  const abortRef = useRef(null);
+  const [isListening, setIsListening] = useState(false);
+  const bottomRef     = useRef(null);
+  const inputRef      = useRef(null);
+  const abortRef      = useRef(null);
+  const recognitionRef = useRef(null);
   const { isOffline } = useOffline();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  // ── One-tap start / one-tap stop voice input ──────────────────────────────
+  const toggleSpeech = useCallback(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      alert('آپ کا براؤزر آواز کی سہولت سپورٹ نہیں کرتا۔ Chrome استعمال کریں۔');
+      return;
+    }
+
+    // Second tap → stop
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    // First tap → start
+    const recognition = new SR();
+    recognition.lang = language === 'ur' ? 'ur-PK' : language === 'pj' ? 'pa-PK' : 'en-US';
+    recognition.continuous     = true;   // keep going until user taps stop
+    recognition.interimResults = true;   // show words as they come in
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsListening(true);
+
+    recognition.onresult = (e) => {
+      const transcript = Array.from(e.results)
+        .map(r => r[0].transcript)
+        .join('');
+      setInput(transcript);
+    };
+
+    recognition.onerror = (e) => {
+      console.warn('Speech error:', e.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }, [isListening, language]);
 
   const sendMessage = useCallback(async (text) => {
     const msg = text.trim();
@@ -366,12 +410,38 @@ export default function ChatPage() {
         >
           {isBusy ? '⏳' : '▶'}
         </button>
+
+        {/* 🎤 One-tap mic button */}
+        <button
+          id="chat-mic-btn"
+          onClick={toggleSpeech}
+          disabled={isBusy}
+          aria-label={isListening ? 'آواز بند کریں' : 'آواز سے لکھیں'}
+          style={{
+            width: 42, height: 42, borderRadius: '50%', border: 'none',
+            background: isListening
+              ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+              : 'linear-gradient(135deg, #2e5a27, #4a7c40)',
+            color: 'white', fontSize: '1.1rem', cursor: 'pointer',
+            flexShrink: 0, display: 'flex', alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: isListening ? '0 0 0 4px rgba(239,68,68,.3)' : '0 2px 8px rgba(0,0,0,.15)',
+            animation: isListening ? 'micPulse 1.2s ease-in-out infinite' : 'none',
+            transition: 'background .25s, box-shadow .25s'
+          }}
+        >
+          {isListening ? '⏹' : '🎤'}
+        </button>
       </div>
 
       <style>{`
         @keyframes blink {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0; }
+          50%       { opacity: 0; }
+        }
+        @keyframes micPulse {
+          0%, 100% { box-shadow: 0 0 0 4px rgba(239,68,68,.3); }
+          50%       { box-shadow: 0 0 0 8px rgba(239,68,68,.1); }
         }
       `}</style>
     </div>
