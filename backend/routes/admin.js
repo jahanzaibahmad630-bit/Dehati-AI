@@ -168,7 +168,7 @@ router.get('/health', requireAdmin, async (req, res) => {
   // Backend self
   checks.backend = { status: 'ok', latency: 0 };
 
-  // Claude
+  // Claude — with detailed error diagnosis
   if (process.env.CLAUDE_API_KEY) {
     const start = Date.now();
     try {
@@ -181,12 +181,32 @@ router.get('/health', requireAdmin, async (req, res) => {
       });
       checks.claude = { status: 'ok', latency: Date.now() - start };
     } catch (e) {
-      checks.claude = { status: 'error', error: e.message, latency: Date.now() - start };
+      // Parse error type for helpful diagnosis
+      const errStr  = e.message || '';
+      const status  = e.status || e.statusCode || '?';
+      let hint = '';
+      if (status === 401 || errStr.includes('authentication')) {
+        hint = 'Invalid API key — set correct CLAUDE_API_KEY in Railway Variables';
+      } else if (status === 403 || errStr.includes('permission') || errStr.includes('credit')) {
+        hint = 'Account has no credits — add billing at console.anthropic.com/settings/billing';
+      } else if (errStr.includes('not_found') || status === 404) {
+        hint = 'Model not available for this key — account may need billing or verification at console.anthropic.com';
+      } else if (status === 429) {
+        hint = 'Rate limit hit — too many requests';
+      }
+      checks.claude = {
+        status: 'error',
+        error: `[${status}] ${errStr}`,
+        hint,
+        latency: Date.now() - start
+      };
     }
   } else {
-    checks.claude = { status: 'not_configured' };
+    checks.claude = {
+      status: 'not_configured',
+      hint: 'Set CLAUDE_API_KEY in Railway Variables'
+    };
   }
-
 
   // Open-Meteo
   const start2 = Date.now();
@@ -219,6 +239,7 @@ router.get('/health', requireAdmin, async (req, res) => {
 
   res.json({ checks, timestamp: new Date().toISOString() });
 });
+
 
 // ─── GET /api/admin/prices ────────────────────────────────────────────────────
 router.get('/prices', requireAdmin, (req, res) => {

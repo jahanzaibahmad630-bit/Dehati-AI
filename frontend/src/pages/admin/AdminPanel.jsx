@@ -592,7 +592,17 @@ function HealthTab() {
                 </div>
                 <HealthBadge status={data.status} latency={data.latency} />
               </div>
-              {data.error && <div style={{ marginTop: '.5rem', fontSize: '.72rem', color: '#dc2626', fontFamily: 'monospace', wordBreak: 'break-all' }}>{data.error}</div>}
+              {data.error && (
+                <div style={{ marginTop: '.5rem', fontSize: '.72rem', color: '#dc2626', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                  {data.error}
+                </div>
+              )}
+              {data.hint && (
+                <div style={{ marginTop: '.4rem', fontSize: '.72rem', color: '#d97706', fontWeight: 600, lineHeight: 1.4 }}>
+                  💡 {data.hint}
+                </div>
+              )}
+
             </div>
           );
         })}
