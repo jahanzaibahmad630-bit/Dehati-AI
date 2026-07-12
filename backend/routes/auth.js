@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt   = require('bcryptjs');
+const { randomUUID } = require('crypto');
 const { signToken } = require('../middleware/auth');
 const db = require('../lib/db');
 
@@ -8,7 +9,7 @@ const SALT_ROUNDS = 10;
 
 function makeUserObj(data, passwordHash) {
   return {
-    id:            'u-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+    id:            randomUUID(),          // proper UUID — required by Supabase
     name:          data.name.trim(),
     phone:         data.phone,
     district:      data.district || null,
