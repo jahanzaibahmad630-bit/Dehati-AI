@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>آف لائن — DehatiAI</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif;
+      background: #FBF3E1;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      max-width: 340px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,.08);
+    }
+    .icon { font-size: 4rem; margin-bottom: 1rem; }
+    h1 { color: #2F4A1E; font-size: 1.4rem; margin-bottom: .6rem; }
+    p  { color: #6b7280; font-size: .9rem; line-height: 1.7; margin-bottom: 1.5rem; }
+    .en { font-family: Inter, sans-serif; font-size: .75rem; color: #9ca3af; direction: ltr; margin-top: .5rem; }
+    button {
+      background: #2F4A1E; color: #FBF3E1;
+      border: none; border-radius: 12px;
+      padding: .75rem 2rem;
+      font-size: 1rem; font-weight: 700;
+      cursor: pointer; width: 100%;
+      font-family: inherit;
+    }
+    button:active { opacity: .85; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📡</div>
+    <h1>انٹرنیٹ نہیں ہے</h1>
+    <p>
+      ابھی آپ آف لائن ہیں۔<br/>
+      انٹرنیٹ آنے کے بعد دوبارہ کوشش کریں۔
+    </p>
+    <p class="en">You are offline. Please check your connection and try again.</p>
+    <button onclick="location.reload()">دوبارہ کوشش کریں</button>
+  </div>
+</body>
+</html>

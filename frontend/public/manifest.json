@@ -1,17 +1,47 @@
 {
   "name": "DehatiAI — کسان کا ذہین ساتھی",
   "short_name": "DehatiAI",
-  "description": "پنجاب کے کسانوں کا AI مددگار",
+  "description": "پنجاب کے کسانوں کا AI مددگار — فصل، موسم، مارکیٹ اور سرکاری اسکیمیں",
   "theme_color": "#2F4A1E",
   "background_color": "#FBF3E1",
   "lang": "ur",
   "dir": "rtl",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
+  "id": "dehati-ai-v1",
+  "categories": ["agriculture", "productivity", "education"],
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "DehatiAI Home Screen"
+    }
+  ],
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "AI مدد",
+      "short_name": "چیٹ",
+      "description": "DehatiAI سے سوال کریں",
+      "url": "/chat?source=shortcut",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "موسم",
+      "short_name": "موسم",
+      "description": "آج کا موسم دیکھیں",
+      "url": "/weather?source=shortcut",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }

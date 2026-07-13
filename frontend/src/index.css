@@ -790,3 +790,9 @@ select.input {
   from { opacity: 0; transform: scale(.85); }
   to   { opacity: 1; transform: scale(1); }
 }
+
+/* ── PWA Install Banner ─────────────────────────────────────────────────────── */
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

@@ -18,6 +18,7 @@ import PriceAlertPage from './pages/PriceAlertPage';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminPanel from './pages/admin/AdminPanel';
 import AnnouncementBanner from './components/ui/AnnouncementBanner';
+import InstallBanner from './components/ui/InstallBanner';
 
 
 // ── Admin Shell (completely isolated — no farmer Header/Nav) ──────────────────
@@ -82,6 +83,7 @@ function AppShell() {
         </Routes>
       </main>
       <BottomNav />
+      <InstallBanner />
     </div>
   );
 }

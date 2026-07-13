@@ -5,6 +5,7 @@ import { askAI } from '../services/api';
 import { usePermission, PERMISSION_MESSAGES } from '../hooks/usePermission';
 import { useOffline } from '../hooks/useOffline';
 import { getDir, getFont, getAlign } from '../utils/textDir';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 const QUICK_CHIPS = [
   { label: '💧 پانی', question: 'گندم کو کتنا پانی چاہیے اور کب دیں؟' },
@@ -98,6 +99,14 @@ export default function HomePage() {
   const season = getSeasonAdvice();
   const irrigationAdvice = getIrrigationAdvice();
   const pestAlert = getPestAlert();
+  const { canInstall, isInstalled, install } = usePWAInstall();
+
+  const shareOnWhatsApp = () => {
+    const msg = encodeURIComponent(
+      '🌾 DehatiAI — کسان کا AI مددگار\n\nفصل کی بیماری، موسم، مارکیٹ قیمتیں اور سرکاری اسکیمیں — سب ایک جگہ!\n\nhttps://dehati-ai.vercel.app'
+    );
+    window.open(`https://wa.me/?text=${msg}`, '_blank');
+  };
 
   const askQuestion = async (q) => {
     if (!q.trim()) return;
@@ -378,6 +387,65 @@ export default function HomePage() {
             <span>7 دن پہلے</span>
             <span style={{ color: 'var(--text-muted)' }}>کم: ₨{Math.min(...SPARKLINE_DATA).toLocaleString()} | زیادہ: ₨{Math.max(...SPARKLINE_DATA).toLocaleString()}</span>
             <span>آج</span>
+          </div>
+        </div>
+
+        {/* ── Install / Share card ── */}
+        <div style={{
+          background: 'linear-gradient(135deg, #1a3a0f 0%, #2F4A1E 100%)',
+          borderRadius: 'var(--radius-xl)',
+          padding: '1.25rem',
+          color: 'white',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '2rem', marginBottom: '.4rem' }}>📲</div>
+          <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: '.3rem' }}>
+            ایپ انسٹال کریں — مفت!
+          </div>
+          <div style={{ fontSize: '.78rem', opacity: .8, marginBottom: '1rem', lineHeight: 1.6 }}>
+            ہوم اسکرین پر آئیکن · بغیر انٹرنیٹ بھی کام کرے گی<br />
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '.65rem' }}>
+              Free · Works offline · Home screen icon
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            {canInstall && !isInstalled && (
+              <button
+                id="home-install-btn"
+                onClick={install}
+                style={{
+                  background: '#FBF3E1', color: '#2F4A1E',
+                  border: 'none', borderRadius: 12,
+                  padding: '10px 20px', fontWeight: 800,
+                  fontSize: '.875rem', cursor: 'pointer',
+                  flex: 1, minWidth: 120
+                }}
+              >
+                ⬇️ ابھی انسٹال کریں
+              </button>
+            )}
+            {isInstalled && (
+              <div style={{
+                background: 'rgba(255,255,255,0.15)', borderRadius: 12,
+                padding: '10px 20px', fontSize: '.875rem', fontWeight: 700,
+                flex: 1
+              }}>
+                ✅ ایپ انسٹال ہو گئی!
+              </div>
+            )}
+            <button
+              id="home-whatsapp-share-btn"
+              onClick={shareOnWhatsApp}
+              style={{
+                background: '#25D366', color: 'white',
+                border: 'none', borderRadius: 12,
+                padding: '10px 20px', fontWeight: 800,
+                fontSize: '.875rem', cursor: 'pointer',
+                flex: 1, minWidth: 120
+              }}
+            >
+              📤 واٹس ایپ پر شیئر کریں
+            </button>
           </div>
         </div>
 
