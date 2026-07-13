@@ -19,38 +19,151 @@ if (process.env.CLAUDE_API_KEY) {
 const CLAUDE_MODEL     = 'claude-sonnet-4-5';
 const CLAUDE_MODEL_VIS = 'claude-sonnet-4-5'; // supports vision
 
-// ─── Agriculture keyword guard (saves API calls for obvious off-topic) ─────────
+// ─── Agriculture keyword guard ──────────────────────────────────────────────────
+// Urdu script keywords
 const AGRI_KEYWORDS_UR = [
+  // Crops
   'فصل','گندم','چاول','مکئی','کپاس','گنا','آلو','ٹماٹر','پیاز','مرچ','لہسن','سرسوں',
-  'چنا','مسور','مونگ','ماش','جوار','باجرہ','تل','السی','کھاد','DAP','یوریا','پوٹاش',
-  'سپرے','بیماری','کیڑا','سنڈی','تیلا','آبپاشی','پانی','مٹی','زمین','بیج','بوائی',
-  'کٹائی','منڈی','قیمت','گائے','بھینس','بکری','مرغی','جانور','دودھ','چارہ','زراعت',
-  'کسان','کھیت','فارم','موسم','بارش','درجہ حرارت','نہر','ٹیوب ویل','ٹریکٹر','ہل',
-  'کسان کارڈ','ZTBL','فصلی بیمہ','زرعی','ہرے چارے','باغ','پھل','سبزی','کھاد','نائٹروجن'
+  'چنا','مسور','مونگ','ماش','جوار','باجرہ','تل','السی','کماد','دھان','مٹر','تارا میرہ',
+  'موٹھ','گوار','سویابین','سورج مکھی','زیتون','انار','آم','کینو','مالٹا','امرود',
+  // Inputs
+  'کھاد','DAP','یوریا','پوٹاش','نائٹروجن','فاسفورس','سپرے','زہر','دوائی',
+  'بیج','پنیری','ٹیکہ','ٹیکے',
+  // Pests & Disease
+  'بیماری','کیڑا','سنڈی','تیلا','چیپا','دیمک','پھپھوندی','زنگ','جھلساؤ','کٹوا',
+  'سفید مکھی','تھرپس','مکڑی','شائنر',
+  // Soil & Water
+  'آبپاشی','پانی','مٹی','زمین','نمی','سیم','تھور','نہر','کھال','نلکہ','ڈرپ',
+  'ٹیوب ویل','موٹر','پمپ','بارش','اولے','سیلاب','خشک سالی',
+  // Operations
+  'بوائی','کٹائی','گوڈی','روٹاویٹر','ہل','ٹریکٹر','تھریشر','کمبائن','کاشت',
+  // Market
+  'منڈی','قیمت','ریٹ','فروخت','خریداری','آڑھتی','اناج','ذخیرہ',
+  // Livestock
+  'گائے','بھینس','بکری','مرغی','جانور','دودھ','چارہ','مویشی','بیل','اونٹ',
+  'خرگوش','مچھلی','جھینگا','مرغا','ہانڈی',
+  // General
+  'زراعت','کسان','کھیت','فارم','باغ','پھل','سبزی','موسم','درجہ حرارت',
+  'کسان کارڈ','ZTBL','فصلی بیمہ','زرعی','ہرے چارے','قرضہ','سبسڈی','اسکیم',
+  'محکمہ زراعت','زرعی ترقیاتی','ایگری'
 ];
 
+// English keywords
 const AGRI_KEYWORDS_EN = [
-  'crop','wheat','rice','cotton','maize','corn','sugarcane','potato','tomato','onion',
-  'garlic','mustard','chickpea','lentil','fertilizer','dap','urea','potash','pesticide',
-  'herbicide','fungicide','insecticide','irrigation','soil','seed','sowing','harvest',
-  'farm','farming','agriculture','crop disease','pest','spray','cattle','buffalo','goat',
-  'poultry','livestock','milk','fodder','weather','rain','drought','mandi','price',
-  'kisan','farmer','field','plant','flower','fruit','vegetable','orchard','garden',
-  'tractor','tube well','canal','water','manure','compost','organic','yield','acre',
-  'kanal','marla','crop rotation','weed','blight','rust','aphid','whitefly','thrips',
-  'nematode','nitrogen','phosphorus','potassium','ph','salinity','waterlogging','ZTBL',
-  'loan','subsidy','scheme','extension','agri'
+  'crop','crops','wheat','rice','cotton','maize','corn','sugarcane','potato','tomato',
+  'onion','garlic','mustard','chickpea','lentil','lentils','fertilizer','dap','urea',
+  'potash','pesticide','herbicide','fungicide','insecticide','irrigation','soil',
+  'seed','seeds','sowing','harvest','farm','farming','agriculture','agricultural',
+  'crop disease','pest','pests','spray','cattle','buffalo','goat','poultry',
+  'livestock','milk','fodder','weather','rain','drought','mandi','price','kisan',
+  'farmer','farmers','field','plant','flower','fruit','vegetable','orchard','garden',
+  'tractor','tube well','tubewell','canal','water','manure','compost','organic',
+  'yield','acre','kanal','marla','crop rotation','weed','blight','rust','aphid',
+  'whitefly','thrips','nematode','nitrogen','phosphorus','potassium','salinity',
+  'waterlogging','ztbl','loan','subsidy','scheme','extension','agri','soybean',
+  'sunflower','sugarbeet','groundnut','sesame','linseed','fenugreek','coriander',
+  'cumin','chilli','pepper','mango','citrus','guava','pomegranate','apricot',
+  'drip irrigation','sprinkler','greenhouse','tunnel farming','hydroponics',
+  'soil test','ph','fertility','mulching','pruning','grafting','nursery',
+  'fish','shrimp','poultry farm','dairy','goat farm'
+];
+
+// Roman Urdu keywords (Urdu words written in English letters — very common in Pakistan)
+const AGRI_KEYWORDS_ROMAN = [
+  // Crops
+  'fasal','phasal','faslon','gandum','gehu','chawal','dhaan','makkai','makka','maka',
+  'kapas','ganna','kamad','aloo','tamatar','pyaz','mirch','lehsan','sarson','sarso',
+  'chana','masoor','moong','maash','matar','jowar','bajra','til','alsi','tara mira',
+  'soyabean','suraj mukhi',
+  // Common questions
+  'kb lgayein','kb lagayein','kab lagayein','kab lgana','kab dena','kab spray',
+  'kb pani','kab pani','pani kb','pani kab','pani dena','pani lagana',
+  'kab bona','kab katna','kab kaatna','kab katai','katai kab',
+  // Farming operations  
+  'buwai','boi','buai','boai','katai','kaatai','godi','gudi','jotai','jotna',
+  'hal chalana','tractor','thresher','combine','rotavator','ridger',
+  // Fertilizers / Inputs
+  'khaad','khad','dap','urea','potash','nitrogen','spray karna','spray dena',
+  'zeher','dawa','dawai','pesticide','fungicide','herbicide','weedicide',
+  'beej','bij','seeds','paneeri','paniri',
+  // Water / Irrigation
+  'pani','paani','abpashi','aab pashi','nehr','naher','nali','tube well','tubewell',
+  'motor pump','drip','sprinkler','barish','barsaat','sookha','sel','selab',
+  // Pests / Disease
+  'beemari','bimari','keera','kira','keere','sundi','soondi','teela','cheepa',
+  'deemak','dimak','phaphoond','zang','jhulsao','safed makhi','thrips',
+  'makra','makri','locust','tiddi',
+  // Soil
+  'mitti','mati','zameen','zemin','sem','thor','namak','shora','namkeen',
+  // Market / Finance
+  'mandi','qeemat','kimat','rate','rait','farookht','bechna','khareedna',
+  'arrhti','anaaj','zakheera','qarz','loan','subsidi','scheme',
+  'kisan card','kisaan card','ztbl','insaaf','pm kisan',
+  // Livestock
+  'janwar','jaanwar','gaay','gay','bhains','bhaens','bakri','murgi',
+  'murgha','doodh','dood','chara','charha','maweshi','bail','oont',
+  'machli','machi','jheenga',
+  // General farming words
+  'khet','khait','khayt','khyait','farm','baagh','bagh','phal','sabzi',
+  'kisaan','kisan','zamindaar','zamindar','hari',
+  // Weather
+  'mosam','mausam','garmi','sardi','dhoop','barish','olay','aandhi',
+  'temperature','darjah hararat',
+  // Govt schemes
+  'pm loan','kisaan package','agriculture loan','fasal bima',
+  'zari taraqiati','agriculture department','extension officer',
+  // How-to question starters common in farming context
+  'kaise lgayein','kaise lagayein','kaise karna','kaise dena','kaise spray',
+  'kitna dena','kitni miqdar','kitnay din','kitne din','per acre','per kanal',
+  'har baar','baar baar'
+];
+
+// Words that clearly indicate OFF-TOPIC (non-agriculture) queries
+const CLEARLY_OFF_TOPIC = [
+  // Entertainment
+  'movie','film','actor','actress','drama','song','gana','music','cricket','football',
+  'match','game','gaming','pubg','tiktok','youtube','instagram','facebook',
+  // Politics (not agri-related)
+  'election','vote','imran khan','nawaz','zardari','party politics','pm',
+  // Tech (not agri-related)
+  'mobile','phone','laptop','computer','software','coding','programming','bitcoin',
+  // Love/Personal
+  'love','pyaar','ishq','larki','larka','shaddi','rishta','divorce',
+  // Medical (non-livestock)
+  'doctor','hospital','medicine for human','aspirin','fever in human',
+  // Other clearly off-topic
+  'recipe','cooking','khana pakana','hotel','tourism','travel abroad'
 ];
 
 function isAgricultureRelated(text) {
-  const lower = text.toLowerCase();
-  for (const kw of AGRI_KEYWORDS_EN) {
-    if (lower.includes(kw)) return true;
-  }
+  const lower = text.toLowerCase().trim();
+
+  // ── Step 1: Check Urdu script ─────────────────────────────────────────────
   for (const kw of AGRI_KEYWORDS_UR) {
     if (text.includes(kw)) return true;
   }
-  return false;
+
+  // ── Step 2: Check English ─────────────────────────────────────────────────
+  for (const kw of AGRI_KEYWORDS_EN) {
+    if (lower.includes(kw.toLowerCase())) return true;
+  }
+
+  // ── Step 3: Check Roman Urdu (biggest gap fixed here) ────────────────────
+  for (const kw of AGRI_KEYWORDS_ROMAN) {
+    if (lower.includes(kw.toLowerCase())) return true;
+  }
+
+  // ── Step 4: Smart fallback — short or vague messages pass through ─────────
+  // If message is ≤6 words, it's likely a farming question — let Claude decide
+  const wordCount = lower.trim().split(/\s+/).length;
+  if (wordCount <= 6) return true;
+
+  // ── Step 5: Check if it's clearly NON-agriculture ─────────────────────────
+  // If it clearly matches off-topic AND no agri context → block
+  const isObviouslyOffTopic = CLEARLY_OFF_TOPIC.some(kw => lower.includes(kw.toLowerCase()));
+  if (!isObviouslyOffTopic) return true; // Unknown/ambiguous → let Claude answer
+
+  return false; // Only block if clearly off-topic
 }
 
 const OFF_TOPIC_UR = `معذرت! 🌾 میں DehatiAI ہوں — صرف زراعت، فصلوں، جانوروں اور کسانی سے متعلق سوالات کا جواب دے سکتا ہوں۔
@@ -64,6 +177,7 @@ const OFF_TOPIC_UR = `معذرت! 🌾 میں DehatiAI ہوں — صرف زرا�
 • حکومتی زرعی اسکیمیں
 
 زراعت ہیلپ لائن: 0800-15000 (مفت)`;
+
 
 // ─── System Prompts ────────────────────────────────────────────────────────────
 function buildFarmingSystem() {
