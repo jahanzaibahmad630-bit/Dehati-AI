@@ -4,6 +4,7 @@ import AIDisclaimer from '../components/ui/AIDisclaimer';
 import { askAI } from '../services/api';
 import { usePermission, PERMISSION_MESSAGES } from '../hooks/usePermission';
 import { useOffline } from '../hooks/useOffline';
+import { getDir, getFont, getAlign } from '../utils/textDir';
 
 const QUICK_CHIPS = [
   { label: '💧 پانی', question: 'گندم کو کتنا پانی چاہیے اور کب دیں؟' },
@@ -184,8 +185,18 @@ export default function HomePage() {
               <input
                 id="home-question-input"
                 className="input"
-                style={{ flex: 1, background: 'rgba(255,255,255,.15)', color: 'white', borderColor: 'rgba(251,192,45,.4)', fontSize: '.9rem' }}
-                placeholder="سوال لکھیں..."
+                dir={getDir(question)}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255,255,255,.15)',
+                  color: 'white',
+                  borderColor: 'rgba(251,192,45,.4)',
+                  fontSize: '.9rem',
+                  fontFamily: getFont(question),
+                  textAlign: getAlign(question),
+                  transition: 'text-align .1s'
+                }}
+                placeholder="سوال لکھیں... / Type your question..."
                 value={question}
                 onChange={e => setQuestion(e.target.value)}
               />

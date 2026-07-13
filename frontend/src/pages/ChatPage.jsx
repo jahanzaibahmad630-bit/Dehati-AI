@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useOffline } from '../hooks/useOffline';
 import { useAuth } from '../context/AuthContext';
+import { getDir, getFont, getAlign } from '../utils/textDir';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -62,17 +63,18 @@ function TypingDots() {
 }
 
 // ── Message bubble ─────────────────────────────────────────────────────────────
-function MessageBubble({ msg, isLast }) {
+function MessageBubble({ msg }) {
   const isUser = msg.role === 'user';
 
-  const formatContent = (text) => {
-    return text.split('\n').map((line, i) => (
-      <span key={i}>
-        {line}
-        {i < text.split('\n').length - 1 && <br />}
-      </span>
+  // Detect direction from the actual message content
+  const dir   = getDir(msg.content);
+  const font  = getFont(msg.content);
+  const align = getAlign(msg.content);
+
+  const formatContent = (text) =>
+    text.split('\n').map((line, i, arr) => (
+      <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
     ));
-  };
 
   return (
     <div style={{
@@ -83,7 +85,7 @@ function MessageBubble({ msg, isLast }) {
       marginBottom: 12,
       animation: 'msgFadeIn 0.25s ease-out',
     }}>
-      {/* Avatar */}
+      {/* AI Avatar */}
       {!isUser && (
         <div style={{
           width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
@@ -95,43 +97,48 @@ function MessageBubble({ msg, isLast }) {
 
       <div style={{ maxWidth: '78%', display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
         {/* Bubble */}
-        <div style={{
-          padding: '10px 14px',
-          borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-          background: isUser
-            ? 'linear-gradient(135deg, #2e5a27, #3d7a33)'
-            : 'white',
-          color: isUser ? 'white' : '#111827',
-          fontSize: '0.92rem',
-          lineHeight: 1.65,
-          fontFamily: msg.content && /[\u0600-\u06ff]/.test(msg.content)
-            ? '"Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", serif'
-            : 'Inter, sans-serif',
-          direction: isUser && /[\u0600-\u06ff]/.test(msg.content) ? 'rtl' : 'rtl',
-          boxShadow: isUser
-            ? '0 2px 8px rgba(46,90,39,.3)'
-            : '0 1px 6px rgba(0,0,0,.08)',
-          wordBreak: 'break-word',
-          whiteSpace: 'pre-wrap',
-          border: isUser ? 'none' : '1px solid #f0f0f0',
-          position: 'relative',
-        }}>
+        <div
+          dir={dir}
+          lang={dir === 'rtl' ? 'ur' : 'en'}
+          style={{
+            padding: '10px 14px',
+            borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+            background: isUser
+              ? 'linear-gradient(135deg, #2e5a27, #3d7a33)'
+              : 'white',
+            color: isUser ? 'white' : '#111827',
+            fontSize: dir === 'rtl' ? '0.95rem' : '0.9rem',
+            lineHeight: dir === 'rtl' ? 1.9 : 1.6,
+            fontFamily: font,
+            textAlign: align,
+            boxShadow: isUser
+              ? '0 2px 8px rgba(46,90,39,.3)'
+              : '0 1px 6px rgba(0,0,0,.08)',
+            wordBreak: 'break-word',
+            whiteSpace: 'pre-wrap',
+            border: isUser ? 'none' : '1px solid #f0f0f0',
+          }}
+        >
           {msg.streaming && msg.content === '' ? <TypingDots /> : formatContent(msg.content)}
           {msg.streaming && msg.content !== '' && (
             <span style={{
               display: 'inline-block', width: 2, height: '1em',
-              background: '#2e5a27', marginLeft: 2, verticalAlign: 'middle',
+              background: isUser ? 'rgba(255,255,255,.8)' : '#2e5a27',
+              marginLeft: dir === 'rtl' ? 0 : 2,
+              marginRight: dir === 'rtl' ? 2 : 0,
+              verticalAlign: 'middle',
               animation: 'cursorBlink 0.7s step-end infinite'
             }} />
           )}
         </div>
 
-        {/* Time */}
+        {/* Timestamp */}
         {msg.time && !msg.streaming && (
           <div style={{
             fontSize: '0.67rem', color: '#9ca3af', marginTop: 3,
             padding: '0 4px',
-            display: 'flex', alignItems: 'center', gap: 3
+            display: 'flex', alignItems: 'center', gap: 3,
+            flexDirection: isUser ? 'row-reverse' : 'row'
           }}>
             {formatTime(msg.time)}
             {isUser && <span style={{ color: '#4ade80' }}>✓✓</span>}
@@ -558,7 +565,7 @@ export default function ChatPage() {
           {isListening ? '⏹' : '🎤'}
         </button>
 
-        {/* Text input */}
+        {/* Text input — direction auto-switches as user types */}
         <div style={{ flex: 1, position: 'relative' }}>
           <textarea
             ref={inputRef}
@@ -569,18 +576,21 @@ export default function ChatPage() {
             onChange={e => !isListening && setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             readOnly={isListening}
+            dir={getDir(isListening ? displayInput : input)}
+            lang={getDir(isListening ? displayInput : input) === 'rtl' ? 'ur' : 'en'}
             style={{
               width: '100%', padding: '12px 14px',
               borderRadius: 24, border: 'none',
               background: 'white',
               fontSize: '.9rem', resize: 'none', outline: 'none',
-              fontFamily: /[\u0600-\u06ff]/.test(input) ? '"Noto Nastaliq Urdu", serif' : 'Inter, sans-serif',
-              direction: 'rtl',
+              fontFamily: getFont(isListening ? displayInput : input),
+              textAlign: getAlign(isListening ? displayInput : input),
               maxHeight: 120, overflowY: 'auto',
               boxShadow: '0 1px 4px rgba(0,0,0,.1)',
               color: isListening ? '#6b7280' : '#111827',
               lineHeight: 1.5,
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              transition: 'text-align 0.1s, direction 0.1s'
             }}
             onInput={e => {
               e.target.style.height = 'auto';

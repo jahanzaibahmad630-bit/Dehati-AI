@@ -64,7 +64,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--cream)', direction: 'rtl' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--cream)' }}>
       {/* Hero */}
       <div style={{
         background: 'linear-gradient(145deg, var(--green-900) 0%, var(--green-800) 60%, var(--green-700) 100%)',
@@ -109,7 +109,7 @@ export default function AuthPage() {
           )}
 
           {tab === 'login' ? (
-            <form onSubmit={handleLogin} className="form-group">
+            <form onSubmit={handleLogin} className="form-group" dir="rtl">
               <div>
                 <label className="input-label" htmlFor="login-phone">فون نمبر</label>
                 <input
@@ -121,6 +121,7 @@ export default function AuthPage() {
                   onChange={e => setLoginPhone(e.target.value)}
                   required
                   dir="ltr"
+                  style={{ textAlign: 'left' }}
                 />
               </div>
               <div>
@@ -133,6 +134,8 @@ export default function AuthPage() {
                   value={loginPass}
                   onChange={e => setLoginPass(e.target.value)}
                   required
+                  dir="ltr"
+                  style={{ textAlign: 'left' }}
                 />
               </div>
               <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} id="login-submit-btn">
@@ -140,29 +143,56 @@ export default function AuthPage() {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleRegister} className="form-group">
+            <form onSubmit={handleRegister} className="form-group" dir="rtl">
               <div>
                 <label className="input-label" htmlFor="reg-name">پورا نام</label>
-                <input id="reg-name" type="text" className="input" placeholder="محمد علی" value={regName} onChange={e => setRegName(e.target.value)} required />
+                {/* dir=auto: browser detects RTL (اردو) vs LTR (English) as user types */}
+                <input
+                  id="reg-name" type="text" className="input"
+                  placeholder="محمد علی / Ali Ahmed"
+                  value={regName}
+                  onChange={e => setRegName(e.target.value)}
+                  required
+                  dir="auto"
+                />
               </div>
               <div>
                 <label className="input-label" htmlFor="reg-phone">فون نمبر</label>
-                <input id="reg-phone" type="tel" className="input input-number" placeholder="03001234567" value={regPhone} onChange={e => setRegPhone(e.target.value)} required dir="ltr" />
+                <input
+                  id="reg-phone" type="tel" className="input input-number"
+                  placeholder="03001234567"
+                  value={regPhone}
+                  onChange={e => setRegPhone(e.target.value)}
+                  required dir="ltr" style={{ textAlign: 'left' }}
+                />
               </div>
               <div>
                 <label className="input-label" htmlFor="reg-district">ضلع</label>
-                <select id="reg-district" className="input" value={regDistrict} onChange={e => setRegDistrict(e.target.value)}>
+                <select id="reg-district" className="input" dir="rtl" value={regDistrict} onChange={e => setRegDistrict(e.target.value)}>
                   <option value="">ضلع منتخب کریں</option>
                   {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div>
                 <label className="input-label" htmlFor="reg-land">زمین (ایکڑ)</label>
-                <input id="reg-land" type="number" className="input input-number" placeholder="5" value={regLand} onChange={e => setRegLand(e.target.value)} min="0" step="0.5" dir="ltr" />
+                <input
+                  id="reg-land" type="number" className="input input-number"
+                  placeholder="5"
+                  value={regLand}
+                  onChange={e => setRegLand(e.target.value)}
+                  min="0" step="0.5" dir="ltr" style={{ textAlign: 'left' }}
+                />
               </div>
               <div>
                 <label className="input-label" htmlFor="reg-pass">پاسورڈ</label>
-                <input id="reg-pass" type="password" className="input" placeholder="کم از کم 6 حروف" value={regPass} onChange={e => setRegPass(e.target.value)} required minLength={6} />
+                <input
+                  id="reg-pass" type="password" className="input"
+                  placeholder="کم از کم 6 حروف"
+                  value={regPass}
+                  onChange={e => setRegPass(e.target.value)}
+                  required minLength={6}
+                  dir="ltr" style={{ textAlign: 'left' }}
+                />
               </div>
               <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} id="register-submit-btn">
                 {loading ? '...' : '✓ اکاؤنٹ بنائیں'}
@@ -177,11 +207,12 @@ export default function AuthPage() {
             onClick={handleGuest}
             disabled={loading}
             id="guest-login-btn"
+            dir="rtl"
           >
             👤 مہمان کی طرح جاری رکھیں
           </button>
 
-          <p style={{ textAlign: 'center', fontSize: '.72rem', color: 'var(--text-light)', marginTop: '.75rem' }}>
+          <p style={{ textAlign: 'center', fontSize: '.72rem', color: 'var(--text-light)', marginTop: '.75rem', direction: 'rtl' }}>
             مہمان موڈ میں پروفائل محفوظ نہیں ہوگا
           </p>
         </div>
