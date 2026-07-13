@@ -17,7 +17,7 @@ import Profile from '../components/tools/Profile';
 
 // Tools that open as bottom sheets
 const SHEET_TOOLS = [
-  { id: 'market',     icon: '📈', name: 'مارکیٹ قیمتیں', component: MarketPrices,         badge: 'LIVE' },
+  { id: 'market',     icon: '📈', name: 'مارکیٹ قیمتیں', component: MarketPrices,         badge: 'قیمتیں' },
   { id: 'animal',     icon: '🐄', name: 'جانور صحت',      component: AnimalHealthAdvisor  },
   { id: 'fertilizer', icon: '🌱', name: 'کھاد سفارش',     component: FertilizerRecommender },
   { id: 'spray',      icon: '💧', name: 'سپرے مقدار',     component: SprayDoseCalc        },

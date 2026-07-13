@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+// Stable crop list for the dropdown
 const CROP_LIST = [
   'گندم', 'باسمتی چاول', 'مکئی', 'کپاس', 'گنا', 'آلو', 'ٹماٹر',
   'پیاز', 'مرچ', 'لہسن', 'سرسوں', 'چنا', 'مسور', 'DAP کھاد', 'یوریا'
 ];
-
-const BASE_PRICES = {
-  'گندم': 3900, 'باسمتی چاول': 4800, 'مکئی': 1800, 'کپاس': 9500,
-  'گنا': 475, 'آلو': 1400, 'ٹماٹر': 2200, 'پیاز': 1100, 'مرچ': 6500,
-  'لہسن': 18000, 'سرسوں': 7200, 'چنا': 8500, 'مسور': 6800,
-  'DAP کھاد': 10500, 'یوریا': 3900
-};
 
 function loadAlerts() {
   try { return JSON.parse(localStorage.getItem('dehati_price_alerts') || '[]'); } catch { return []; }
@@ -19,10 +15,15 @@ function saveAlerts(alerts) {
   localStorage.setItem('dehati_price_alerts', JSON.stringify(alerts));
 }
 
-function AlertItem({ alert, onDelete, currentPrice }) {
-  const triggered = alert.direction === 'up'
-    ? currentPrice >= alert.threshold
-    : currentPrice <= alert.threshold;
+function AlertItem({ alert, onDelete, priceMap }) {
+  const priceEntry = priceMap[alert.crop];
+  const currentPrice = priceEntry?.price ?? null;
+  const isReal = priceEntry?.isReal ?? false;
+
+  // Only trigger alerts on real admin-entered prices, never on sample data
+  const triggered = isReal && currentPrice !== null && (
+    alert.direction === 'up' ? currentPrice >= alert.threshold : currentPrice <= alert.threshold
+  );
 
   return (
     <div className="alert-item animate-fade-in-up" style={{
@@ -39,6 +40,13 @@ function AlertItem({ alert, onDelete, currentPrice }) {
               borderRadius: 'var(--radius-full)'
             }}>🔔 متحرک</span>
           )}
+          {!isReal && currentPrice !== null && (
+            <span style={{
+              background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a',
+              fontSize: '.6rem', fontWeight: 700, padding: '.1rem .4rem',
+              borderRadius: 'var(--radius-full)'
+            }}>📊 نمونہ</span>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
           <span style={{ fontSize: '.8rem', color: alert.direction === 'up' ? 'var(--green-700)' : 'var(--danger)', fontWeight: 700 }}>
@@ -46,7 +54,9 @@ function AlertItem({ alert, onDelete, currentPrice }) {
           </span>
           <span className="threshold">₨{alert.threshold.toLocaleString()}</span>
           <span style={{ fontSize: '.7rem', color: 'var(--text-muted)' }}>
-            (ابھی: ₨{currentPrice?.toLocaleString() || '—'})
+            {currentPrice !== null
+              ? `(ابھی: ₨${currentPrice.toLocaleString()}${!isReal ? ' · نمونہ' : ''})`
+              : '(قیمت دستیاب نہیں)'}
           </span>
         </div>
       </div>
@@ -66,21 +76,30 @@ function AlertItem({ alert, onDelete, currentPrice }) {
 }
 
 export default function PriceAlertPage() {
-  const [alerts, setAlerts] = useState(loadAlerts);
+  const [alerts, setAlerts]           = useState(loadAlerts);
   const [selectedCrop, setSelectedCrop] = useState('');
-  const [threshold, setThreshold] = useState('');
-  const [direction, setDirection] = useState('up'); // 'up' | 'down'
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
+  const [threshold, setThreshold]     = useState('');
+  const [direction, setDirection]     = useState('up');
+  const [saved, setSaved]             = useState(false);
+  const [error, setError]             = useState('');
 
-  // Current prices (simulated)
-  const getCurrentPrice = (crop) => {
-    const base = BASE_PRICES[crop] || 0;
-    const day = new Date().getDate();
-    const seed = base * day;
-    const variation = ((seed % 7) - 3) / 100;
-    return Math.round(base * (1 + variation) / 50) * 50;
-  };
+  // Real prices from API — { [cropKey]: { price, isReal, updatedAt } }
+  const [priceMap, setPriceMap]       = useState({});
+  const [pricesLoaded, setPricesLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API}/api/admin/prices/public`, { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.prices) {
+          const map = {};
+          for (const p of data.prices) map[p.key] = { price: p.price, isReal: p.isReal, updatedAt: p.updatedAt };
+          setPriceMap(map);
+        }
+      })
+      .catch(() => {}) // silently keep empty map; UI handles missing
+      .finally(() => setPricesLoaded(true));
+  }, []);
 
   const handleAdd = () => {
     setError('');
@@ -111,10 +130,14 @@ export default function PriceAlertPage() {
     saveAlerts(updated);
   };
 
+  // Only count triggered alerts where the price is real (admin-entered)
   const triggeredCount = alerts.filter(a => {
-    const p = getCurrentPrice(a.crop);
-    return a.direction === 'up' ? p >= a.threshold : p <= a.threshold;
+    const entry = priceMap[a.crop];
+    if (!entry || !entry.isReal) return false;
+    return a.direction === 'up' ? entry.price >= a.threshold : entry.price <= a.threshold;
   }).length;
+
+  const realPriceCount = Object.values(priceMap).filter(p => p.isReal).length;
 
   return (
     <div className="page">
@@ -166,15 +189,23 @@ export default function PriceAlertPage() {
               </div>
             </div>
 
-            {/* Current price info */}
-            {selectedCrop && (
-              <div style={{
-                background: 'var(--green-100)', borderRadius: 'var(--radius-sm)',
-                padding: '.6rem .875rem', fontSize: '.8rem', color: 'var(--green-800)', fontWeight: 700
-              }}>
-                ابھی کی قیمت: ₨{getCurrentPrice(selectedCrop).toLocaleString()} / من
-              </div>
-            )}
+            {/* Current price info for selected crop */}
+            {selectedCrop && (() => {
+              const entry = priceMap[selectedCrop];
+              if (!entry) return null;
+              return (
+                <div style={{
+                  borderRadius: 8, padding: '8px 12px', fontSize: '.8rem', fontWeight: 700,
+                  background: entry.isReal ? '#f0fdf4' : '#fffbeb',
+                  color: entry.isReal ? '#15803d' : '#92400e',
+                  border: `1px solid ${entry.isReal ? '#bbf7d0' : '#fde68a'}`,
+                  direction: 'rtl'
+                }}>
+                  {entry.isReal ? '✅ ' : '📊 '}
+                  ابھی کی قیمت: ₨{Number(entry.price).toLocaleString()} / {entry.isReal ? 'من (اصل)' : 'من (نمونہ)'}
+                </div>
+              );
+            })()}
 
             {/* Direction toggle */}
             <div>
@@ -252,7 +283,7 @@ export default function PriceAlertPage() {
                   key={a.id}
                   alert={a}
                   onDelete={handleDelete}
-                  currentPrice={getCurrentPrice(a.crop)}
+                  priceMap={priceMap}
                 />
               ))}
             </div>
@@ -266,13 +297,23 @@ export default function PriceAlertPage() {
           </div>
         )}
 
-        {/* Info note */}
+        {/* Data honesty notice */}
         <div style={{
-          background: 'var(--gold-100)', border: '1px solid rgba(251,192,45,.4)',
-          borderRadius: 'var(--radius-sm)', padding: '.75rem', fontSize: '.78rem',
-          color: 'var(--gold-700)', lineHeight: 1.6
+          background: realPriceCount > 0 ? '#f0fdf4' : '#fffbeb',
+          border: `1px solid ${realPriceCount > 0 ? '#bbf7d0' : '#fde68a'}`,
+          borderRadius: 8, padding: '10px 14px', fontSize: '.75rem',
+          color: realPriceCount > 0 ? '#15803d' : '#92400e', lineHeight: 1.6,
+          direction: 'rtl'
         }}>
-          💡 الرٹ اس ایپ میں محفوظ ہیں — جب بھی قیمتیں چیک کریں تو آپ کو بتائے گا
+          {realPriceCount > 0
+            ? `✅ ${realPriceCount} فصل کی اصل قیمتیں دستیاب — الرٹ صرف اصل قیمتوں پر کام کریں گے`
+            : '📊 ابھی تمام قیمتیں نمونہ ڈیٹا ہیں — الرٹ اصل قیمت درج ہونے کے بعد کام کریں گے'}
+          <br />
+          <span style={{ fontFamily: 'Inter', fontSize: '.65rem' }}>
+            {realPriceCount > 0
+              ? 'Alerts fire on real admin-entered prices only'
+              : 'Alerts paused — waiting for real price data to be entered'}
+          </span>
         </div>
       </div>
     </div>

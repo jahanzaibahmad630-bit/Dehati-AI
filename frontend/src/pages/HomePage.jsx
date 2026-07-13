@@ -252,11 +252,10 @@ export default function HomePage() {
           </div>
 
           <div className="dash-card" onClick={() => navigate('/more')} id="dash-market">
-            <div className="dash-card-badge">LIVE</div>
             <div className="dash-card-icon gold">📈</div>
             <div className="dash-card-label">منڈی قیمت</div>
-            <div className="dash-card-value" style={{ color: 'var(--green-700)' }}>↑ گندم</div>
-            <div className="dash-card-sub">₨3,900/من</div>
+            <div className="dash-card-value" style={{ color: 'var(--green-700)', fontSize: '.9rem' }}>گندم</div>
+            <div className="dash-card-sub" style={{ fontSize: '.65rem', color: 'var(--amber-600)' }}>حوالہ قیمت — نمونہ</div>
           </div>
 
           <div className="dash-card" onClick={() => navigate('/more')} id="dash-crops">

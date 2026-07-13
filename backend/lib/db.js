@@ -44,8 +44,16 @@ async function initDB() {
       );
       CREATE INDEX IF NOT EXISTS users_phone_idx   ON users(phone);
       CREATE INDEX IF NOT EXISTS users_created_idx ON users(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS mandi_prices (
+        crop_key    TEXT PRIMARY KEY,
+        price       NUMERIC NOT NULL CHECK (price > 0),
+        entered_by  TEXT NOT NULL DEFAULT 'admin',
+        source_note TEXT NOT NULL DEFAULT 'admin-entry',
+        updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
     `);
-    console.log('✅ PostgreSQL users table ready');
+    console.log('✅ PostgreSQL tables ready (users + mandi_prices)');
   } catch (err) {
     console.error('❌ initDB error:', err.message);
   }
@@ -290,9 +298,49 @@ function isUsingPersistentDB() {
   return !!pool || !!getSupabase();
 }
 
+// ─── Mandi Price DB functions ──────────────────────────────────────────────────────────────
+
+/**
+ * Upsert a real mandi price entered by admin.
+ * crop_key must match the CROP_LIST keys used by frontend.
+ */
+async function setPriceDB(cropKey, price, sourceNote = 'admin-entry') {
+  if (!pool) return false;
+  await pool.query(
+    `INSERT INTO mandi_prices (crop_key, price, source_note, updated_at)
+     VALUES ($1, $2, $3, NOW())
+     ON CONFLICT (crop_key) DO UPDATE
+     SET price = $2, source_note = $3, updated_at = NOW()`,
+    [cropKey, price, sourceNote]
+  );
+  return true;
+}
+
+/**
+ * Fetch all admin-entered prices from DB.
+ * Returns array of { crop_key, price, source_note, updated_at }
+ */
+async function getPricesDB() {
+  if (!pool) return [];
+  const { rows } = await pool.query(
+    'SELECT crop_key, price, source_note, updated_at FROM mandi_prices ORDER BY updated_at DESC'
+  );
+  return rows;
+}
+
+/**
+ * Delete a single price entry (revert to sample data for that crop).
+ */
+async function deletePriceDB(cropKey) {
+  if (!pool) return false;
+  await pool.query('DELETE FROM mandi_prices WHERE crop_key=$1', [cropKey]);
+  return true;
+}
+
 module.exports = {
   pool, initDB, testConnection,
   findUserByPhone, createUser, getAllUsers,
   getTotalUserCount, getNewTodayCount, getRecentUsers,
-  deleteUser, isUsingPersistentDB
+  deleteUser, isUsingPersistentDB,
+  setPriceDB, getPricesDB, deletePriceDB
 };

@@ -10,8 +10,8 @@ const router = express.Router();
 
 const SERVER_START = new Date();
 
-// In-memory price overrides (reset on redeploy)
-let priceOverrides = {};
+// NOTE: priceOverrides moved to PostgreSQL mandi_prices table (survives restarts)
+// See db.setPriceDB / db.getPricesDB / db.deletePriceDB
 
 // In-memory announcements (reset on redeploy)
 let announcements = [];
@@ -189,42 +189,180 @@ router.get('/health', requireAdmin, async (req, res) => {
 
 
 // ─── GET /api/admin/prices ────────────────────────────────────────────────────
-router.get('/prices', requireAdmin, (req, res) => {
-  const BASE_PRICES = {
-    'گندم': 3900, 'باسمتی چاول': 4800, 'مکئی': 1800, 'کپاس': 9500,
-    'گنا': 475, 'آلو': 1400, 'ٹماٹر': 2200, 'پیاز': 1100, 'مرچ': 6500,
-    'لہسن': 18000, 'سرسوں': 7200, 'چنا': 8500, 'مسور': 6800,
-    'DAP کھاد': 10500, 'یوریا': 3900
-  };
+// Returns all crops with their base reference price and any admin-entered DB price
+router.get('/prices', requireAdmin, async (req, res) => {
+  const BASE_PRICES = [
+    { key: 'گندم',         base: 3900  },
+    { key: 'باسمتی چاول', base: 4800  },
+    { key: 'مکئی',          base: 1800  },
+    { key: 'کپاس',         base: 9500  },
+    { key: 'گنا',          base: 475   },
+    { key: 'آلو',          base: 1400  },
+    { key: 'ٹماٹر',       base: 2200  },
+    { key: 'پیاز',         base: 1100  },
+    { key: 'مرچ',          base: 6500  },
+    { key: 'لہسن',         base: 18000 },
+    { key: 'سرسوں',       base: 7200  },
+    { key: 'چنا',          base: 8500  },
+    { key: 'مسور',         base: 6800  },
+    { key: 'DAP کھاد',   base: 10500 },
+    { key: 'یوریا',        base: 3900  },
+  ];
 
-  const merged = {};
-  for (const [crop, base] of Object.entries(BASE_PRICES)) {
-    merged[crop] = { base, override: priceOverrides[crop] ?? null, effective: priceOverrides[crop] ?? base };
+  try {
+    const dbRows = await db.getPricesDB();
+    const dbMap = {};
+    for (const r of dbRows) dbMap[r.crop_key] = r;
+
+    const merged = {};
+    for (const { key, base } of BASE_PRICES) {
+      const db_entry = dbMap[key] || null;
+      merged[key] = {
+        base,
+        dbPrice:    db_entry ? Number(db_entry.price) : null,
+        sourceNote: db_entry ? db_entry.source_note   : null,
+        updatedAt:  db_entry ? db_entry.updated_at    : null,
+        isReal:     !!db_entry,
+      };
+    }
+    res.json({ prices: merged, realCount: dbRows.length });
+  } catch (err) {
+    console.error('GET /admin/prices error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch prices' });
   }
+});
 
-  res.json({ prices: merged, overrideCount: Object.keys(priceOverrides).length });
+// ─── GET /api/admin/prices/public ────────────────────────────────────────────
+// Farmer-facing public endpoint — no auth required
+// Returns each crop with source label: real (DB) or sample (base reference)
+router.get('/prices/public', async (req, res) => {
+  const BASE_PRICES = [
+    { key: 'گندم',         nameEn: 'Wheat',     base: 3900,  unit: 'من (40 کلو)',   category: 'اناج'     },
+    { key: 'باسمتی چاول', nameEn: 'Basmati',   base: 4800,  unit: 'من (40 کلو)',   category: 'اناج'     },
+    { key: 'مکئی',          nameEn: 'Maize',     base: 1800,  unit: 'من (40 کلو)',   category: 'اناج'     },
+    { key: 'کپاس',         nameEn: 'Cotton',    base: 9500,  unit: 'من (40 کلو)',   category: 'نقدی فصل'  },
+    { key: 'گنا',          nameEn: 'Sugarcane', base: 475,   unit: 'من (40 کلو)',   category: 'نقدی فصل'  },
+    { key: 'آلو',          nameEn: 'Potato',    base: 1400,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'ٹماٹر',       nameEn: 'Tomato',    base: 2200,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'پیاز',         nameEn: 'Onion',     base: 1100,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'مرچ',          nameEn: 'Chili',     base: 6500,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'لہسن',         nameEn: 'Garlic',    base: 18000, unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'سرسوں',       nameEn: 'Mustard',   base: 7200,  unit: 'من (40 کلو)',   category: 'تیلدار'   },
+    { key: 'چنا',          nameEn: 'Chickpea',  base: 8500,  unit: 'من (40 کلو)',   category: 'دالیں'    },
+    { key: 'مسور',         nameEn: 'Lentil',    base: 6800,  unit: 'من (40 کلو)',   category: 'دالیں'    },
+    { key: 'DAP کھاد',   nameEn: 'DAP',       base: 10500, unit: 'بوری (50 کلو)', category: 'کھاد'     },
+    { key: 'یوریا',        nameEn: 'Urea',      base: 3900,  unit: 'بوری (50 کلو)', category: 'کھاد'     },
+  ];
+
+  try {
+    const dbRows = await db.getPricesDB();
+    const dbMap = {};
+    for (const r of dbRows) dbMap[r.crop_key] = r;
+
+    const prices = BASE_PRICES.map((item, idx) => {
+      const entry = dbMap[item.key];
+      if (entry) {
+        // Real admin-entered price
+        return {
+          id:         idx + 1,
+          key:        item.key,
+          nameUrdu:   item.key,
+          nameEn:     item.nameEn,
+          unit:       item.unit,
+          category:   item.category,
+          price:      Number(entry.price),
+          isReal:     true,
+          sourceNote: entry.source_note,
+          updatedAt:  entry.updated_at,
+          dataLabel:  'آج درج کی گئی قیمت',
+          dataLabelEn: 'Price entered today',
+        };
+      }
+      // Sample / reference price — clearly labelled
+      return {
+        id:         idx + 1,
+        key:        item.key,
+        nameUrdu:   item.key,
+        nameEn:     item.nameEn,
+        unit:       item.unit,
+        category:   item.category,
+        price:      item.base,
+        isReal:     false,
+        sourceNote: 'sample-reference',
+        updatedAt:  null,
+        dataLabel:  'حوالہ قیمت — نمونہ ڈیٹا',
+        dataLabelEn: 'Reference price — sample data',
+      };
+    });
+
+    const serverTs = new Date().toISOString();
+    res.set('Cache-Control', 'public, max-age=300'); // 5-min CDN cache is fine
+    res.json({ prices, servedAt: serverTs, realCount: dbRows.length });
+  } catch (err) {
+    console.error('GET /admin/prices/public error:', err.message);
+    // Graceful fallback: serve base prices as sample data
+    const BASE_FALLBACK = [
+      { key: 'گندم', nameEn: 'Wheat', base: 3900, unit: 'من (40 کلو)', category: 'اناج' },
+      { key: 'کپاس', nameEn: 'Cotton', base: 9500, unit: 'من (40 کلو)', category: 'نقدی فصل' },
+      { key: 'DAP کھاد', nameEn: 'DAP', base: 10500, unit: 'بوری (50 کلو)', category: 'کھاد' },
+    ];
+    res.json({
+      prices: BASE_FALLBACK.map((i, idx) => ({ ...i, id: idx+1, nameUrdu: i.key, price: i.base,
+        isReal: false, sourceNote: 'fallback', updatedAt: null,
+        dataLabel: 'دیٹا دستیاب نہیں — حوالہ قیمت', dataLabelEn: 'Data unavailable — reference only' })),
+      servedAt: new Date().toISOString(), realCount: 0, error: 'db_unavailable'
+    });
+  }
 });
 
 // ─── PUT /api/admin/prices ────────────────────────────────────────────────────
-router.put('/prices', requireAdmin, (req, res) => {
-  const { crop, price } = req.body;
+// Admin enters a real mandi price. Persisted to PostgreSQL.
+router.put('/prices', requireAdmin, async (req, res) => {
+  const { crop, price, sourceNote } = req.body;
   if (!crop || price == null) return res.status(400).json({ error: 'crop and price required' });
-  if (price < 0) return res.status(400).json({ error: 'Price must be positive' });
+  const p = Number(price);
+  if (isNaN(p) || p <= 0) return res.status(400).json({ error: 'Price must be a positive number' });
 
-  if (price === 0) {
-    delete priceOverrides[crop];
-    return res.json({ success: true, action: 'reset', crop });
+  try {
+    if (p === 0) {
+      // price=0 means remove (revert to sample)
+      await db.deletePriceDB(crop);
+      return res.json({ success: true, action: 'reset', crop });
+    }
+    const note = typeof sourceNote === 'string' && sourceNote.trim()
+      ? sourceNote.trim()
+      : 'admin-entry';
+    const saved = await db.setPriceDB(crop, p, note);
+    if (!saved) {
+      // DB not available — still acknowledge but warn
+      return res.status(503).json({ error: 'Database not available — price not persisted' });
+    }
+    console.log(`✅ Admin set real price: ${crop} = ₨${p} (${note})`);
+    res.json({ success: true, action: 'saved-to-db', crop, price: p, sourceNote: note });
+  } catch (err) {
+    console.error('PUT /admin/prices error:', err.message);
+    res.status(500).json({ error: 'Failed to save price' });
   }
+});
 
-  priceOverrides[crop] = Number(price);
-  res.json({ success: true, action: 'updated', crop, price: priceOverrides[crop] });
+// ─── DELETE /api/admin/prices/:crop ──────────────────────────────────────────
+// Revert a single crop to sample data
+router.delete('/prices/:crop', requireAdmin, async (req, res) => {
+  try {
+    await db.deletePriceDB(decodeURIComponent(req.params.crop));
+    res.json({ success: true, action: 'reverted-to-sample', crop: req.params.crop });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete price' });
+  }
 });
 
 // ─── DELETE /api/admin/prices/reset ──────────────────────────────────────────
-router.delete('/prices/reset', requireAdmin, (req, res) => {
-  priceOverrides = {};
-  res.json({ success: true, message: 'All price overrides reset to defaults' });
+// Kept for compatibility — now a no-op warning since prices are in DB
+router.delete('/prices/reset', requireAdmin, async (req, res) => {
+  // To reset all, drop and recreate table — not exposed for safety
+  res.json({ success: false, message: 'Use DELETE /api/admin/prices/:crop to reset individual crops. Full reset not exposed for safety.' });
 });
+
 
 // ─── GET /api/admin/recent ────────────────────────────────────────────────────
 router.get('/recent', requireAdmin, async (req, res) => {
@@ -435,4 +573,3 @@ router.delete('/schemes/:id', requireAdmin, (req, res) => {
 });
 
 module.exports = router;
-module.exports.getPriceOverrides = () => ({ ...priceOverrides });

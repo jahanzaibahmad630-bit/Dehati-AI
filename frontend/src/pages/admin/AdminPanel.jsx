@@ -168,60 +168,126 @@ function UsersTab() {
   );
 }
 
-// ── Prices Tab ─────────────────────────────────────────────────────────────────
+// ── Prices Tab ───────────────────────────────────────────────────────────────
 function PricesTab() {
-  const [prices, setPrices]   = useState({});
-  const [editing, setEditing] = useState({});
-  const [saving, setSaving]   = useState('');
-  const [msg, setMsg]         = useState('');
+  const [prices, setPrices]     = useState({});
+  const [editing, setEditing]   = useState({});
+  const [sourceNotes, setNotes] = useState({});
+  const [saving, setSaving]     = useState('');
+  const [msg, setMsg]           = useState('');
+  const [realCount, setRealCount] = useState(0);
 
-  useEffect(() => {
+  const load = () => {
     adminFetch('/prices').then(r => r.json()).then(d => {
       setPrices(d.prices || {});
-      const init = {};
-      Object.entries(d.prices || {}).forEach(([k, v]) => { init[k] = v.effective; });
-      setEditing(init);
-    });
-  }, []);
+      setRealCount(d.realCount || 0);
+      const initEdit = {}, initNotes = {};
+      Object.entries(d.prices || {}).forEach(([k, v]) => {
+        initEdit[k]  = v.dbPrice ?? v.base;   // show current real price if set, else base
+        initNotes[k] = v.sourceNote || 'admin-entry';
+      });
+      setEditing(initEdit);
+      setNotes(initNotes);
+    }).catch(() => setMsg('❌ Failed to load prices'));
+  };
+
+  useEffect(() => { load(); }, []);
 
   const save = async (crop) => {
     setSaving(crop);
     try {
-      await adminFetch('/prices', { method: 'PUT', body: JSON.stringify({ crop, price: Number(editing[crop]) }) });
-      setMsg(`✅ ${crop} updated to ₨${Number(editing[crop]).toLocaleString()}`);
-      setTimeout(() => setMsg(''), 3000);
-    } catch { setMsg('❌ Save failed'); }
+      const body = {
+        crop,
+        price: Number(editing[crop]),
+        sourceNote: sourceNotes[crop] || 'admin-entry'
+      };
+      const res = await adminFetch('/prices', { method: 'PUT', body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+      setMsg(`✅ ${crop} saved to DB — ₨${Number(editing[crop]).toLocaleString()} (${body.sourceNote})`);
+      setTimeout(() => { setMsg(''); load(); }, 3000);
+    } catch (e) { setMsg(`❌ ${e.message}`); }
     setSaving('');
   };
 
-  const resetAll = async () => {
-    if (!confirm('Reset all prices to defaults?')) return;
-    await adminFetch('/prices/reset', { method: 'DELETE' });
-    setMsg('✅ All prices reset to defaults');
-    setTimeout(() => setMsg(''), 3000);
+  const revert = async (crop) => {
+    if (!confirm(`Revert “${crop}” to sample/reference data?`)) return;
+    await adminFetch(`/prices/${encodeURIComponent(crop)}`, { method: 'DELETE' });
+    setMsg(`↩️ ${crop} reverted to sample data`);
+    setTimeout(() => { setMsg(''); load(); }, 2500);
   };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <p style={{ color: '#6b7280', fontSize: '.875rem' }}>Edit base prices (in-memory, resets on redeploy)</p>
-        <button onClick={resetAll} style={btnStyle('#dc2626')}>🔄 Reset All</button>
+      <div style={{ marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
+          <div>
+            <p style={{ color: '#6b7280', fontSize: '.875rem', margin: 0 }}>
+              Enter today’s real mandi prices. Stored in PostgreSQL — <strong>survives restarts</strong>.
+            </p>
+            <p style={{ color: '#6b7280', fontSize: '.75rem', margin: '2px 0 0' }}>
+              Prices without a real entry show as “Sample data” to farmers.
+            </p>
+          </div>
+          <span style={{
+            background: realCount > 0 ? '#f0fdf4' : '#fffbeb',
+            color: realCount > 0 ? '#16a34a' : '#92400e',
+            border: `1px solid ${realCount > 0 ? '#bbf7d0' : '#fde68a'}`,
+            borderRadius: 20, padding: '4px 12px', fontSize: '.8rem', fontWeight: 700
+          }}>
+            {realCount > 0 ? `✅ ${realCount} real` : '📊 all sample'}
+          </span>
+        </div>
       </div>
-      {msg && <div style={{ background: '#f0fdf4', color: '#16a34a', padding: '.6rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '.875rem', fontWeight: 600 }}>{msg}</div>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '.75rem' }}>
+
+      {msg && <div style={{ background: msg.startsWith('✅') ? '#f0fdf4' : '#fef2f2', color: msg.startsWith('✅') ? '#16a34a' : '#dc2626', padding: '.6rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '.875rem', fontWeight: 600 }}>{msg}</div>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '.75rem' }}>
         {Object.entries(prices).map(([crop, data]) => (
-          <div key={crop} style={{ background: 'white', borderRadius: 12, padding: '1rem', border: '1.5px solid #e5e7eb', boxShadow: '0 1px 6px rgba(0,0,0,.05)' }}>
-            <div style={{ fontWeight: 700, marginBottom: '.5rem', fontSize: '.9rem' }}>{crop}</div>
-            <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
-              <span style={{ color: '#6b7280', fontSize: '.75rem', fontFamily: 'monospace' }}>Base: ₨{data.base?.toLocaleString()}</span>
+          <div key={crop} style={{
+            background: 'white', borderRadius: 12, padding: '1rem',
+            border: `2px solid ${data.isReal ? '#bbf7d0' : '#e5e7eb'}`,
+            boxShadow: '0 1px 6px rgba(0,0,0,.05)'
+          }}>
+            {/* Crop name + status */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
+              <div style={{ fontWeight: 700, fontSize: '.9rem' }}>{crop}</div>
+              <span style={{
+                fontSize: '.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                background: data.isReal ? '#dcfce7' : '#fef9c3',
+                color: data.isReal ? '#15803d' : '#854d0e'
+              }}>
+                {data.isReal ? '✅ Real (DB)' : '📊 Sample'}
+              </span>
             </div>
-            <div style={{ display: 'flex', gap: '.5rem', marginTop: '.5rem' }}>
-              <input
-                type="number"
-                value={editing[crop] || ''}
-                onChange={e => setEditing(prev => ({ ...prev, [crop]: e.target.value }))}
-                style={{ flex: 1, padding: '.5rem .75rem', borderRadius: 8, border: '2px solid #e5e7eb', fontSize: '.875rem', fontFamily: 'Inter, sans-serif' }}
-              />
+
+            {/* Reference + current DB price */}
+            <div style={{ fontSize: '.72rem', color: '#6b7280', marginBottom: '.4rem', fontFamily: 'Inter' }}>
+              Reference: ₨{data.base?.toLocaleString()}
+              {data.isReal && <span style={{ color: '#16a34a', marginLeft: 8 }}>DB: ₨{data.dbPrice?.toLocaleString()}</span>}
+              {data.updatedAt && <span style={{ color: '#9ca3af', marginLeft: 6 }}>· {new Date(data.updatedAt).toLocaleDateString()}</span>}
+            </div>
+
+            {/* Price input */}
+            <input
+              type="number"
+              value={editing[crop] || ''}
+              onChange={e => setEditing(prev => ({ ...prev, [crop]: e.target.value }))}
+              placeholder="Enter today's real price (PKR)"
+              style={{ width: '100%', padding: '.5rem .75rem', borderRadius: 8, border: '2px solid #e5e7eb', fontSize: '.875rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', marginBottom: '.4rem' }}
+            />
+
+            {/* Source note input */}
+            <input
+              type="text"
+              value={sourceNotes[crop] || ''}
+              onChange={e => setNotes(prev => ({ ...prev, [crop]: e.target.value }))}
+              placeholder="Source (e.g. Lahore mandi, TCP, self-verified)"
+              style={{ width: '100%', padding: '.4rem .75rem', borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: '.75rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', color: '#6b7280', marginBottom: '.5rem' }}
+            />
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: '.4rem' }}>
               <button
                 onClick={() => save(crop)}
                 disabled={saving === crop}
