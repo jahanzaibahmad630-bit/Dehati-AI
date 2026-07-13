@@ -284,30 +284,66 @@ router.post('/disease', aiLimiter, authenticateToken, async (req, res) => {
     if (!imageBase64) return res.status(400).json({ error: 'تصویر ضروری ہے' });
     if (!claude)       return res.json({ disease: 'AI دستیاب نہیں', cause: '', treatment: '', prevention: '', disabled: true });
 
-    // Security: whitelist MIME types — never pass user input directly to Claude
+    // Security: whitelist MIME types
     const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     const safeMime = ALLOWED_MIME.includes(mimeType) ? mimeType : 'image/jpeg';
+
     const month  = new Date().getMonth() + 1;
-    const season = (month >= 5 && month <= 10) ? 'خریف' : 'ربیع';
-    const cropText = cropName ? `فصل: ${cropName}\n` : '';
+    const season = (month >= 5 && month <= 10) ? 'خریف (Kharif)' : 'ربیع (Rabi)';
+    const cropText = cropName ? `Crop specified by farmer: ${cropName}\n` : 'Crop: not specified by farmer — identify from image if possible\n';
 
-    const prompt = `آپ ایک ماہر زرعی پیتھالوجسٹ ہیں۔ پنجاب پاکستان میں ${season} کا موسم ہے۔
+    // Expert-level system prompt
+    const systemPrompt = `You are Dr. Zara — a senior plant pathologist and agronomist with 20+ years of experience in Punjab, Pakistan. You have diagnosed thousands of crop diseases across wheat, rice, cotton, sugarcane, maize, vegetables, and fruits in Pakistani conditions.
+
+YOUR EXPERTISE includes:
+- All major Punjab crop diseases: wheat rust (yellow/brown/black), blast, blight, smut, Karnal bunt, powdery mildew
+- Cotton diseases: CLCuD (Cotton Leaf Curl), bacterial blight, Alternaria leaf spot, boll rot
+- Vegetable diseases: early/late blight (tomato/potato), downy mildew, fusarium wilt
+- Pest damage visual patterns: aphids, whitefly, thrips, stem borer, army worm, mites
+- Nutrient deficiencies that look like disease: nitrogen (yellowing), iron chlorosis, zinc deficiency
+- Abiotic stress: heat stress, waterlogging, herbicide damage, spray burn
+
+VISUAL INSPECTION PROTOCOL — examine the image for:
+1. Leaf color changes (yellowing, browning, purpling, whitening)
+2. Lesion patterns (spots, blotches, stripes, rings, halos)
+3. Lesion texture (water-soaked, dry, powdery, oily, sunken)
+4. Distribution (lower leaves first = soil-borne; upper = air-borne; random = insect)
+5. Stem/root symptoms if visible
+6. Fruiting bodies, spores, mycelium if visible
+7. Insect presence, frass, or feeding damage patterns
+8. Overall plant vigor and canopy color
+
+RESPONSE RULES:
+- Be SPECIFIC — name the exact disease/pest, not just "fungal infection"
+- If multiple diseases possible, list the most likely one first
+- Always consider the season context
+- Confidence: if image is unclear, say so honestly but still give best diagnosis
+- Use both Urdu AND common English name for each disease
+- Recommend ONLY medicines available in Pakistan (Topsin-M, Dithane M-45, Ridomil, Confidor, Actara, Karate, Coragen etc.)`;
+
+    const prompt = `Season: ${season}
 ${cropText}
-اس تصویر میں فصل کی حالت غور سے دیکھ کر بتائیں:
+TASK: Carefully examine every part of this crop image and provide a detailed disease/pest diagnosis.
 
-صرف اس فارمیٹ میں جواب دیں:
-بیماری: [بیماری/کیڑے کا نام — یا "صحت مند فصل"]
-وجہ: [بیماری کی بنیادی وجہ — پھپھوندی/بیکٹیریا/کیڑا/موسم]
-علاج: [پاکستان میں ملنے والی دوائی، مقدار، طریقہ]
-بچاؤ: [آئندہ کے لیے احتیاطی تدابیر]
+Respond STRICTLY in this exact format (use these exact Urdu labels):
 
-آسان اردو میں، ہر حصہ 1-2 جملوں میں۔`;
+بیماری: [Exact disease/pest name in Urdu + English — e.g., "گندم کا پیلا زنگ (Yellow Rust / Stripe Rust)"]
+شدت: [ہلکی / درمیانی / شدید — based on what you see]
+اعتماد: [کم / درمیانہ / زیادہ — your confidence in this diagnosis]
+وجہ: [Exact pathogen or cause — fungus/bacteria/virus/insect/nutrient deficiency/abiotic — be specific]
+علامات: [What you can see in THIS image — describe 2-3 visual symptoms observed]
+علاج: [Step-by-step treatment: specific medicine name + dose per acre/kanal + application method + timing]
+بچاؤ: [2-3 specific prevention measures for next season]
+فوری اقدام: [Yes/No + what to do in next 24-48 hours if urgent]
+
+If the crop looks HEALTHY: state "صحت مند فصل" clearly and describe what looks good.
+If image is unclear/blurry: still diagnose from available clues but note the image quality issue.`;
 
     const response = await claude.messages.create({
       model: CLAUDE_MODEL_VIS,
-      max_tokens: 1000,
-      temperature: 0.2,
-      system: `آپ پنجاب، پاکستان کے لیے ماہر زرعی بیماری تشخیص کار ہیں۔ صرف فصلوں اور پودوں کی بیماریاں تشخیص کریں۔ ہمیشہ پاکستان میں دستیاب علاج تجویز کریں۔`,
+      max_tokens: 1500,
+      temperature: 0.15,   // low temp = more deterministic, accurate diagnosis
+      system: systemPrompt,
       messages: [{
         role: 'user',
         content: [
@@ -321,23 +357,31 @@ ${cropText}
     });
 
     const text = response.content[0].text;
+
+    // Robust field extractor — handles multi-line values
     const extract = (field) => {
-      const match = text.match(new RegExp(`${field}:\\s*(.+?)(?=\\n\\S|$)`, 's'));
+      const regex = new RegExp(`${field}:\\s*([\\s\\S]+?)(?=\\n[^\\s].*:|$)`);
+      const match = text.match(regex);
       return match ? match[1].trim() : '';
     };
 
     res.json({
-      disease: extract('بیماری'),
-      cause:   extract('وجہ'),
-      treatment: extract('علاج'),
-      prevention: extract('بچاؤ'),
-      rawText: text
+      disease:       extract('بیماری'),
+      severity:      extract('شدت'),
+      confidence:    extract('اعتماد'),
+      cause:         extract('وجہ'),
+      symptoms:      extract('علامات'),
+      treatment:     extract('علاج'),
+      prevention:    extract('بچاؤ'),
+      urgentAction:  extract('فوری اقدام'),
+      rawText:       text
     });
   } catch (err) {
     console.error('Disease error:', err.message);
     res.status(500).json({ error: 'تصویر کا تجزیہ ناکام — دوبارہ کوشش کریں' });
   }
 });
+
 
 // ─── POST /api/ai/chat ─────────────────────────────────────────────────────────
 router.post('/chat', aiLimiter, authenticateToken, async (req, res) => {

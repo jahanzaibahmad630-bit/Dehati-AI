@@ -118,15 +118,59 @@ export async function guestLogin() {
 }
 
 // === Image compression helper ===
-export async function compressImage(file, maxSizeMB = 0.8) {
+// Uses canvas-based resize as primary (no extra memory from web worker)
+// Falls back to browser-image-compression for complex formats
+export async function compressImage(file, maxSizeMB = 0.4) {
+  // Step 1: Canvas-based resize — works on ALL phones, no memory spike
+  try {
+    const compressed = await canvasResize(file, 800, 0.82);
+    // If already small enough, use canvas result directly
+    if (compressed.size <= maxSizeMB * 1024 * 1024) return compressed;
+  } catch (_) {
+    // canvas failed — fall through to library
+  }
+
+  // Step 2: Library fallback (disabled web worker to prevent low-memory crash)
   const imageCompression = (await import('browser-image-compression')).default;
-  const options = {
+  return imageCompression(file, {
     maxSizeMB,
-    maxWidthOrHeight: 1024,
-    useWebWorker: true,
-    fileType: 'image/jpeg'
-  };
-  return imageCompression(file, options);
+    maxWidthOrHeight: 800,
+    useWebWorker: false,   // <-- CRITICAL: prevents "low memory" crash on cheap Android
+    fileType: 'image/jpeg',
+    initialQuality: 0.82
+  });
+}
+
+// Canvas-based resize: safest on low-RAM devices
+function canvasResize(file, maxDim, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      // Scale down if needed
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
+        else                { width  = Math.round((width  * maxDim) / height); height = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width  = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject(new Error('Canvas toBlob failed'));
+          resolve(new File([blob], 'compressed.jpg', { type: 'image/jpeg' }));
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
 }
 
 export async function fileToBase64(file) {
