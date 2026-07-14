@@ -1,8 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AIDisclaimer from '../components/ui/AIDisclaimer';
-import { askAI } from '../services/api';
-import { usePermission, PERMISSION_MESSAGES } from '../hooks/usePermission';
 import { useOffline } from '../hooks/useOffline';
 import { getDir, getFont, getAlign } from '../utils/textDir';
 import { usePWAInstall } from '../hooks/usePWAInstall';
@@ -86,14 +83,7 @@ function getPestAlert() {
 }
 
 export default function HomePage() {
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const recognitionRef = useRef(null);
   const { isOffline } = useOffline();
-  const micPerm = usePermission('microphone');
   const navigate = useNavigate();
 
   const season = getSeasonAdvice();
@@ -108,147 +98,102 @@ export default function HomePage() {
     window.open(`https://wa.me/?text=${msg}`, '_blank');
   };
 
-  const askQuestion = async (q) => {
-    if (!q.trim()) return;
-    if (isOffline) { setError('انٹرنیٹ نہیں — AI بند ہے'); return; }
-    setLoading(true); setError(''); setAnswer('');
-    try {
-      const data = await askAI(q);
-      setAnswer(data.answer);
-    } catch (err) {
-      setError(err.message || 'جواب نہیں ملا — دوبارہ کوشش کریں');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = (e) => { e.preventDefault(); askQuestion(question); };
-  const handleChip = (q) => { setQuestion(q); askQuestion(q); };
-
-  const startVoice = () => {
-    micPerm.requestWithPrePrompt(() => {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) { setError('آپ کا براؤزر آواز نہیں سمجھتا'); return; }
-      const recognition = new SR();
-      recognition.lang = 'ur-PK';
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognitionRef.current = recognition;
-      recognition.onstart = () => setIsRecording(true);
-      recognition.onend = () => setIsRecording(false);
-      recognition.onresult = (e) => {
-        const text = e.results[0][0].transcript;
-        setQuestion(text);
-        askQuestion(text);
-      };
-      recognition.onerror = () => { setIsRecording(false); setError('آواز نہیں سمجھ آئی — دوبارہ کوشش کریں'); };
-      recognition.start();
-    });
-  };
-
-  const speak = (text) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.lang = 'ur-PK'; utt.rate = 0.85;
-    window.speechSynthesis.speak(utt);
-  };
-
-  const shareWhatsApp = (text) => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(`🌾 DehatiAI جواب:\n\n${text}`)}`, '_blank');
-  };
-
-  const copyText = async (text) => {
-    try { await navigator.clipboard.writeText(text); } catch {}
-  };
+  // Today's greeting based on time
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'صبح بخیر' : hour < 17 ? 'دوپہر بخیر' : 'شام بخیر';
+  const today = new Date().toLocaleDateString('ur-PK', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <div className="page">
       <div className="page-content">
 
-        {/* ── Voice Hero ── */}
-        <div className="voice-hero">
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <p style={{ fontSize: '.78rem', opacity: .75, marginBottom: '.5rem' }}>
-              {season.icon} {season.season} موسم • {season.crops}
-            </p>
-            <h2 style={{ color: 'white', fontSize: '1.3rem', marginBottom: '.25rem' }}>بول کر پوچھیں 🎤</h2>
-            <p style={{ fontSize: '.78rem', opacity: .75, marginBottom: '1rem' }}>
-              اردو، پنجابی، یا English میں
-            </p>
+        {/* ── Hero Greeting Banner ── */}
+        <div style={{
+          background: 'linear-gradient(145deg, #1a3a0f 0%, #2F4A1E 60%, #3a5a25 100%)',
+          borderRadius: 20, padding: '1.25rem 1.25rem 1rem',
+          color: 'white', position: 'relative', overflow: 'hidden'
+        }}>
+          {/* Decorative circles */}
+          <div style={{
+            position: 'absolute', top: -30, left: -30, width: 120, height: 120,
+            borderRadius: '50%', background: 'rgba(255,255,255,.04)', pointerEvents: 'none'
+          }} />
+          <div style={{
+            position: 'absolute', bottom: -20, right: -20, width: 90, height: 90,
+            borderRadius: '50%', background: 'rgba(251,192,45,.08)', pointerEvents: 'none'
+          }} />
 
-            <button
-              id="home-mic-btn"
-              className={`voice-mic-btn${isRecording ? ' recording' : ''}`}
-              onClick={startVoice}
-              aria-label="آواز سے سوال کریں"
-            >
-              {isRecording ? '🔴' : '🎤'}
-            </button>
-            <p style={{ fontSize: '.75rem', opacity: .7, marginTop: '.5rem' }}>
-              {isRecording ? 'سن رہا ہوں...' : 'دبائیں اور بولیں'}
-            </p>
-
-            {/* Text input */}
-            <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '.5rem', marginTop: '1rem' }}>
-              <input
-                id="home-question-input"
-                className="input"
-                dir={getDir(question)}
-                style={{
-                  flex: 1,
-                  background: 'rgba(255,255,255,.15)',
-                  color: 'white',
-                  borderColor: 'rgba(251,192,45,.4)',
-                  fontSize: '.9rem',
-                  fontFamily: getFont(question),
-                  textAlign: getAlign(question),
-                  transition: 'text-align .1s'
-                }}
-                placeholder="سوال لکھیں... / Type your question..."
-                value={question}
-                onChange={e => setQuestion(e.target.value)}
-              />
-              <button
-                type="submit"
-                className="btn"
-                style={{ background: 'var(--gold)', color: '#1a2f0e', fontWeight: 800, minHeight: 48, padding: '0 1rem' }}
-                disabled={loading || !question.trim()}
-                id="home-send-btn"
-              >
-                {loading ? '⏳' : '▶'}
-              </button>
-            </form>
+          {/* Date + greeting */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '.75rem' }}>
+            <div>
+              <div style={{ fontSize: '1.5rem', lineHeight: 1 }}>{season.icon}</div>
+              <div style={{ fontWeight: 800, fontSize: '1.05rem', marginTop: '.3rem' }}>{greeting}!</div>
+              <div style={{ fontSize: '.72rem', opacity: .7, marginTop: '.15rem', fontFamily: 'Inter, sans-serif' }}>{today}</div>
+            </div>
+            <div style={{
+              background: 'rgba(251,192,45,.2)', border: '1px solid rgba(251,192,45,.4)',
+              borderRadius: 10, padding: '5px 10px', textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '.65rem', opacity: .8 }}>{season.season}</div>
+              <div style={{ fontSize: '.7rem', fontWeight: 700, color: '#fde68a' }}>{season.crops.split('،')[0]}</div>
+            </div>
           </div>
 
-          {/* Permission modals */}
-          {micPerm.showPrePrompt && (
-            <div className="permission-modal">
-              <div className="permission-modal-content">
-                <div style={{ fontSize: '2.5rem', marginBottom: '.75rem' }}>🎤</div>
-                <h3 style={{ marginBottom: '.75rem' }}>{PERMISSION_MESSAGES.microphone.title}</h3>
-                <p style={{ fontSize: '.9rem', marginBottom: '1.25rem', color: 'var(--text-secondary)' }}>
-                  {PERMISSION_MESSAGES.microphone.body}
-                </p>
-                <div style={{ display: 'flex', gap: '.75rem' }}>
-                  <button className="btn btn-outline" style={{ flex: 1 }} onClick={micPerm.dismissPrePrompt}>بعد میں</button>
-                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={micPerm.proceedAfterPrePrompt} id="mic-allow-btn">اجازت دیں ✓</button>
-                </div>
-              </div>
+          {/* Pest / season alert strip */}
+          {pestAlert.alert && (
+            <div style={{
+              background: 'rgba(239,68,68,.15)', border: '1px solid rgba(239,68,68,.35)',
+              borderRadius: 8, padding: '6px 10px', fontSize: '.72rem',
+              color: '#fca5a5', marginBottom: '.75rem', direction: 'rtl'
+            }}>
+              ⚠️ {pestAlert.msg}
             </div>
           )}
-          {micPerm.showDeniedModal && (
-            <div className="permission-modal">
-              <div className="permission-modal-content">
-                <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>🔇</div>
-                <h3 style={{ marginBottom: '.75rem' }}>{PERMISSION_MESSAGES.microphone.deniedTitle}</h3>
-                <p style={{ fontSize: '.85rem', color: 'var(--text-secondary)', marginBottom: '.75rem' }}>
-                  {PERMISSION_MESSAGES.microphone.deniedBody}
-                </p>
-                <button className="btn btn-primary btn-full" onClick={micPerm.dismissDeniedModal} id="mic-denied-close-btn">ٹھیک ہے</button>
-              </div>
-            </div>
-          )}
+
+          {/* Action buttons row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.5rem' }}>
+            <button
+              id="hero-chat-btn"
+              onClick={() => navigate('/chat')}
+              style={{
+                background: '#fbc02d', color: '#1a2f0e',
+                border: 'none', borderRadius: 12, padding: '10px 6px',
+                fontWeight: 800, fontSize: '.78rem', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4
+              }}
+            >
+              <span style={{ fontSize: '1.4rem' }}>🤖</span>
+              AI سے پوچھیں
+            </button>
+            <button
+              id="hero-disease-btn"
+              onClick={() => navigate('/disease')}
+              style={{
+                background: 'rgba(255,255,255,.12)', color: 'white',
+                border: '1px solid rgba(255,255,255,.2)',
+                borderRadius: 12, padding: '10px 6px',
+                fontWeight: 700, fontSize: '.78rem', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4
+              }}
+            >
+              <span style={{ fontSize: '1.4rem' }}>🔬</span>
+              بیماری چیک
+            </button>
+            <button
+              id="hero-weather-btn"
+              onClick={() => navigate('/weather')}
+              style={{
+                background: 'rgba(255,255,255,.12)', color: 'white',
+                border: '1px solid rgba(255,255,255,.2)',
+                borderRadius: 12, padding: '10px 6px',
+                fontWeight: 700, fontSize: '.78rem', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4
+              }}
+            >
+              <span style={{ fontSize: '1.4rem' }}>🌤️</span>
+              موسم دیکھیں
+            </button>
+          </div>
         </div>
 
         {/* ── Info Grid 2×2 ── */}

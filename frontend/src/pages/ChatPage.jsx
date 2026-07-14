@@ -33,15 +33,119 @@ function formatTime(date) {
 // ── Waveform animation bars ────────────────────────────────────────────────────
 function Waveform() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 3, height: 24 }}>
-      {[1, 2, 3, 4, 5, 6, 7].map(i => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 3, height: 28 }}>
+      {[1,2,3,4,5,6,7,8,9].map(i => (
         <div key={i} style={{
-          width: 3, borderRadius: 3,
+          width: 3.5, borderRadius: 4,
           background: 'white',
-          animation: `waveBar${i} 0.8s ease-in-out infinite`,
-          animationDelay: `${(i - 1) * 0.1}s`
+          animation: `waveBar${((i-1)%7)+1} 0.7s ease-in-out infinite`,
+          animationDelay: `${(i-1)*0.08}s`
         }} />
       ))}
+    </div>
+  );
+}
+
+// ── WhatsApp-style full-screen mic overlay ─────────────────────────────────────
+function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCancel }) {
+  const hasText = (finalText + interimText).trim().length > 0;
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 999,
+      background: 'rgba(0,0,0,0.85)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      animation: 'overlayFadeIn 0.2s ease-out'
+    }}>
+
+      {/* Transcript box */}
+      <div style={{
+        width: '80%', maxWidth: 340,
+        background: 'rgba(255,255,255,0.08)',
+        borderRadius: 16, padding: '16px 18px',
+        minHeight: 72, marginBottom: 32,
+        border: '1px solid rgba(255,255,255,0.15)',
+        textAlign: 'center'
+      }}>
+        {(finalText || interimText) ? (
+          <div style={{
+            color: 'white', fontSize: '1rem', lineHeight: 1.8,
+            fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl'
+          }}>
+            <span style={{ color: '#fff' }}>{finalText}</span>
+            {interimText && (
+              <span style={{ color: 'rgba(255,255,255,0.55)', fontStyle: 'italic' }}>
+                {finalText ? ' ' : ''}{interimText}
+              </span>
+            )}
+          </div>
+        ) : (
+          <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '.85rem' }}>
+            {isListening ? 'بول رہے ہیں...' : 'تیار...'}
+          </div>
+        )}
+      </div>
+
+      {/* Ripple mic button */}
+      <div style={{ position: 'relative', width: 90, height: 90, marginBottom: 32 }}>
+        {/* Ripple rings — only when listening */}
+        {isListening && [1,2,3].map(i => (
+          <div key={i} style={{
+            position: 'absolute', inset: 0,
+            borderRadius: '50%',
+            border: '2px solid rgba(220,38,38,0.5)',
+            animation: `ripple 1.8s ease-out infinite`,
+            animationDelay: `${(i-1)*0.6}s`
+          }} />
+        ))}
+        <button
+          onClick={isListening ? onStop : undefined}
+          style={{
+            width: 90, height: 90, borderRadius: '50%', border: 'none',
+            background: isListening
+              ? 'linear-gradient(135deg,#dc2626,#b91c1c)'
+              : 'linear-gradient(135deg,#2e5a27,#4a7c40)',
+            color: 'white', fontSize: '2.2rem',
+            cursor: 'pointer', position: 'relative', zIndex: 2,
+            boxShadow: isListening
+              ? '0 0 0 6px rgba(220,38,38,.25)'
+              : '0 4px 20px rgba(0,0,0,.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all .25s'
+          }}
+        >
+          {isListening ? '⏹' : '🎤'}
+        </button>
+      </div>
+
+      {/* Waveform (only when listening) */}
+      <div style={{ height: 36, marginBottom: 28, opacity: isListening ? 1 : 0, transition: 'opacity .3s' }}>
+        <Waveform />
+      </div>
+
+      {/* Bottom actions */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+        <button onClick={onCancel} style={{
+          background: 'rgba(255,255,255,0.12)', color: 'white',
+          border: '1px solid rgba(255,255,255,0.2)',
+          borderRadius: 24, padding: '10px 22px',
+          fontSize: '.85rem', fontWeight: 700, cursor: 'pointer'
+        }}>❌ منسوخ</button>
+
+        {hasText && (
+          <button onClick={onSend} style={{
+            background: 'linear-gradient(135deg,#2e5a27,#4a7c40)',
+            color: 'white', border: 'none',
+            borderRadius: 24, padding: '10px 28px',
+            fontSize: '.9rem', fontWeight: 800, cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(46,90,39,.5)'
+          }}>بھیجیں ➤</button>
+        )}
+      </div>
+
+      <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '.72rem', marginTop: 20, fontFamily: 'Inter, sans-serif' }}>
+        {isListening ? 'Tap ⏹ to stop recording' : 'Starting...'}
+      </div>
     </div>
   );
 }
@@ -161,9 +265,11 @@ export default function ChatPage() {
   ]);
   const [input, setInput]               = useState('');
   const [interimText, setInterimText]   = useState(''); // live speech transcript
+  const [finalSpeech, setFinalSpeech]   = useState(''); // finalized speech words
   const [language, setLanguage]         = useState('ur');
   const [isStreaming, setIsStreaming]   = useState(false);
   const [isListening, setIsListening]   = useState(false);
+  const [showMicOverlay, setShowMicOverlay] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
 
   const bottomRef      = useRef(null);
@@ -188,26 +294,18 @@ export default function ChatPage() {
   }, []);
 
   // ── Voice input ─────────────────────────────────────────────────────────────
-  const toggleSpeech = useCallback(() => {
+  const startListening = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
-      alert('آپ کا براؤزر آواز سپورٹ نہیں کرتا۔ Chrome استعمال کریں۔');
+      alert('آپ کا براؤزر آواز سپورٹ نہیں کرتا۔ Chrome یا Edge استعمال کریں۔');
       return;
     }
 
-    // Second tap → stop recording, finalize transcript
-    if (isListening) {
-      try { recognitionRef.current?.stop(); } catch {}
-      setIsListening(false);
-      // Move interim text to input if any
-      if (interimText.trim()) {
-        setInput(prev => (prev + ' ' + interimText).trim());
-        setInterimText('');
-      }
-      return;
-    }
+    // Show overlay first
+    setShowMicOverlay(true);
+    setFinalSpeech('');
+    setInterimText('');
 
-    // First tap → start recording
     const lang = LANGS.find(l => l.key === language)?.srLang || 'ur-PK';
     const recognition = new SR();
     recognition.lang = lang;
@@ -217,36 +315,66 @@ export default function ChatPage() {
 
     recognition.onstart = () => {
       setIsListening(true);
-      setInterimText('');
     };
 
     recognition.onresult = (e) => {
-      let finalText  = '';
-      let interim    = '';
+      let final  = '';
+      let interim = '';
       for (let i = 0; i < e.results.length; i++) {
         const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) finalText += t;
+        if (e.results[i].isFinal) final += t + ' ';
         else interim += t;
       }
-      // Finalized words go to input, interim shown live
-      if (finalText) setInput(prev => (prev + ' ' + finalText).trim());
+      if (final.trim()) setFinalSpeech(final.trim());
       setInterimText(interim);
     };
 
     recognition.onerror = (e) => {
       console.warn('Speech error:', e.error);
+      if (e.error === 'not-allowed') {
+        alert('مائیک کی اجازت دیں — Settings > Site Settings > Microphone');
+        setShowMicOverlay(false);
+      }
       setIsListening(false);
-      setInterimText('');
     };
 
     recognition.onend = () => {
       setIsListening(false);
-      setInterimText('');
+      // Don't close overlay — let user review + send
     };
 
     recognitionRef.current = recognition;
-    recognition.start();
-  }, [isListening, language, interimText]);
+    try { recognition.start(); } catch (err) { console.error(err); }
+  }, [language]);
+
+  const stopListening = useCallback(() => {
+    try { recognitionRef.current?.stop(); } catch {}
+    setIsListening(false);
+  }, []);
+
+  const sendVoiceMessage = useCallback(() => {
+    const text = (finalSpeech + ' ' + interimText).trim();
+    setShowMicOverlay(false);
+    setFinalSpeech('');
+    setInterimText('');
+    setIsListening(false);
+    try { recognitionRef.current?.stop(); } catch {}
+    if (text) sendMessage(text);
+  }, [finalSpeech, interimText]);
+
+  const cancelMic = useCallback(() => {
+    try { recognitionRef.current?.stop(); } catch {}
+    setIsListening(false);
+    setShowMicOverlay(false);
+    setFinalSpeech('');
+    setInterimText('');
+  }, []);
+
+  // Legacy toggle for input-bar mic button
+  const toggleSpeech = useCallback(() => {
+    if (showMicOverlay) { cancelMic(); return; }
+    startListening();
+  }, [showMicOverlay, startListening, cancelMic]);
 
   // ── Send message ────────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text) => {
@@ -390,15 +518,27 @@ export default function ChatPage() {
   };
 
   const displayInput = input + (interimText ? (input ? ' ' : '') + interimText : '');
-  const showMicOnly  = !input.trim() && !isListening; // WhatsApp: show mic when nothing typed
+  const showMicOnly  = !input.trim() && !isListening;
 
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
       height: '100dvh', maxWidth: 430, margin: '0 auto',
-      background: '#ece5dd', // WhatsApp-like background
+      background: '#ece5dd',
       position: 'relative', overflow: 'hidden'
     }}>
+
+      {/* ── WhatsApp Mic Overlay ── */}
+      {showMicOverlay && (
+        <MicOverlay
+          isListening={isListening}
+          interimText={interimText}
+          finalText={finalSpeech}
+          onStop={stopListening}
+          onSend={sendVoiceMessage}
+          onCancel={cancelMic}
+        />
+      )}
 
       {/* ── Header ── */}
       <div style={{
@@ -648,6 +788,14 @@ export default function ChatPage() {
           0%, 100% { box-shadow: 0 0 0 4px rgba(220,38,38,.3), 0 4px 12px rgba(220,38,38,.4); }
           50%       { box-shadow: 0 0 0 10px rgba(220,38,38,.1), 0 4px 12px rgba(220,38,38,.2); }
         }
+        @keyframes ripple {
+          0%   { transform: scale(1);   opacity: 0.7; }
+          100% { transform: scale(2.8); opacity: 0; }
+        }
+        @keyframes overlayFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
         @keyframes slideUp {
           from { transform: translateY(100%); opacity: 0; }
           to   { transform: translateY(0);    opacity: 1; }
@@ -656,15 +804,14 @@ export default function ChatPage() {
           to { transform: rotate(360deg); }
         }
         /* Waveform bars */
-        @keyframes waveBar1 { 0%,100%{height:4px} 50%{height:18px} }
-        @keyframes waveBar2 { 0%,100%{height:8px} 50%{height:22px} }
-        @keyframes waveBar3 { 0%,100%{height:6px} 50%{height:20px} }
-        @keyframes waveBar4 { 0%,100%{height:14px} 50%{height:24px} }
-        @keyframes waveBar5 { 0%,100%{height:6px} 50%{height:18px} }
-        @keyframes waveBar6 { 0%,100%{height:8px} 50%{height:22px} }
-        @keyframes waveBar7 { 0%,100%{height:4px} 50%{height:16px} }
+        @keyframes waveBar1 { 0%,100%{height:4px}  50%{height:16px} }
+        @keyframes waveBar2 { 0%,100%{height:8px}  50%{height:24px} }
+        @keyframes waveBar3 { 0%,100%{height:5px}  50%{height:20px} }
+        @keyframes waveBar4 { 0%,100%{height:14px} 50%{height:28px} }
+        @keyframes waveBar5 { 0%,100%{height:5px}  50%{height:20px} }
+        @keyframes waveBar6 { 0%,100%{height:8px}  50%{height:24px} }
+        @keyframes waveBar7 { 0%,100%{height:4px}  50%{height:16px} }
 
-        /* Hide scrollbar on quick replies */
         div::-webkit-scrollbar { height: 3px; width: 4px; }
         div::-webkit-scrollbar-track { background: transparent; }
         div::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 10px; }
