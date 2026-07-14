@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import Header from './components/layout/Header';
@@ -91,6 +92,24 @@ function AppShell() {
 // ── Root: split admin vs farmer ───────────────────────────────────────────────
 export default function App() {
   const isAdmin = window.location.pathname.startsWith('/admin');
+
+  // ── Auto-reload when new service worker is ready (skipWaiting already set) ──
+  // This ensures mobile users always get the latest version immediately
+  useRegisterSW({
+    onNeedRefresh() {
+      // New SW is waiting — reload right away (skipWaiting handles the rest)
+      window.location.reload();
+    },
+    onOfflineReady() {
+      console.log('DehatiAI ready for offline use');
+    },
+    onRegisteredSW(swUrl, r) {
+      // Check for SW updates every 60 seconds
+      if (r) {
+        setInterval(() => { r.update().catch(() => {}); }, 60 * 1000);
+      }
+    }
+  });
 
   if (isAdmin) {
     return (

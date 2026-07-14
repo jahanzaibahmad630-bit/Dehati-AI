@@ -64,6 +64,7 @@ export default defineConfig({
         // because the old SW keeps serving stale JS/CSS bundles
         skipWaiting: true,
         clientsClaim: true,
+        cleanupOutdatedCaches: true,
 
         // ── CRITICAL FIX ─────────────────────────────────────────────────────
         // For a React SPA, navigateFallback MUST be 'index.html' so the SW
@@ -72,8 +73,8 @@ export default defineConfig({
         // when the user WAS online (SW couldn't find a cached route match).
         navigateFallback: 'index.html',
 
-        // Never intercept API calls or admin routes with the SPA fallback
-        navigateFallbackDenylist: [/^\/api\//, /^\/admin/],
+        // Never intercept API calls, admin routes, or the reset page
+        navigateFallbackDenylist: [/^\/api\//, /^\/admin/, /^\/clear/],
 
         runtimeCaching: [
           // ── Weather API (Open-Meteo) — stale-while-revalidate, 1 hour ──────

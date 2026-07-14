@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2F4A1E" />
+  <title>DehatiAI — Cache Reset</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Nastaliq Urdu', 'Segoe UI', sans-serif;
+      background: #FBF3E1; min-height: 100dvh;
+      display: flex; align-items: center; justify-content: center;
+      direction: rtl; text-align: center; padding: 24px;
+    }
+    .card {
+      background: white; border-radius: 20px; padding: 32px 24px;
+      max-width: 340px; width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,.12);
+    }
+    h1 { color: #2F4A1E; font-size: 1.1rem; margin: 12px 0 8px; }
+    p  { color: #555; font-size: .85rem; line-height: 1.8; margin-bottom: 20px; }
+    .btn {
+      background: #2F4A1E; color: white;
+      border: none; border-radius: 12px;
+      padding: 14px 28px; font-size: 1rem;
+      font-weight: 700; cursor: pointer; width: 100%;
+      margin-bottom: 10px;
+    }
+    .btn-outline {
+      background: transparent; color: #2F4A1E;
+      border: 2px solid #2F4A1E;
+    }
+    .status {
+      font-size: .8rem; color: #16a34a;
+      margin-top: 12px; min-height: 20px;
+      font-family: Inter, sans-serif;
+    }
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: white; border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle; margin-left: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="font-size:3rem">🌾</div>
+    <h1>DehatiAI — ریسیٹ</h1>
+    <p>
+      اگر ایپ کام نہیں کر رہی تو یہ بٹن دبائیں۔<br/>
+      پرانا ڈیٹا صاف ہو کر نئی ایپ لوڈ ہو گی۔
+    </p>
+    <button class="btn" id="clearBtn" onclick="clearAll()">
+      🔄 ایپ ٹھیک کریں
+    </button>
+    <button class="btn btn-outline" onclick="goHome()">
+      🏠 ہوم پر جائیں
+    </button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <script>
+    async function clearAll() {
+      var btn = document.getElementById('clearBtn');
+      var status = document.getElementById('status');
+      btn.innerHTML = 'صاف ہو رہا ہے... <span class="spinner"></span>';
+      btn.disabled = true;
+      status.textContent = '';
+
+      var steps = [];
+
+      // 1. Unregister all service workers
+      if ('serviceWorker' in navigator) {
+        try {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          for (var r of regs) { await r.unregister(); steps.push('SW'); }
+        } catch(e) {}
+      }
+
+      // 2. Clear all caches
+      if ('caches' in window) {
+        try {
+          var names = await caches.keys();
+          for (var n of names) { await caches.delete(n); steps.push('cache:' + n); }
+        } catch(e) {}
+      }
+
+      // 3. Clear localStorage + sessionStorage
+      try { localStorage.clear(); sessionStorage.clear(); steps.push('storage'); } catch(e) {}
+
+      status.textContent = '✅ صاف ہو گیا (' + steps.length + ' items)';
+
+      // 4. Hard reload to home
+      setTimeout(function() {
+        window.location.replace('/?v=' + Date.now());
+      }, 1200);
+    }
+
+    function goHome() {
+      window.location.replace('/');
+    }
+  </script>
+</body>
+</html>
