@@ -11,13 +11,70 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="DehatiAI" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <!-- Open Graph -->
     <meta property="og:title" content="DehatiAI — کسان کا ذہین ساتھی" />
     <meta property="og:description" content="پنجاب کے کسانوں کا AI مددگار — فصل، موسم، مارکیٹ" />
     <meta property="og:url" content="https://dehati-ai.vercel.app" />
     <meta property="og:image" content="https://dehati-ai.vercel.app/icons/icon-512.png" />
     <title>DehatiAI — کسان کا ذہین ساتھی</title>
+
+    <!-- ── Self-healing: detect blank app and clear stale SW cache ────────── -->
+    <!-- If the app renders nothing after 6 seconds, unregister SW and reload -->
+    <script>
+      (function () {
+        var HEAL_KEY = 'dehati_heal_v3';
+        var healCount = parseInt(sessionStorage.getItem(HEAL_KEY) || '0', 10);
+
+        window.addEventListener('load', function () {
+          setTimeout(function () {
+            var root = document.getElementById('root');
+            // Blank = root exists but has no children (React didn't mount)
+            if (root && root.children.length === 0) {
+              if (healCount >= 2) {
+                // Tried twice already — show user-friendly message
+                root.innerHTML =
+                  '<div style="font-family:sans-serif;text-align:center;padding:40px 20px;direction:rtl;">' +
+                  '<div style="font-size:3rem;margin-bottom:16px;">🌾</div>' +
+                  '<h2 style="color:#2F4A1E;margin-bottom:12px;">DehatiAI لوڈ نہیں ہو رہی</h2>' +
+                  '<p style="color:#555;margin-bottom:20px;line-height:1.7;">انٹرنیٹ کنیکشن چیک کریں اور دوبارہ کوشش کریں۔</p>' +
+                  '<button onclick="sessionStorage.clear();location.reload(true)" ' +
+                  'style="background:#2F4A1E;color:white;border:none;border-radius:10px;padding:12px 28px;font-size:1rem;cursor:pointer;">' +
+                  'دوبارہ کوشش کریں</button></div>';
+                sessionStorage.removeItem(HEAL_KEY);
+                return;
+              }
+
+              // Increment heal counter, then nuke SW + caches and reload
+              sessionStorage.setItem(HEAL_KEY, String(healCount + 1));
+
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function (regs) {
+                  var promises = regs.map(function (r) { return r.unregister(); });
+                  return Promise.all(promises);
+                }).then(function () {
+                  if ('caches' in window) {
+                    return caches.keys().then(function (names) {
+                      return Promise.all(names.map(function (n) { return caches.delete(n); }));
+                    });
+                  }
+                }).then(function () {
+                  location.reload(true);
+                }).catch(function () {
+                  location.reload(true);
+                });
+              } else {
+                location.reload(true);
+              }
+            } else {
+              // App loaded fine — reset heal counter
+              sessionStorage.removeItem(HEAL_KEY);
+            }
+          }, 6000); // wait 6 s for React to mount
+        });
+      })();
+    </script>
+    <!-- ───────────────────────────────────────────────────────────────────── -->
   </head>
   <body>
     <div id="root"></div>

@@ -59,6 +59,12 @@ export default defineConfig({
         // Precache all built assets
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf}'],
 
+        // CRITICAL: Take control immediately when new SW is installed
+        // Without this, users get blank screens when a new build deploys
+        // because the old SW keeps serving stale JS/CSS bundles
+        skipWaiting: true,
+        clientsClaim: true,
+
         // ── CRITICAL FIX ─────────────────────────────────────────────────────
         // For a React SPA, navigateFallback MUST be 'index.html' so the SW
         // serves the app shell for all client-side routes (/, /chat, /weather…).
