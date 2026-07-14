@@ -9,7 +9,6 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
 
-      // Include all static assets in the precache
       includeAssets: [
         'favicon.svg',
         'offline.html',
@@ -57,15 +56,21 @@ export default defineConfig({
       },
 
       workbox: {
-        // Precache all JS/CSS/HTML/fonts/images
+        // Precache all built assets
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf}'],
 
-        // Offline fallback: if navigation fails (no internet), show /offline.html
-        navigateFallback: '/offline.html',
+        // ── CRITICAL FIX ─────────────────────────────────────────────────────
+        // For a React SPA, navigateFallback MUST be 'index.html' so the SW
+        // serves the app shell for all client-side routes (/, /chat, /weather…).
+        // Setting it to 'offline.html' caused the offline page to show even
+        // when the user WAS online (SW couldn't find a cached route match).
+        navigateFallback: 'index.html',
+
+        // Never intercept API calls or admin routes with the SPA fallback
         navigateFallbackDenylist: [/^\/api\//, /^\/admin/],
 
         runtimeCaching: [
-          // ── Weather API (Open-Meteo) — cache 1 hour ─────────────────────────
+          // ── Weather API (Open-Meteo) — stale-while-revalidate, 1 hour ──────
           {
             urlPattern: /^https:\/\/api\.open-meteo\.com/,
             handler: 'StaleWhileRevalidate',
@@ -75,7 +80,7 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] }
             }
           },
-          // ── Market prices public endpoint — cache 5 min ──────────────────────
+          // ── Market prices — stale-while-revalidate, 5 min ────────────────
           {
             urlPattern: ({ url }) => url.pathname.includes('/api/admin/prices/public'),
             handler: 'StaleWhileRevalidate',
@@ -85,7 +90,7 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] }
             }
           },
-          // ── Google Fonts (if used) — cache forever ──────────────────────────
+          // ── Google Fonts — cache forever ─────────────────────────────────
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com/,
             handler: 'CacheFirst',
@@ -103,7 +108,7 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] }
             }
           },
-          // ── App API calls — network first, fallback to cache ─────────────────
+          // ── All other API calls — network first (no SPA fallback) ─────────
           {
             urlPattern: ({ url }) =>
               url.pathname.startsWith('/api/') &&
@@ -119,9 +124,8 @@ export default defineConfig({
         ]
       },
 
-      // Dev mode: enable SW in development too (for testing)
       devOptions: {
-        enabled: false  // set to true temporarily if you want to test SW locally
+        enabled: false
       }
     })
   ],
