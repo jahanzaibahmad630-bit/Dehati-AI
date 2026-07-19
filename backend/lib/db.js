@@ -52,8 +52,21 @@ async function initDB() {
         source_note TEXT NOT NULL DEFAULT 'admin-entry',
         updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS chat_logs (
+        id          BIGSERIAL PRIMARY KEY,
+        user_id     TEXT,
+        user_name   TEXT,
+        user_phone  TEXT,
+        question    TEXT NOT NULL,
+        answer      TEXT,
+        language    TEXT DEFAULT 'ur',
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS chat_logs_created_idx ON chat_logs(created_at DESC);
+      CREATE INDEX IF NOT EXISTS chat_logs_user_idx    ON chat_logs(user_id);
     `);
-    console.log('✅ PostgreSQL tables ready (users + mandi_prices)');
+    console.log('✅ PostgreSQL tables ready (users + mandi_prices + chat_logs)');
   } catch (err) {
     console.error('❌ initDB error:', err.message);
   }
@@ -337,10 +350,54 @@ async function deletePriceDB(cropKey) {
   return true;
 }
 
+/**
+ * Save a chat question + answer to chat_logs table.
+ */
+async function saveChatLog({ userId, userName, userPhone, question, answer, language }) {
+  if (!pool) return;
+  try {
+    await pool.query(
+      `INSERT INTO chat_logs (user_id, user_name, user_phone, question, answer, language)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [userId || null, userName || null, userPhone || null,
+       question, answer || null, language || 'ur']
+    );
+  } catch (err) {
+    // Never crash the main flow if logging fails
+    console.warn('saveChatLog error:', err.message);
+  }
+}
+
+/**
+ * Get paginated chat logs for admin panel.
+ */
+async function getChatLogs({ page = 1, limit = 20, search = '' } = {}) {
+  if (!pool) return { logs: [], total: 0 };
+  const offset = (page - 1) * limit;
+  const where  = search ? `WHERE question ILIKE $3 OR user_name ILIKE $3` : '';
+  const params = search ? [limit, offset, `%${search}%`] : [limit, offset];
+
+  const [{ rows }, { rows: countRows }] = await Promise.all([
+    pool.query(
+      `SELECT id, user_id, user_name, user_phone, question, language, created_at
+       FROM chat_logs ${where}
+       ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+      params
+    ),
+    pool.query(
+      `SELECT COUNT(*) as c FROM chat_logs ${where}`,
+      search ? [`%${search}%`] : []
+    )
+  ]);
+
+  return { logs: rows, total: parseInt(countRows[0]?.c || 0, 10) };
+}
+
 module.exports = {
   pool, initDB, testConnection,
   findUserByPhone, createUser, getAllUsers,
   getTotalUserCount, getNewTodayCount, getRecentUsers,
   deleteUser, isUsingPersistentDB,
-  setPriceDB, getPricesDB, deletePriceDB
+  setPriceDB, getPricesDB, deletePriceDB,
+  saveChatLog, getChatLogs
 };

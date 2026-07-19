@@ -961,6 +961,7 @@ export default function AdminPanel({ onLogout }) {
         )}
 
         {tab === 'users'         && <><h2 style={h2}>Users Management</h2><UsersTab /></>}
+        {tab === 'chatlogs'      && <><h2 style={h2}>User Questions Log</h2><ChatLogsTab /></>}
         {tab === 'announcements' && <><h2 style={h2}>Announcements</h2><AnnouncementsTab /></>}
         {tab === 'schemes'       && <><h2 style={h2}>Government Schemes</h2><SchemesTab /></>}
         {tab === 'prices'        && <><h2 style={h2}>Market Prices Editor</h2><PricesTab /></>}
@@ -973,3 +974,112 @@ export default function AdminPanel({ onLogout }) {
 }
 
 const h2 = { fontSize: '1.2rem', fontWeight: 800, color: '#111827', marginBottom: '1.25rem' };
+
+// ── Chat Logs Tab ────────────────────────────────────────────────────────────────────
+function ChatLogsTab() {
+  const [logs, setLogs]       = useState([]);
+  const [total, setTotal]     = useState(0);
+  const [page, setPage]       = useState(1);
+  const [search, setSearch]   = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res  = await adminFetch(`/chatlogs?page=${page}&limit=30&search=${encodeURIComponent(search)}`);
+      const data = await res.json();
+      setLogs(data.logs || []);
+      setTotal(data.total || 0);
+    } catch { setLogs([]); }
+    setLoading(false);
+  }, [page, search]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const totalPages = Math.max(1, Math.ceil(total / 30));
+
+  function formatDate(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return d.toLocaleString('en-PK', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  const langBadge = (lang) => {
+    const map = { ur: { label: 'اردو', color: '#16a34a' }, pj: { label: 'پنجابی', color: '#d97706' }, en: { label: 'EN', color: '#2563eb' } };
+    const cfg = map[lang] || { label: lang, color: '#6b7280' };
+    return <span style={{ background: `${cfg.color}18`, color: cfg.color, borderRadius: 6, padding: '2px 8px', fontSize: '.72rem', fontWeight: 700 }}>{cfg.label}</span>;
+  };
+
+  return (
+    <div>
+      {/* Search + Stats */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Search questions or user names..."
+          style={{ flex: 1, minWidth: 200, padding: '.6rem 1rem', borderRadius: 8, border: '1.5px solid #e5e7eb', fontFamily: 'Inter, sans-serif', fontSize: '.875rem' }}
+        />
+        <span style={{ color: '#6b7280', fontSize: '.85rem', whiteSpace: 'nowrap' }}>
+          Total: <strong>{total}</strong> questions
+        </span>
+        <button onClick={load} style={{ padding: '.5rem 1rem', borderRadius: 8, border: '1px solid #e5e7eb', background: 'white', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+          🔄 Refresh
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af' }}>Loading...</div>
+      ) : logs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>💬</div>
+          <div>No questions yet. Questions will appear here as users chat.</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
+          {logs.map(log => (
+            <div key={log.id} style={{ background: 'white', borderRadius: 12, padding: '1rem 1.25rem', boxShadow: '0 1px 6px rgba(0,0,0,.06)', border: '1px solid #f0f0f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {langBadge(log.language)}
+                  {log.user_name && (
+                    <span style={{ fontWeight: 600, fontSize: '.82rem', color: '#111827' }}>👨‍🌾 {log.user_name}</span>
+                  )}
+                  {log.user_phone && (
+                    <span style={{ fontSize: '.78rem', color: '#6b7280' }}>{log.user_phone}</span>
+                  )}
+                </div>
+                <span style={{ fontSize: '.72rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{formatDate(log.created_at)}</span>
+              </div>
+              <div style={{
+                fontSize: '.9rem', color: '#111827', lineHeight: 1.7,
+                fontFamily: log.language !== 'en' ? '"Noto Nastaliq Urdu", serif' : 'Inter, sans-serif',
+                direction: log.language !== 'en' ? 'rtl' : 'ltr',
+                background: '#f9fafb', borderRadius: 8, padding: '.6rem .875rem'
+              }}>
+                {log.question}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+            style={{ padding: '.4rem .875rem', borderRadius: 8, border: '1px solid #e5e7eb', cursor: 'pointer', background: 'white', fontFamily: 'Inter, sans-serif' }}>
+            ← Prev
+          </button>
+          <span style={{ padding: '.4rem .875rem', color: '#6b7280', fontSize: '.875rem' }}>
+            {page} / {totalPages}
+          </span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+            style={{ padding: '.4rem .875rem', borderRadius: 8, border: '1px solid #e5e7eb', cursor: 'pointer', background: 'white', fontFamily: 'Inter, sans-serif' }}>
+            Next →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

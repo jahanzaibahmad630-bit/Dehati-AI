@@ -322,7 +322,7 @@ export default function ChatPage() {
   const startListening = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
-      alert('آپ کا براؤزر آواز سپورٹ نہیں کرتا۔ Chrome یا Edge استعمال کریں۔');
+      alert('آپ کا براؤزر آواز سپورٹ نہیں کرتا۔ Chrome استعمال کریں۔');
       return;
     }
 
@@ -332,62 +332,95 @@ export default function ChatPage() {
     setInterimText('');
 
     const lang = LANGS.find(l => l.key === language)?.srLang || 'ur-PK';
-    const recognition = new SR();
-    recognition.lang = lang;
-    recognition.continuous     = true;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
+    // Use a ref to accumulate speech across multiple recognition sessions
+    // (mobile Chrome stops after ~60s, so we restart automatically)
+    let accumulated = '';
+    let stopped = false; // set true when user manually stops
 
-    recognition.onresult = (e) => {
-      let final  = '';
-      let interim = '';
-      for (let i = 0; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) final += t + ' ';
-        else interim += t;
-      }
-      if (final.trim()) setFinalSpeech(final.trim());
-      setInterimText(interim);
-    };
+    function createRecognition() {
+      const recognition = new SR();
+      recognition.lang             = lang;
+      recognition.continuous       = false; // false = better mobile support
+      recognition.interimResults   = true;
+      recognition.maxAlternatives  = 1;
 
-    recognition.onerror = (e) => {
-      console.warn('Speech error:', e.error);
-      if (e.error === 'not-allowed') {
-        alert('مائیک کی اجازت دیں — Settings > Site Settings > Microphone');
-        setShowMicOverlay(false);
-      }
-      setIsListening(false);
-    };
+      recognition.onstart = () => setIsListening(true);
 
-    recognition.onend = () => {
-      setIsListening(false);
-      // Don't close overlay — let user review + send
-    };
+      recognition.onresult = (e) => {
+        let sessionFinal  = '';
+        let interim = '';
+        for (let i = 0; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript;
+          if (e.results[i].isFinal) sessionFinal += t + ' ';
+          else interim += t;
+        }
+        if (sessionFinal.trim()) {
+          accumulated += sessionFinal;
+          setFinalSpeech(accumulated.trim());
+        }
+        setInterimText(interim);
+      };
 
+      recognition.onerror = (e) => {
+        console.warn('Speech error:', e.error);
+        setIsListening(false);
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          stopped = true;
+          setShowMicOverlay(false);
+          alert('مائیک کی اجازت دیں:\nSettings → Site Settings → Microphone → Allow');
+        }
+        // 'no-speech' and 'network' are non-fatal — restart will handle it
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        // Auto-restart so user can keep speaking (mobile stops after a pause)
+        if (!stopped) {
+          setTimeout(() => {
+            if (!stopped) {
+              try {
+                const next = createRecognition();
+                recognitionRef.current = next;
+                next.start();
+              } catch {}
+            }
+          }, 200);
+        }
+      };
+
+      return recognition;
+    }
+
+    const recognition = createRecognition();
     recognitionRef.current = recognition;
-    try { recognition.start(); } catch (err) { console.error(err); }
+    // Expose stopper so stopListening/cancelMic can halt auto-restart
+    recognitionRef.current._stopped = () => { stopped = true; };
+    try { recognition.start(); } catch (err) {
+      console.error('Recognition start error:', err);
+      setShowMicOverlay(false);
+    }
   }, [language]);
 
   const stopListening = useCallback(() => {
+    try { recognitionRef.current?._stopped?.(); } catch {}
     try { recognitionRef.current?.stop(); } catch {}
     setIsListening(false);
   }, []);
 
   const sendVoiceMessage = useCallback(() => {
     const text = (finalSpeech + ' ' + interimText).trim();
+    try { recognitionRef.current?._stopped?.(); } catch {}
+    try { recognitionRef.current?.stop(); } catch {}
     setShowMicOverlay(false);
     setFinalSpeech('');
     setInterimText('');
     setIsListening(false);
-    try { recognitionRef.current?.stop(); } catch {}
     if (text) sendMessage(text);
   }, [finalSpeech, interimText]);
 
   const cancelMic = useCallback(() => {
+    try { recognitionRef.current?._stopped?.(); } catch {}
     try { recognitionRef.current?.stop(); } catch {}
     setIsListening(false);
     setShowMicOverlay(false);

@@ -2,6 +2,7 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const { authenticateToken } = require('../middleware/auth');
 const { aiLimiter } = require('../middleware/rateLimit');
+const db = require('../lib/db');
 
 const router = express.Router();
 
@@ -457,6 +458,7 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
     const heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
 
     // Stream with Claude
+    let fullReply = '';
     const stream = claude.messages.stream({
       model: CLAUDE_MODEL,
       max_tokens: 500,
@@ -466,13 +468,29 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
     });
 
     stream.on('text', (text) => {
-      if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      if (text) {
+        fullReply += text;
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      }
     });
 
     await stream.finalMessage();
     clearInterval(heartbeat);
     res.write('data: [DONE]\n\n');
     res.end();
+
+    // Save question + answer to chat_logs (non-blocking)
+    if (lastMsg.role === 'user' && fullReply) {
+      db.saveChatLog({
+        userId:    req.user?.id    || null,
+        userName:  req.user?.name  || null,
+        userPhone: req.user?.phone || null,
+        question:  lastMsg.content,
+        answer:    fullReply,
+        language
+      }).catch(() => {});
+    }
+
   } catch (err) {
     console.error('Chat stream error:', err.message);
     try {

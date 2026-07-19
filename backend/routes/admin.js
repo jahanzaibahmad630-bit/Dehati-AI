@@ -572,4 +572,18 @@ router.delete('/schemes/:id', requireAdmin, (req, res) => {
   res.json({ success: true, deletedId: id });
 });
 
+// ─── ADMIN: GET /api/admin/chatlogs ──────────────────────────────────────────────────
+router.get('/chatlogs', requireAdmin, async (req, res) => {
+  try {
+    const page   = parseInt(req.query.page   || '1',  10);
+    const limit  = parseInt(req.query.limit  || '30', 10);
+    const search = req.query.search || '';
+    const result = await db.getChatLogs({ page, limit, search });
+    res.json(result);
+  } catch (err) {
+    console.error('GET /chatlogs error:', err.message);
+    res.status(500).json({ error: 'Could not fetch chat logs' });
+  }
+});
+
 module.exports = router;

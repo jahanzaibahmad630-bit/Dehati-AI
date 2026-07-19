@@ -66,7 +66,7 @@ function signToken(user) {
       isGuest: user.is_guest || false
     },
     JWT_SECRET,
-    { expiresIn: '7d' }  // Reduced from 30d to 7d
+    { expiresIn: '30d' }  // 30 days — persistent login
   );
 }
 
