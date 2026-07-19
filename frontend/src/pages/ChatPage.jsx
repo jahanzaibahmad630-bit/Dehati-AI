@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useOffline } from '../hooks/useOffline';
 import { useAuth } from '../context/AuthContext';
 import { getDir, getFont, getAlign } from '../utils/textDir';
+import { searchOffline, saveAIAnswer, queueQuestion, getOfflineQueue, removeFromQueue } from '../services/offlineDB';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -167,9 +168,10 @@ function TypingDots() {
   );
 }
 
-// ── Message bubble ─────────────────────────────────────────────────────────────
+// ── Message bubble ─────────────────────────────────────────────────────
 function MessageBubble({ msg }) {
-  const isUser = msg.role === 'user';
+  const isUser    = msg.role === 'user';
+  const isOffline = msg.offline === true;
 
   // Detect direction from the actual message content
   const dir   = getDir(msg.content);
@@ -210,7 +212,9 @@ function MessageBubble({ msg }) {
             borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
             background: isUser
               ? 'linear-gradient(135deg, #2e5a27, #3d7a33)'
-              : 'white',
+              : isOffline
+                ? 'linear-gradient(135deg, #fef3c7, #fde68a)'
+                : 'white',
             color: isUser ? 'white' : '#111827',
             fontSize: dir === 'rtl' ? '0.95rem' : '0.9rem',
             lineHeight: dir === 'rtl' ? 1.9 : 1.6,
@@ -218,10 +222,12 @@ function MessageBubble({ msg }) {
             textAlign: align,
             boxShadow: isUser
               ? '0 2px 8px rgba(46,90,39,.3)'
-              : '0 1px 6px rgba(0,0,0,.08)',
+              : isOffline
+                ? '0 1px 6px rgba(251,192,45,.3)'
+                : '0 1px 6px rgba(0,0,0,.08)',
             wordBreak: 'break-word',
             whiteSpace: 'pre-wrap',
-            border: isUser ? 'none' : '1px solid #f0f0f0',
+            border: isUser ? 'none' : isOffline ? '1px solid #fbbf24' : '1px solid #f0f0f0',
           }}
         >
           {msg.streaming && msg.content === '' ? <TypingDots /> : formatContent(msg.content)}
@@ -272,6 +278,9 @@ export default function ChatPage() {
   const [isListening, setIsListening]   = useState(false);
   const [showMicOverlay, setShowMicOverlay] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
+  const [hasQueuedQuestions, setHasQueuedQuestions] = useState(
+    () => getOfflineQueue().length > 0
+  );
 
   const bottomRef      = useRef(null);
   const inputRef       = useRef(null);
@@ -405,11 +414,45 @@ export default function ChatPage() {
     }
 
     if (isOffline) {
-      setMessages(prev => [...prev,
-        { role: 'user', content: msg, time: new Date() },
-        { role: 'assistant', content: '📵 انٹرنیٹ نہیں ہے — آن لائن ہونے پر پوچھیں', time: new Date() }
-      ]);
+      const userMsg2 = { role: 'user', content: msg, time: new Date() };
+      setMessages(prev => [...prev, userMsg2]);
       setInput('');
+      setShowQuickReplies(false);
+
+      // Show searching indicator
+      const searchingMsg = { role: 'assistant', content: '', streaming: true, offline: true, time: new Date() };
+      setMessages(prev => [...prev, searchingMsg]);
+
+      // Search offline: AI cache first, then FAQ
+      const result = await searchOffline(msg);
+
+      if (result.found) {
+        const badge = result.source === 'cache'
+          ? '\n\n---\n📱 *یہ جواب آپ کے پچھلے سوال سے ملا*'
+          : '\n\n---\n📚 *آف لائن ڈیٹا بیس سے جواب*';
+        setMessages(prev => {
+          const copy = [...prev];
+          copy[copy.length - 1] = {
+            role: 'assistant',
+            content: result.answer + badge,
+            streaming: false, offline: true, time: new Date()
+          };
+          return copy;
+        });
+      } else {
+        // No match — queue the question
+        queueQuestion(msg);
+        setMessages(prev => {
+          const copy = [...prev];
+          copy[copy.length - 1] = {
+            role: 'assistant',
+            content: '📥 سوال محفوظ کر لیا گیا۔\n\nآن لائن ہونے پر یہ سوال خود بخود بھیج دیا جائے گا۔\n\n💡 *ابھی کے لیے: اپنے سوال میں گندم، کپاس، کھاد، پانی جیسے الفاظ ڈالیں — میرے پاس آف لائن جوابات ہو سکتے ہیں۔*',
+            streaming: false, offline: true, time: new Date()
+          };
+          return copy;
+        });
+        setHasQueuedQuestions(true);
+      }
       return;
     }
 
@@ -481,6 +524,9 @@ export default function ChatPage() {
         return copy;
       });
 
+      // Save to offline cache for future offline use
+      if (fullReply) saveAIAnswer(msg, fullReply).catch(() => {});
+
     } catch (err) {
       if (err.name === 'AbortError') {
         setMessages(prev => {
@@ -514,7 +560,7 @@ export default function ChatPage() {
     } finally {
       setIsStreaming(false);
     }
-  }, [input, isBusy, isListening, isOffline, language, messages]);
+  }, [input, isBusy, isListening, isOffline, language, messages, hasQueuedQuestions]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -532,6 +578,21 @@ export default function ChatPage() {
     setIsStreaming(false);
     setShowQuickReplies(true);
   };
+
+  // Auto-send queued questions when back online
+  useEffect(() => {
+    if (!isOffline && hasQueuedQuestions) {
+      const queue = getOfflineQueue();
+      if (queue.length > 0) {
+        setHasQueuedQuestions(false);
+        // Send the first queued question
+        const first = queue[0];
+        removeFromQueue(first.id);
+        setTimeout(() => sendMessage(first.question), 800);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOffline]);
 
   const displayInput = input + (interimText ? (input ? ' ' : '') + interimText : '');
   const showMicOnly  = !input.trim() && !isListening;
