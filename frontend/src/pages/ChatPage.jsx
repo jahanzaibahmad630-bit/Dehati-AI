@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useOffline } from '../hooks/useOffline';
 import { useAuth } from '../context/AuthContext';
 import { getDir, getFont, getAlign } from '../utils/textDir';
@@ -277,6 +278,7 @@ export default function ChatPage() {
   const abortRef       = useRef(null);
   const recognitionRef = useRef(null);
   const { isOffline }  = useOffline();
+  const [searchParams]  = useSearchParams();
 
   const isBusy = isStreaming;
 
@@ -284,6 +286,20 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, interimText]);
+
+  // Auto-send question from ?q= URL param (e.g. from homepage chips)
+  const autoSentRef = useRef(false);
+  useEffect(() => {
+    if (autoSentRef.current) return;
+    const q = searchParams.get('q');
+    if (q && q.trim()) {
+      autoSentRef.current = true;
+      // Small delay so the component is fully mounted
+      const t = setTimeout(() => sendMessage(q.trim()), 400);
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Cleanup on unmount
   useEffect(() => {

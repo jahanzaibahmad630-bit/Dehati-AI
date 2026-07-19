@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOffline } from '../hooks/useOffline';
-import { getDir, getFont, getAlign } from '../utils/textDir';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
 const QUICK_CHIPS = [
@@ -227,7 +225,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ── Quick Chips ── */}
+        {/* ── Quick Chips — navigate to Chat with pre-filled question ── */}
         <div>
           <div className="section-title">عام سوال</div>
           <div className="chips-scroll">
@@ -235,46 +233,14 @@ export default function HomePage() {
               <button
                 key={i}
                 className="chip"
-                onClick={() => handleChip(chip.question)}
+                onClick={() => navigate(`/chat?q=${encodeURIComponent(chip.question)}`)}
                 id={`quick-chip-${i}`}
-                disabled={loading}
               >
                 {chip.label}
               </button>
             ))}
           </div>
         </div>
-
-        {/* ── Error ── */}
-        {error && (
-          <div style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '.75rem 1rem', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: '.875rem' }}>
-            ⚠️ {error}
-          </div>
-        )}
-
-        {/* ── Loading ── */}
-        {loading && (
-          <div className="loading-container">
-            <div className="spinner" />
-            <p>AI سوچ رہا ہے...</p>
-          </div>
-        )}
-
-        {/* ── AI Answer ── */}
-        {answer && (
-          <div className="ai-response-card animate-fade-in-up">
-            <div className="ai-response-header">
-              <span style={{ fontWeight: 700, fontSize: '.9rem' }}>🌾 DehatiAI کا جواب</span>
-              <AIDisclaimer small />
-            </div>
-            <div className="ai-response-body">{answer}</div>
-            <div className="ai-response-actions">
-              <button className="btn btn-sm btn-whatsapp" onClick={() => shareWhatsApp(answer)} id="home-share-btn">📤 WhatsApp</button>
-              <button className="btn btn-sm btn-outline" onClick={() => speak(answer)} id="home-speak-btn">🔊 سنیں</button>
-              <button className="btn btn-sm btn-ghost" onClick={() => copyText(answer)} id="home-copy-btn">📋 کاپی</button>
-            </div>
-          </div>
-        )}
 
         {/* ── Advice Cards ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
