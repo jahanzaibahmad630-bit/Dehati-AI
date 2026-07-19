@@ -28,6 +28,9 @@ const LANGS = [
   { key: 'en', label: 'English', srLang: 'en-US' }
 ];
 
+// Detect iOS (Safari on iPhone/iPad doesn't support SpeechRecognition in PWA mode)
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
 function formatTime(date) {
   return date.toLocaleTimeString('ur-PK', { hour: '2-digit', minute: '2-digit' });
 }
@@ -49,7 +52,7 @@ function Waveform() {
 }
 
 // ── WhatsApp-style full-screen mic overlay ─────────────────────────────────────
-function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCancel }) {
+function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCancel, iosError }) {
   const hasText = (finalText + interimText).trim().length > 0;
   return (
     <div style={{
@@ -60,16 +63,25 @@ function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCan
       animation: 'overlayFadeIn 0.2s ease-out'
     }}>
 
-      {/* Transcript box */}
+      {/* Transcript box / iOS error */}
       <div style={{
         width: '80%', maxWidth: 340,
-        background: 'rgba(255,255,255,0.08)',
+        background: iosError ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.08)',
         borderRadius: 16, padding: '16px 18px',
         minHeight: 72, marginBottom: 32,
-        border: '1px solid rgba(255,255,255,0.15)',
+        border: iosError ? '1px solid rgba(220,38,38,0.4)' : '1px solid rgba(255,255,255,0.15)',
         textAlign: 'center'
       }}>
-        {(finalText || interimText) ? (
+        {iosError ? (
+          <div style={{ color: '#fca5a5', fontSize: '.9rem', lineHeight: 1.7, direction: 'rtl', fontFamily: '"Noto Nastaliq Urdu", serif' }}>
+            📱 آئی فون پر آواز کی سہولت
+            <br/>
+            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '.8rem' }}>
+              Chrome for Android میں مکمل کام کرتی ہے۔
+              <br/>ابھی ٹائپ کریں یا Android Chrome استعمال کریں۔
+            </span>
+          </div>
+        ) : (finalText || interimText) ? (
           <div style={{
             color: 'white', fontSize: '1rem', lineHeight: 1.8,
             fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl'
@@ -104,9 +116,11 @@ function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCan
           onClick={isListening ? onStop : undefined}
           style={{
             width: 90, height: 90, borderRadius: '50%', border: 'none',
-            background: isListening
-              ? 'linear-gradient(135deg,#dc2626,#b91c1c)'
-              : 'linear-gradient(135deg,#2e5a27,#4a7c40)',
+            background: iosError
+              ? 'linear-gradient(135deg,#6b7280,#4b5563)'
+              : isListening
+                ? 'linear-gradient(135deg,#dc2626,#b91c1c)'
+                : 'linear-gradient(135deg,#2e5a27,#4a7c40)',
             color: 'white', fontSize: '2.2rem',
             cursor: 'pointer', position: 'relative', zIndex: 2,
             boxShadow: isListening
@@ -116,7 +130,7 @@ function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCan
             transition: 'all .25s'
           }}
         >
-          {isListening ? '⏹' : '🎤'}
+          {iosError ? '❌' : isListening ? '⏹' : '🎤'}
         </button>
       </div>
 
@@ -145,8 +159,12 @@ function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCan
         )}
       </div>
 
-      <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '.72rem', marginTop: 20, fontFamily: 'Inter, sans-serif' }}>
-        {isListening ? 'Tap ⏹ to stop recording' : 'Starting...'}
+      <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '.72rem', marginTop: 20, fontFamily: 'Inter, sans-serif', textAlign: 'center', padding: '0 20px' }}>
+        {iosError
+          ? 'iPhone Safari — voice limited. Type or use Android Chrome.'
+          : isListening
+            ? 'Tap ⏹ to stop recording'
+            : 'Connecting to microphone...'}
       </div>
     </div>
   );
@@ -278,6 +296,7 @@ export default function ChatPage() {
   const [isListening, setIsListening]   = useState(false);
   const [showMicOverlay, setShowMicOverlay] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
+  const [iosError, setIosError]         = useState(false); // iOS Safari can't do voice
   const [hasQueuedQuestions, setHasQueuedQuestions] = useState(
     () => getOfflineQueue().length > 0
   );
@@ -322,33 +341,39 @@ export default function ChatPage() {
   const startListening = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
-      alert('آپ کا براؤزر آواز سپورٹ نہیں کرتا۔ Chrome استعمال کریں۔');
+      alert('آپ کا براؤزر آواز سپورٹ نہیں کرتا۔ Android Chrome استعمال کریں۔');
       return;
     }
 
-    // Show overlay first
+    // Show overlay, reset state
     setShowMicOverlay(true);
+    setIosError(false);
     setFinalSpeech('');
     setInterimText('');
 
     const lang = LANGS.find(l => l.key === language)?.srLang || 'ur-PK';
 
-    // Use a ref to accumulate speech across multiple recognition sessions
-    // (mobile Chrome stops after ~60s, so we restart automatically)
-    let accumulated = '';
-    let stopped = false; // set true when user manually stops
+    let accumulated   = '';
+    let stopped       = false;
+    let gotSpeech     = false;   // did we ever get actual text?
+    let emptyEnds     = 0;       // consecutive ends with no speech (iOS symptom)
+    const MAX_EMPTY   = isIOS ? 2 : 99; // iOS: give up after 2 empty cycles
 
     function createRecognition() {
       const recognition = new SR();
-      recognition.lang             = lang;
-      recognition.continuous       = false; // false = better mobile support
-      recognition.interimResults   = true;
-      recognition.maxAlternatives  = 1;
+      recognition.lang            = lang;
+      recognition.continuous      = false; // better mobile/iOS support
+      recognition.interimResults  = true;
+      recognition.maxAlternatives = 1;
 
-      recognition.onstart = () => setIsListening(true);
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
 
       recognition.onresult = (e) => {
-        let sessionFinal  = '';
+        gotSpeech = true;
+        emptyEnds = 0; // reset counter — real speech came through
+        let sessionFinal = '';
         let interim = '';
         for (let i = 0; i < e.results.length; i++) {
           const t = e.results[i][0].transcript;
@@ -368,25 +393,40 @@ export default function ChatPage() {
         if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
           stopped = true;
           setShowMicOverlay(false);
-          alert('مائیک کی اجازت دیں:\nSettings → Site Settings → Microphone → Allow');
+          alert('مائیک کی اجازت دیں:\nSettings → Safari → Microphone → Allow');
         }
-        // 'no-speech' and 'network' are non-fatal — restart will handle it
+        if (e.error === 'service-not-allowed' && isIOS) {
+          stopped = true;
+          setIosError(true);
+        }
       };
 
       recognition.onend = () => {
         setIsListening(false);
-        // Auto-restart so user can keep speaking (mobile stops after a pause)
-        if (!stopped) {
-          setTimeout(() => {
-            if (!stopped) {
-              try {
-                const next = createRecognition();
-                recognitionRef.current = next;
-                next.start();
-              } catch {}
-            }
-          }, 200);
+        if (stopped) return;
+
+        if (!gotSpeech) {
+          emptyEnds++;
         }
+
+        // iOS symptom: keeps ending immediately with no speech
+        if (emptyEnds >= MAX_EMPTY) {
+          stopped = true;
+          setIosError(true); // show helpful iOS message
+          return;
+        }
+
+        // Auto-restart (Android Chrome / desktop)
+        setTimeout(() => {
+          if (!stopped) {
+            try {
+              const next = createRecognition();
+              recognitionRef.current = next;
+              recognitionRef.current._stopped = () => { stopped = true; };
+              next.start();
+            } catch {}
+          }
+        }, 200);
       };
 
       return recognition;
@@ -394,13 +434,15 @@ export default function ChatPage() {
 
     const recognition = createRecognition();
     recognitionRef.current = recognition;
-    // Expose stopper so stopListening/cancelMic can halt auto-restart
     recognitionRef.current._stopped = () => { stopped = true; };
-    try { recognition.start(); } catch (err) {
+    try {
+      recognition.start();
+    } catch (err) {
       console.error('Recognition start error:', err);
       setShowMicOverlay(false);
     }
   }, [language]);
+
 
   const stopListening = useCallback(() => {
     try { recognitionRef.current?._stopped?.(); } catch {}
@@ -647,6 +689,7 @@ export default function ChatPage() {
           onStop={stopListening}
           onSend={sendVoiceMessage}
           onCancel={cancelMic}
+          iosError={iosError}
         />
       )}
 
