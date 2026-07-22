@@ -249,11 +249,13 @@ function aiUnavailable() {
 
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function claudeAsk(prompt, systemPrompt, maxTokens = 700, temperature = 0.6) {
+  const sysText = systemPrompt || buildFarmingSystem();
   const response = await claude.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: maxTokens,
     temperature,
-    system: systemPrompt || buildFarmingSystem(),
+    // Anthropic Prompt Caching: caches system prompt for 5 min, saves ~90% token cost
+    system: [{ type: 'text', text: sysText, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: prompt }]
   });
   return response.content?.[0]?.text ?? '';
@@ -394,7 +396,7 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
       model: CLAUDE_MODEL,
       max_tokens: 500,
       temperature: 0.65,
-      system: buildChatSystem(language),
+      system: [{ type: 'text', text: buildChatSystem(language), cache_control: { type: 'ephemeral' } }],
       messages: claudeMessages
     });
 
@@ -455,7 +457,7 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
       model: CLAUDE_MODEL,
       max_tokens: 500,
       temperature: 0.65,
-      system: buildChatSystem(language),
+      system: [{ type: 'text', text: buildChatSystem(language), cache_control: { type: 'ephemeral' } }],
       messages: claudeMessages
     });
 
@@ -509,7 +511,7 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
       model: CLAUDE_MODEL,
       max_tokens: 500,
       temperature: 0.65,
-      system: buildChatSystem(language),
+      system: [{ type: 'text', text: buildChatSystem(language), cache_control: { type: 'ephemeral' } }],
       messages: claudeMessages
     });
 
