@@ -3,9 +3,9 @@ import { useState, useEffect, useCallback } from 'react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-function adminFetch(path, options = {}) {
+async function adminFetch(path, options = {}) {
   const token = sessionStorage.getItem('dehati_admin_token');
-  return fetch(`${API}/api/admin${path}`, {
+  const res = await fetch(`${API}/api/admin${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -13,6 +13,13 @@ function adminFetch(path, options = {}) {
       ...(options.headers || {})
     }
   });
+  // Auto-logout on token expiry (H3 fix)
+  if (res.status === 401) {
+    sessionStorage.removeItem('dehati_admin_token');
+    window.location.reload();
+    return res; // unreachable but satisfies async flow
+  }
+  return res;
 }
 
 // ── Stat Card ──────────────────────────────────────────────────────────────────
@@ -62,16 +69,24 @@ function UsersTab() {
   const [deleting, setDeleting] = useState(null);
   const [msg, setMsg]         = useState('');
 
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // H2 fix: debounce search to prevent a request on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminFetch(`/users?page=${page}&limit=15&search=${encodeURIComponent(search)}`);
+      const res = await adminFetch(`/users?page=${page}&limit=15&search=${encodeURIComponent(debouncedSearch)}`);
       const data = await res.json();
       setUsers(data.users || []);
       setTotal(data.total || 0);
     } catch {}
     setLoading(false);
-  }, [page, search]);
+  }, [page, debouncedSearch]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -818,6 +833,7 @@ function btnStyle(color, disabled = false) {
 const TABS = [
   { id: 'dashboard',     label: '📊 Dashboard'     },
   { id: 'users',         label: '👥 Users'         },
+  { id: 'chatlogs',      label: '💬 Questions'     },
   { id: 'announcements', label: '📢 Announcements' },
   { id: 'schemes',       label: '🏛️ Schemes'      },
   { id: 'prices',        label: '📈 Prices'        },

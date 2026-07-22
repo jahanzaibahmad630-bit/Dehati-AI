@@ -77,13 +77,15 @@ export default function SchemesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/api/admin/schemes/public`)
+    const controller = new AbortController(); // M3 fix: cleanup on unmount
+    fetch(`${API}/api/admin/schemes/public`, { signal: controller.signal })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.schemes?.length) setSchemes(data.schemes);
       })
-      .catch(() => {}) // silently fall back to static
+      .catch(err => { if (err.name !== 'AbortError') {} }) // ignore abort, silently fall back to static
       .finally(() => setLoading(false));
+    return () => controller.abort(); // cleanup on unmount
   }, []);
 
   return (

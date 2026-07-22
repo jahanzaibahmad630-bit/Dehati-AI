@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getWeatherByCoords, getWeatherByCity, askAI } from '../services/api';
 import { usePermission, PERMISSION_MESSAGES } from '../hooks/usePermission';
 import { useOffline } from '../hooks/useOffline';
@@ -27,6 +27,7 @@ export default function WeatherPage() {
   const [selectedCity, setSelectedCity] = useState('');
   const { isOffline } = useOffline();
   const locPerm = usePermission('geolocation');
+  const requestGen = useRef(0); // M2 fix: generation counter to discard stale responses
 
   // Auto-load last city on mount
   useEffect(() => {
@@ -69,14 +70,20 @@ export default function WeatherPage() {
   const handleCitySelect = async (city) => {
     if (!city) return;
     if (isOffline) { setError('انٹرنیٹ نہیں — موسم نہیں مل سکتا'); return; }
+    // M2 fix: increment generation so any in-flight previous request is discarded
+    const gen = ++requestGen.current;
     setSelectedCity(city); setLoading(true); setError('');
     localStorage.setItem('dehati_last_city', city);
     try {
       const data = await getWeatherByCity(city);
+      if (gen !== requestGen.current) return; // stale response — discard
       await fetchWeatherAndAdvice(data);
     } catch (err) {
+      if (gen !== requestGen.current) return;
       setError(err.message || 'موسم نہیں ملا');
-    } finally { setLoading(false); }
+    } finally {
+      if (gen === requestGen.current) setLoading(false);
+    }
   };
 
   const formatTime = (iso) => new Date(iso).toLocaleTimeString('ur-PK', { hour: '2-digit', minute: '2-digit' });

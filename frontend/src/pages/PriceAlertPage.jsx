@@ -88,7 +88,8 @@ export default function PriceAlertPage() {
   const [pricesLoaded, setPricesLoaded] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/api/admin/prices/public`, { cache: 'no-store' })
+    const controller = new AbortController(); // M3 fix: cancel fetch on unmount
+    fetch(`${API}/api/admin/prices/public`, { cache: 'no-store', signal: controller.signal })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.prices) {
@@ -97,8 +98,9 @@ export default function PriceAlertPage() {
           setPriceMap(map);
         }
       })
-      .catch(() => {}) // silently keep empty map; UI handles missing
+      .catch(err => { if (err.name !== 'AbortError') {} }) // silently keep empty map; UI handles missing
       .finally(() => setPricesLoaded(true));
+    return () => controller.abort(); // cleanup on unmount
   }, []);
 
   const handleAdd = () => {

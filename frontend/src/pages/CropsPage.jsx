@@ -392,16 +392,18 @@ export default function CropsPage() {
   };
 
   const getAdvice = async () => {
-    if (isOffline || !crops.length) return;
+    if (isOffline || !crops.length || aiLoading) return;
+    let cancelled = false;
     setAiLoading(true);
     try {
       const cropSummary = crops.map(c => `${c.name} (${c.area} ایکڑ، صحت ${c.health}%)`).join('، ');
       const data = await askAI(
         `میری فصلیں: ${cropSummary}۔ مٹی کی نمی ${avgMoisture}% ہے۔ آج کے موسم کے مطابق 3 عملی مشورے دیں۔`
       );
-      setAiAdvice(data.answer);
+      if (!cancelled) setAiAdvice(data.answer);
     } catch {}
-    finally { setAiLoading(false); }
+    finally { if (!cancelled) setAiLoading(false); }
+    return () => { cancelled = true; };
   };
 
   return (

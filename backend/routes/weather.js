@@ -59,6 +59,22 @@ async function fetchWeather(lat, lon) {
   };
 }
 
+// L6 fix: 10-minute in-memory cache keyed by "lat,lon" to prevent Open-Meteo rate limiting
+const weatherCache = new Map();
+const WEATHER_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+function getCachedWeather(key) {
+  const entry = weatherCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > WEATHER_CACHE_TTL) { weatherCache.delete(key); return null; }
+  return entry.data;
+}
+function setCachedWeather(key, data) {
+  // Keep cache size under control (max 100 entries)
+  if (weatherCache.size >= 100) weatherCache.delete(weatherCache.keys().next().value);
+  weatherCache.set(key, { data, ts: Date.now() });
+}
+
 // GET /api/weather?lat=&lon= OR ?city=
 router.get('/', async (req, res) => {
   try {
@@ -87,11 +103,16 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'lat اور lon مناسب نمبر ہونے چاہیں' });
     }
 
+    const cacheKey = `${parsedLat.toFixed(2)},${parsedLon.toFixed(2)}`;
+    const cached = getCachedWeather(cacheKey);
+    if (cached) return res.json(cached);
+
     const weather = await fetchWeather(parsedLat, parsedLon);
     if (city) {
       const key = city.toLowerCase().trim();
       weather.cityName = PUNJAB_CITIES[key]?.name || city;
     }
+    setCachedWeather(cacheKey, weather);
     res.json(weather);
   } catch (err) {
     console.error('Weather error:', err.message);

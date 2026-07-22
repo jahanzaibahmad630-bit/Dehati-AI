@@ -329,9 +329,10 @@ export default function ChatPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount — MUST call _stopped() before stop() to prevent zombie auto-restart
   useEffect(() => {
     return () => {
+      try { recognitionRef.current?._stopped?.(); } catch {} // prevent onend auto-restart
       try { recognitionRef.current?.stop(); } catch {}
       try { abortRef.current?.abort(); } catch {}
     };
@@ -869,6 +870,7 @@ export default function ChatPage() {
             onChange={e => !isListening && setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             readOnly={isListening}
+            maxLength={1000}
             dir={getDir(isListening ? displayInput : input)}
             lang={getDir(isListening ? displayInput : input) === 'rtl' ? 'ur' : 'en'}
             style={{
@@ -890,6 +892,7 @@ export default function ChatPage() {
               e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
             }}
             disabled={isBusy}
+            maxLength={1000}
           />
         </div>
 

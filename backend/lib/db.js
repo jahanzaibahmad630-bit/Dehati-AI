@@ -8,7 +8,7 @@
  */
 
 const { Pool } = require('pg');
-const { addMemUser, getMemUsers, getRecentRegistrations } = require('./memStore');
+const { addMemUser, getMemUsers, getRecentRegistrations, addMemChatLog, getMemChatLogs } = require('./memStore');
 
 let pool = null;
 
@@ -364,6 +364,8 @@ async function deletePriceDB(cropKey) {
  * Save a chat question + answer to chat_logs table.
  */
 async function saveChatLog({ userId, userName, userPhone, question, answer, language }) {
+  // Always save to memory so admin can see questions even without DB
+  addMemChatLog({ userId, userName, userPhone, question, answer, language });
   if (!pool) return;
   try {
     await pool.query(
@@ -382,7 +384,7 @@ async function saveChatLog({ userId, userName, userPhone, question, answer, lang
  * Get paginated chat logs for admin panel.
  */
 async function getChatLogs({ page = 1, limit = 20, search = '' } = {}) {
-  if (!pool) return { logs: [], total: 0 };
+  if (!pool) return getMemChatLogs({ page, limit, search });
   const offset = (page - 1) * limit;
   const where  = search ? `WHERE question ILIKE $3 OR user_name ILIKE $3` : '';
   const params = search ? [limit, offset, `%${search}%`] : [limit, offset];

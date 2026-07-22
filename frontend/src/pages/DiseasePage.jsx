@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import AIDisclaimer from '../components/ui/AIDisclaimer';
 import { detectDisease, compressImage, fileToBase64 } from '../services/api';
 import { useOffline } from '../hooks/useOffline';
@@ -51,7 +51,7 @@ function ConfidenceDots({ confidence }) {
           background: i <= level ? '#16a34a' : '#d1d5db'
         }} />
       ))}
-      <span style={{ fontSize: '.7rem', color: i => i <= level ? '#16a34a' : '#6b7280' }}>
+      <span style={{ fontSize: '.7rem', color: '#4b5563' }}>
         {confidence}
       </span>
     </div>
@@ -69,6 +69,13 @@ export default function DiseasePage() {
   const [showTips, setShowTips]   = useState(true);
   const fileRef = useRef(null);
   const { isOffline } = useOffline();
+
+  // Memory leak fix: revoke ObjectURL on unmount (M1 fix)
+  useEffect(() => {
+    return () => {
+      if (imageUrl) URL.revokeObjectURL(imageUrl);
+    };
+  }, [imageUrl]);
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
