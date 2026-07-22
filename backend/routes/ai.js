@@ -1,8 +1,9 @@
-const express = require('express');
-const Anthropic = require('@anthropic-ai/sdk');
+const express   = require('express');
+const Anthropic  = require('@anthropic-ai/sdk');
 const { authenticateToken } = require('../middleware/auth');
-const { aiLimiter } = require('../middleware/rateLimit');
-const db = require('../lib/db');
+const { aiLimiter }         = require('../middleware/rateLimit');
+const db                    = require('../lib/db');
+const aiCache               = require('../lib/aiCache');
 
 const router = express.Router();
 
@@ -330,67 +331,112 @@ Respond STRICTLY in this exact format (use these exact Urdu labels):
 
 بیماری: [Exact disease/pest name in Urdu + English — e.g., "گندم کا پیلا زنگ (Yellow Rust / Stripe Rust)"]
 شدت: [ہلکی / درمیانی / شدید — based on what you see]
-اعتماد: [کم / درمیانہ / زیادہ — your confidence in this diagnosis]
-وجہ: [Exact pathogen or cause — fungus/bacteria/virus/insect/nutrient deficiency/abiotic — be specific]
-علامات: [What you can see in THIS image — describe 2-3 visual symptoms observed]
-علاج: [Step-by-step treatment: specific medicine name + dose per acre/kanal + application method + timing]
-بچاؤ: [2-3 specific prevention measures for next season]
-فوری اقدام: [Yes/No + what to do in next 24-48 hours if urgent]
-
-If the crop looks HEALTHY: state "صحت مند فصل" clearly and describe what looks good.
-If image is unclear/blurry: still diagnose from available clues but note the image quality issue.`;
-
-    const response = await claude.messages.create({
-      model: CLAUDE_MODEL_VIS,
-      max_tokens: 1500,
-      temperature: 0.15,   // low temp = more deterministic, accurate diagnosis
-      system: systemPrompt,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: safeMime, data: imageBase64 }
-          },
-          { type: 'text', text: prompt }
-        ]
-      }]
-    });
-
-    const text = response.content[0].text;
-
-    // Robust field extractor — handles multi-line values
-    const extract = (field) => {
-      const regex = new RegExp(`${field}:\\s*([\\s\\S]+?)(?=\\n[^\\s].*:|$)`);
-      const match = text.match(regex);
-      return match ? match[1].trim() : '';
-    };
-
-    res.json({
-      disease:       extract('بیماری'),
-      severity:      extract('شدت'),
-      confidence:    extract('اعتماد'),
-      cause:         extract('وجہ'),
-      symptoms:      extract('علامات'),
-      treatment:     extract('علاج'),
-      prevention:    extract('بچاؤ'),
-      urgentAction:  extract('فوری اقدام'),
-      rawText:       text
-    });
-  } catch (err) {
-    console.error('Disease error:', err.message);
-    res.status(500).json({ error: 'تصویر کا تجزیہ ناکام — دوبارہ کوشش کریں' });
-  }
-});
-
-
-// ─── POST /api/ai/chat ─────────────────────────────────────────────────────────
-router.post('/chat', aiLimiter, authenticateToken, async (req, res) => {
+اعتما�// ─── POST /api/ai/chat/stream (SSE streaming) ───────────────────────────────
+router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
   try {
     const { messages, language = 'ur' } = req.body;
     if (!Array.isArray(messages) || messages.length === 0)
       return res.status(400).json({ error: 'پیغامات ضروری ہیں' });
-    if (!claude) return res.json({ reply: '⚠️ AI سروس دستیاب نہیں' });
+
+    const lastMsg = messages[messages.length - 1];
+
+    // SSE headers
+    res.setHeader('Content-Type',  'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection',    'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    if (!claude) {
+      res.write(`data: ${JSON.stringify({ text: '⚠️ AI سروس دستیاب نہیں' })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      return res.end();
+    }
+
+    // Off-topic guard
+    if (lastMsg.role === 'user' && !isAgricultureRelated(lastMsg.content)) {
+      res.write(`data: ${JSON.stringify({ text: OFF_TOPIC_UR })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      return res.end();
+    }
+
+    // ── Cache lookup (only for single-turn questions, not deep conversations) ──────
+    const userMessages = messages.filter(m => m.role === 'user');
+    if (lastMsg.role === 'user' && userMessages.length === 1) {
+      const cached = aiCache.get(lastMsg.content, language);
+      if (cached) {
+        // Stream cached answer in chunks (feels like live streaming)
+        res.setHeader('X-Cache', 'HIT');
+        const chunkSize = 30;
+        for (let i = 0; i < cached.length; i += chunkSize) {
+          res.write(`data: ${JSON.stringify({ text: cached.slice(i, i + chunkSize) })}\n\n`);
+          // Tiny delay so UI renders progressively
+          await new Promise(r => setTimeout(r, 8));
+        }
+        res.write('data: [DONE]\n\n');
+        return res.end();
+      }
+    }
+
+    res.setHeader('X-Cache', 'MISS');
+
+    const claudeMessages = messages.map(m => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.content
+    }));
+
+    // Keep-alive heartbeat — prevents Railway/Nginx 30s timeout during Claude think time
+    const heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
+
+    // Stream with Claude
+    let fullReply = '';
+    const stream = claude.messages.stream({
+      model: CLAUDE_MODEL,
+      max_tokens: 500,
+      temperature: 0.65,
+      system: buildChatSystem(language),
+      messages: claudeMessages
+    });
+
+    stream.on('text', (text) => {
+      if (text) {
+        fullReply += text;
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      }
+    });
+
+    await stream.finalMessage();
+    clearInterval(heartbeat);
+    res.write('data: [DONE]\n\n');
+    res.end();
+
+    // Post-response: save to cache + chat_logs (non-blocking)
+    if (lastMsg.role === 'user' && fullReply) {
+      // Cache only single-turn answers (context-free)
+      if (userMessages.length === 1) {
+        aiCache.set(lastMsg.content, language, fullReply);
+      }
+      db.saveChatLog({
+        userId:    req.user?.id    || null,
+        userName:  req.user?.name  || null,
+        userPhone: req.user?.phone || null,
+        question:  lastMsg.content,
+        answer:    fullReply,
+        language
+      }).catch(() => {});
+    }
+
+  } catch (err) {
+    console.error('Chat stream error:', err.message);
+    try {
+      clearInterval(heartbeat);
+      res.write(`data: ${JSON.stringify({ error: 'جواب دینے میں مسئلہ ہوا' })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } catch {}
+  }
+});
+) return res.json({ reply: '⚠️ AI سروس دستیاب نہیں' });
 
     const lastMsg = messages[messages.length - 1];
 

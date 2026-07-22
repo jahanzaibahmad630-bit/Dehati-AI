@@ -910,6 +910,8 @@ export default function AdminPanel({ onLogout }) {
               <StatCard icon="👨‍🌾" label="Registered"       value={stats?.registeredUsers}  sub="Signed up" color="#16a34a" />
               <StatCard icon="👤" label="Guest Users"       value={stats?.guestUsers}       sub="Trial mode" color="#d97706" />
               <StatCard icon="📅" label="New Today"         value={stats?.newToday}         sub="Last 24 hours" color="#2563eb" />
+              <StatCard icon="⚡" label="Cache Hit Rate"    value={stats?.aiCache?.hitRate}  sub={`${stats?.aiCache?.entries ?? 0} entries`} color="#7c3aed" />
+              <StatCard icon="💾" label="Cache Hits"        value={stats?.aiCache?.hits}    sub={`${stats?.aiCache?.misses ?? 0} misses`} color="#059669" />
               <StatCard icon="⏱️" label="Uptime"            value={stats?.uptime}           sub="Server running" color="#7c3aed" />
               <StatCard icon="🔗" label="Node.js"           value={stats?.nodeVersion}      sub={stats?.environment} color="#374151" />
             </div>
@@ -947,6 +949,7 @@ export default function AdminPanel({ onLogout }) {
                 <h3 style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: '1rem' }}>🚀 Quick Actions</h3>
                 {[
                   { label: 'View All Users',    action: () => setTab('users'),   color: '#2e5a27' },
+                  { label: 'User Questions',    action: () => setTab('chatlogs'),color: '#2563eb' },
                   { label: 'Edit Market Prices',action: () => setTab('prices'),  color: '#d97706' },
                   { label: 'Check Health',      action: () => setTab('health'),  color: '#7c3aed' },
                   { label: 'Recent Activity',   action: () => setTab('recent'),  color: '#2563eb' },
@@ -955,6 +958,16 @@ export default function AdminPanel({ onLogout }) {
                     → {a.label}
                   </button>
                 ))}
+                <button
+                  onClick={async () => {
+                    await adminFetch('/cache/flush', { method: 'POST' });
+                    alert('AI cache cleared!');
+                    loadStats();
+                  }}
+                  style={{ display: 'block', width: '100%', padding: '.6rem 1rem', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '.875rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif' }}
+                >
+                  🗑️ Clear AI Cache ({stats?.aiCache?.entries ?? 0} entries)
+                </button>
               </div>
             </div>
           </div>

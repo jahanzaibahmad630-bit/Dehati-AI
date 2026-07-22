@@ -4,7 +4,8 @@ const { requireAdmin, signAdminToken } = require('../middleware/auth');
 const { adminLoginLimiter } = require('../middleware/rateLimit');
 const { supabase } = require('../lib/supabase');
 const { getRecentRegistrations } = require('../lib/memStore');
-const db = require('../lib/db');
+const db       = require('../lib/db');
+const aiCache  = require('../lib/aiCache');
 
 const router = express.Router();
 
@@ -67,7 +68,8 @@ router.get('/stats', requireAdmin, async (req, res) => {
       postgresConfigured:  !!process.env.DATABASE_URL,
       persistentDB:        db.isUsingPersistentDB(),
       nodeVersion:   process.version,
-      environment:   process.env.NODE_ENV || 'production'
+      environment:   process.env.NODE_ENV || 'production',
+      aiCache:       aiCache.stats()
     });
   } catch (err) {
     console.error('Admin stats error:', err.message);
