@@ -65,8 +65,18 @@ async function initDB() {
       );
       CREATE INDEX IF NOT EXISTS chat_logs_created_idx ON chat_logs(created_at DESC);
       CREATE INDEX IF NOT EXISTS chat_logs_user_idx    ON chat_logs(user_id);
+
+      CREATE TABLE IF NOT EXISTS ai_cache (
+        cache_key   TEXT PRIMARY KEY,
+        answer      TEXT NOT NULL,
+        language    TEXT DEFAULT 'ur',
+        hits        INTEGER DEFAULT 0,
+        created_at  TIMESTAMPTZ DEFAULT NOW(),
+        expires_at  TIMESTAMPTZ NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS ai_cache_expires_idx ON ai_cache(expires_at);
     `);
-    console.log('✅ PostgreSQL tables ready (users + mandi_prices + chat_logs)');
+    console.log('✅ PostgreSQL tables ready (users + mandi_prices + chat_logs + ai_cache)');
   } catch (err) {
     console.error('❌ initDB error:', err.message);
   }
@@ -393,11 +403,104 @@ async function getChatLogs({ page = 1, limit = 20, search = '' } = {}) {
   return { logs: rows, total: parseInt(countRows[0]?.c || 0, 10) };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Persistent AI Cache (PostgreSQL-backed, survives restarts)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch a cached answer from DB.
+ * Returns the answer string, or null if not found / expired.
+ */
+async function getCacheFromDB(cacheKey) {
+  if (!pool) return null;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE ai_cache
+          SET hits = hits + 1
+        WHERE cache_key = $1 AND expires_at > NOW()
+        RETURNING answer`,
+      [cacheKey]
+    );
+    return rows[0]?.answer || null;
+  } catch (err) {
+    console.warn('getCacheFromDB error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Upsert a cached answer into DB with a TTL.
+ * @param {string} cacheKey
+ * @param {string} answer
+ * @param {string} language
+ * @param {number} ttlSeconds  (default 7 days)
+ */
+async function setCacheInDB(cacheKey, answer, language = 'ur', ttlSeconds = 604800) {
+  if (!pool || !answer) return;
+  try {
+    await pool.query(
+      `INSERT INTO ai_cache (cache_key, answer, language, expires_at)
+       VALUES ($1, $2, $3, NOW() + ($4 || ' seconds')::INTERVAL)
+       ON CONFLICT (cache_key) DO UPDATE
+         SET answer     = EXCLUDED.answer,
+             language   = EXCLUDED.language,
+             expires_at = EXCLUDED.expires_at,
+             hits       = ai_cache.hits`,
+      [cacheKey, answer, language, ttlSeconds]
+    );
+  } catch (err) {
+    console.warn('setCacheInDB error:', err.message);
+  }
+}
+
+/**
+ * Delete expired entries and optionally flush all.
+ */
+async function flushCacheDB(all = false) {
+  if (!pool) return 0;
+  try {
+    const q = all
+      ? 'DELETE FROM ai_cache'
+      : 'DELETE FROM ai_cache WHERE expires_at <= NOW()';
+    const { rowCount } = await pool.query(q);
+    return rowCount;
+  } catch (err) {
+    console.warn('flushCacheDB error:', err.message);
+    return 0;
+  }
+}
+
+/**
+ * Cache stats for admin panel.
+ */
+async function getCacheStats() {
+  if (!pool) return { entries: 0, totalHits: 0, topQuestions: [] };
+  try {
+    const [countRes, hitsRes, topRes] = await Promise.all([
+      pool.query(`SELECT COUNT(*) as c FROM ai_cache WHERE expires_at > NOW()`),
+      pool.query(`SELECT COALESCE(SUM(hits), 0) as h FROM ai_cache`),
+      pool.query(
+        `SELECT cache_key, hits FROM ai_cache
+          WHERE expires_at > NOW()
+          ORDER BY hits DESC LIMIT 5`
+      )
+    ]);
+    return {
+      entries:      parseInt(countRes.rows[0]?.c || 0, 10),
+      totalHits:    parseInt(hitsRes.rows[0]?.h  || 0, 10),
+      topQuestions: topRes.rows
+    };
+  } catch (err) {
+    return { entries: 0, totalHits: 0, topQuestions: [] };
+  }
+}
+
 module.exports = {
   pool, initDB, testConnection,
   findUserByPhone, createUser, getAllUsers,
   getTotalUserCount, getNewTodayCount, getRecentUsers,
   deleteUser, isUsingPersistentDB,
   setPriceDB, getPricesDB, deletePriceDB,
-  saveChatLog, getChatLogs
+  saveChatLog, getChatLogs,
+  getCacheFromDB, setCacheInDB, flushCacheDB, getCacheStats
 };

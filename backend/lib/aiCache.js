@@ -1,125 +1,159 @@
 /**
- * AI Response Cache — In-memory LRU with TTL
+ * AI Response Cache — 2-Tier: Memory (L1) + PostgreSQL (L2)
  *
- * Caches Claude answers so identical/near-identical questions
- * are served instantly without an API call.
+ * L1 Memory  : instant (~0ms), resets on server restart
+ * L2 Postgres : persistent (~2ms), survives restarts forever
+ *
+ * Flow on GET:
+ *   1. Check L1 (memory map)  → HIT: return immediately
+ *   2. Check L2 (PostgreSQL)  → HIT: populate L1, return
+ *   3. MISS: caller must call Claude, then call set()
+ *
+ * Flow on SET:
+ *   1. Write to L1 (memory)
+ *   2. Write to L2 (PostgreSQL) — async, non-blocking
  *
  * Config (env vars):
- *   AI_CACHE_MAX   — max entries  (default: 1000)
- *   AI_CACHE_TTL   — TTL seconds  (default: 86400 = 24 hours)
- *   AI_CACHE_OFF   — set "true" to disable
+ *   AI_CACHE_MAX   — max L1 entries  (default: 500)
+ *   AI_CACHE_TTL   — TTL in seconds  (default: 604800 = 7 days)
+ *   AI_CACHE_OFF   — set "true" to disable entirely
  */
 
-const MAX_ENTRIES = parseInt(process.env.AI_CACHE_MAX || '1000', 10);
-const TTL_MS      = parseInt(process.env.AI_CACHE_TTL  || '86400', 10) * 1000;
-const DISABLED    = process.env.AI_CACHE_OFF === 'true';
+const db = require('./db');
 
-// Map<key, { value, expiresAt, hits }>
-const store = new Map();
+const MAX_L1  = parseInt(process.env.AI_CACHE_MAX || '500',    10);
+const TTL_SEC = parseInt(process.env.AI_CACHE_TTL || '604800', 10); // 7 days default
+const TTL_MS  = TTL_SEC * 1000;
+const DISABLED = process.env.AI_CACHE_OFF === 'true';
 
-// Stats
-let totalHits   = 0;
-let totalMisses = 0;
-let totalSets   = 0;
+// ── L1: In-memory map ────────────────────────────────────────────────────────
+// Map<key, { value, expiresAt }>
+const l1 = new Map();
 
-// ─── Normalize question to a cache key ──────────────────────────────────────
-// Lowercase, collapse whitespace, strip punctuation → so
-// "گندم میں پانی ؟" and "گندم میں پانی" map to the same key.
+// Stats counters
+let l1Hits = 0, l2Hits = 0, misses = 0, sets = 0;
+
+// ── Key normalization ────────────────────────────────────────────────────────
 function normalizeKey(text, language = 'ur') {
   return (language + ':' + text)
     .toLowerCase()
-    .replace(/[؟?!.,،;:\-]/g, '')  // strip punctuation
-    .replace(/\s+/g, ' ')           // collapse spaces
-    .trim();
+    .replace(/[؟?!.,،;:\-]/g, '')   // strip punctuation
+    .replace(/\s+/g, ' ')            // collapse whitespace
+    .trim()
+    .slice(0, 512);                  // cap key length
 }
 
-// ─── Evict expired + overflow entries ────────────────────────────────────────
-function evict() {
-  const now = Date.now();
-
-  // Remove expired
-  for (const [k, v] of store) {
-    if (v.expiresAt < now) store.delete(k);
-  }
-
-  // If still over max, delete oldest (Map preserves insertion order)
-  if (store.size > MAX_ENTRIES) {
-    const excess = store.size - MAX_ENTRIES;
-    let deleted = 0;
-    for (const k of store.keys()) {
-      store.delete(k);
-      if (++deleted >= excess) break;
-    }
-  }
-}
-
-// ─── Public API ──────────────────────────────────────────────────────────────
-
-/**
- * Get a cached answer.
- * @param {string} question  — raw user question
- * @param {string} language  — 'ur' | 'pj' | 'en'
- * @returns {string|null}    — cached answer or null
- */
-function get(question, language = 'ur') {
-  if (DISABLED) return null;
-  const key  = normalizeKey(question, language);
-  const entry = store.get(key);
-  if (!entry) { totalMisses++; return null; }
-  if (entry.expiresAt < Date.now()) {
-    store.delete(key);
-    totalMisses++;
-    return null;
-  }
-  entry.hits++;
-  totalHits++;
+// ── L1 helpers ───────────────────────────────────────────────────────────────
+function l1Get(key) {
+  const entry = l1.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) { l1.delete(key); return null; }
   return entry.value;
 }
 
+function l1Set(key, value) {
+  // Evict oldest if at capacity
+  if (l1.size >= MAX_L1) {
+    const oldest = l1.keys().next().value;
+    l1.delete(oldest);
+  }
+  l1.set(key, { value, expiresAt: Date.now() + TTL_MS });
+}
+
+// ── Public: get ──────────────────────────────────────────────────────────────
 /**
- * Store an answer.
+ * Get a cached answer. Checks L1 first, then L2 (DB).
+ * @param {string} question
+ * @param {string} language
+ * @returns {Promise<string|null>}
+ */
+async function get(question, language = 'ur') {
+  if (DISABLED) return null;
+
+  const key = normalizeKey(question, language);
+
+  // L1: memory
+  const mem = l1Get(key);
+  if (mem) { l1Hits++; return mem; }
+
+  // L2: PostgreSQL
+  try {
+    const dbAnswer = await db.getCacheFromDB(key);
+    if (dbAnswer) {
+      l1Set(key, dbAnswer); // warm L1
+      l2Hits++;
+      return dbAnswer;
+    }
+  } catch {
+    // DB unavailable — fall through to Claude
+  }
+
+  misses++;
+  return null;
+}
+
+// ── Public: set ──────────────────────────────────────────────────────────────
+/**
+ * Store an answer in both cache tiers.
  * @param {string} question
  * @param {string} language
  * @param {string} answer
  */
 function set(question, language = 'ur', answer) {
   if (DISABLED || !answer) return;
+
   const key = normalizeKey(question, language);
-  store.set(key, {
-    value:     answer,
-    expiresAt: Date.now() + TTL_MS,
-    hits:      0,
-    savedAt:   Date.now()
-  });
-  totalSets++;
-  // Evict lazily (not every call — every 100 sets)
-  if (totalSets % 100 === 0) evict();
+
+  // L1 — synchronous
+  l1Set(key, answer);
+
+  // L2 — async, non-blocking (never crashes main flow)
+  db.setCacheInDB(key, answer, language, TTL_SEC).catch(() => {});
+
+  sets++;
 }
 
+// ── Public: flush ─────────────────────────────────────────────────────────────
+/**
+ * Flush both tiers.
+ * @param {boolean} all  — true = clear everything; false = only expired
+ */
+async function flush(all = true) {
+  l1.clear();
+  l1Hits = l2Hits = misses = sets = 0;
+  try {
+    return await db.flushCacheDB(all);
+  } catch {
+    return 0;
+  }
+}
+
+// ── Public: stats ─────────────────────────────────────────────────────────────
 /**
  * Stats for admin dashboard.
  */
-function stats() {
+async function stats() {
+  let dbStats = { entries: 0, totalHits: 0 };
+  try { dbStats = await db.getCacheStats(); } catch {}
+
+  const total = l1Hits + l2Hits + misses;
+  const hitRate = total > 0
+    ? (((l1Hits + l2Hits) / total) * 100).toFixed(1) + '%'
+    : '0%';
+
   return {
-    entries:     store.size,
-    maxEntries:  MAX_ENTRIES,
-    ttlHours:    TTL_MS / 3600000,
-    hits:        totalHits,
-    misses:      totalMisses,
-    hitRate:     totalHits + totalMisses > 0
-                   ? ((totalHits / (totalHits + totalMisses)) * 100).toFixed(1) + '%'
-                   : '0%',
-    sets:        totalSets,
-    disabled:    DISABLED
+    l1Entries:   l1.size,
+    l2Entries:   dbStats.entries,
+    totalEntries: dbStats.entries,
+    l1Hits,
+    l2Hits,
+    misses,
+    hitRate,
+    sets,
+    ttlDays:   (TTL_SEC / 86400).toFixed(1),
+    disabled:  DISABLED,
+    persistent: true
   };
 }
 
-/**
- * Flush all entries (used by admin or tests).
- */
-function flush() {
-  store.clear();
-  totalHits = totalMisses = totalSets = 0;
-}
-
-module.exports = { get, set, stats, flush, normalizeKey };
+module.exports = { get, set, flush, stats, normalizeKey };

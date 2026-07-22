@@ -1,4 +1,4 @@
-const express   = require('express');
+﻿const express   = require('express');
 const Anthropic  = require('@anthropic-ai/sdk');
 const { authenticateToken } = require('../middleware/auth');
 const { aiLimiter }         = require('../middleware/rateLimit');
@@ -7,47 +7,47 @@ const aiCache               = require('../lib/aiCache');
 
 const router = express.Router();
 
-// ─── Claude Client ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Claude Client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let claude = null;
 
 if (process.env.CLAUDE_API_KEY) {
   claude = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
-  console.log('✅ Claude API configured — model: claude-sonnet-4-5');
+  console.log('âœ… Claude API configured â€” model: claude-sonnet-4-5');
 } else {
-  console.warn('⚠️  CLAUDE_API_KEY not set — AI features disabled');
+  console.warn('âš ï¸  CLAUDE_API_KEY not set â€” AI features disabled');
 }
 
 // claude-sonnet-4-5 = Claude Sonnet 4.x (platform.claude.com enterprise)
 const CLAUDE_MODEL     = 'claude-sonnet-4-5';
 const CLAUDE_MODEL_VIS = 'claude-sonnet-4-5'; // supports vision
 
-// ─── Agriculture keyword guard ──────────────────────────────────────────────────
+// â”€â”€â”€ Agriculture keyword guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Urdu script keywords
 const AGRI_KEYWORDS_UR = [
   // Crops
-  'فصل','گندم','چاول','مکئی','کپاس','گنا','آلو','ٹماٹر','پیاز','مرچ','لہسن','سرسوں',
-  'چنا','مسور','مونگ','ماش','جوار','باجرہ','تل','السی','کماد','دھان','مٹر','تارا میرہ',
-  'موٹھ','گوار','سویابین','سورج مکھی','زیتون','انار','آم','کینو','مالٹا','امرود',
+  'ÙØµÙ„','Ú¯Ù†Ø¯Ù…','Ú†Ø§ÙˆÙ„','Ù…Ú©Ø¦ÛŒ','Ú©Ù¾Ø§Ø³','Ú¯Ù†Ø§','Ø¢Ù„Ùˆ','Ù¹Ù…Ø§Ù¹Ø±','Ù¾ÛŒØ§Ø²','Ù…Ø±Ú†','Ù„ÛØ³Ù†','Ø³Ø±Ø³ÙˆÚº',
+  'Ú†Ù†Ø§','Ù…Ø³ÙˆØ±','Ù…ÙˆÙ†Ú¯','Ù…Ø§Ø´','Ø¬ÙˆØ§Ø±','Ø¨Ø§Ø¬Ø±Û','ØªÙ„','Ø§Ù„Ø³ÛŒ','Ú©Ù…Ø§Ø¯','Ø¯Ú¾Ø§Ù†','Ù…Ù¹Ø±','ØªØ§Ø±Ø§ Ù…ÛŒØ±Û',
+  'Ù…ÙˆÙ¹Ú¾','Ú¯ÙˆØ§Ø±','Ø³ÙˆÛŒØ§Ø¨ÛŒÙ†','Ø³ÙˆØ±Ø¬ Ù…Ú©Ú¾ÛŒ','Ø²ÛŒØªÙˆÙ†','Ø§Ù†Ø§Ø±','Ø¢Ù…','Ú©ÛŒÙ†Ùˆ','Ù…Ø§Ù„Ù¹Ø§','Ø§Ù…Ø±ÙˆØ¯',
   // Inputs
-  'کھاد','DAP','یوریا','پوٹاش','نائٹروجن','فاسفورس','سپرے','زہر','دوائی',
-  'بیج','پنیری','ٹیکہ','ٹیکے',
+  'Ú©Ú¾Ø§Ø¯','DAP','ÛŒÙˆØ±ÛŒØ§','Ù¾ÙˆÙ¹Ø§Ø´','Ù†Ø§Ø¦Ù¹Ø±ÙˆØ¬Ù†','ÙØ§Ø³ÙÙˆØ±Ø³','Ø³Ù¾Ø±Û’','Ø²ÛØ±','Ø¯ÙˆØ§Ø¦ÛŒ',
+  'Ø¨ÛŒØ¬','Ù¾Ù†ÛŒØ±ÛŒ','Ù¹ÛŒÚ©Û','Ù¹ÛŒÚ©Û’',
   // Pests & Disease
-  'بیماری','کیڑا','سنڈی','تیلا','چیپا','دیمک','پھپھوندی','زنگ','جھلساؤ','کٹوا',
-  'سفید مکھی','تھرپس','مکڑی','شائنر',
+  'Ø¨ÛŒÙ…Ø§Ø±ÛŒ','Ú©ÛŒÚ‘Ø§','Ø³Ù†ÚˆÛŒ','ØªÛŒÙ„Ø§','Ú†ÛŒÙ¾Ø§','Ø¯ÛŒÙ…Ú©','Ù¾Ú¾Ù¾Ú¾ÙˆÙ†Ø¯ÛŒ','Ø²Ù†Ú¯','Ø¬Ú¾Ù„Ø³Ø§Ø¤','Ú©Ù¹ÙˆØ§',
+  'Ø³ÙÛŒØ¯ Ù…Ú©Ú¾ÛŒ','ØªÚ¾Ø±Ù¾Ø³','Ù…Ú©Ú‘ÛŒ','Ø´Ø§Ø¦Ù†Ø±',
   // Soil & Water
-  'آبپاشی','پانی','مٹی','زمین','نمی','سیم','تھور','نہر','کھال','نلکہ','ڈرپ',
-  'ٹیوب ویل','موٹر','پمپ','بارش','اولے','سیلاب','خشک سالی',
+  'Ø¢Ø¨Ù¾Ø§Ø´ÛŒ','Ù¾Ø§Ù†ÛŒ','Ù…Ù¹ÛŒ','Ø²Ù…ÛŒÙ†','Ù†Ù…ÛŒ','Ø³ÛŒÙ…','ØªÚ¾ÙˆØ±','Ù†ÛØ±','Ú©Ú¾Ø§Ù„','Ù†Ù„Ú©Û','ÚˆØ±Ù¾',
+  'Ù¹ÛŒÙˆØ¨ ÙˆÛŒÙ„','Ù…ÙˆÙ¹Ø±','Ù¾Ù…Ù¾','Ø¨Ø§Ø±Ø´','Ø§ÙˆÙ„Û’','Ø³ÛŒÙ„Ø§Ø¨','Ø®Ø´Ú© Ø³Ø§Ù„ÛŒ',
   // Operations
-  'بوائی','کٹائی','گوڈی','روٹاویٹر','ہل','ٹریکٹر','تھریشر','کمبائن','کاشت',
+  'Ø¨ÙˆØ§Ø¦ÛŒ','Ú©Ù¹Ø§Ø¦ÛŒ','Ú¯ÙˆÚˆÛŒ','Ø±ÙˆÙ¹Ø§ÙˆÛŒÙ¹Ø±','ÛÙ„','Ù¹Ø±ÛŒÚ©Ù¹Ø±','ØªÚ¾Ø±ÛŒØ´Ø±','Ú©Ù…Ø¨Ø§Ø¦Ù†','Ú©Ø§Ø´Øª',
   // Market
-  'منڈی','قیمت','ریٹ','فروخت','خریداری','آڑھتی','اناج','ذخیرہ',
+  'Ù…Ù†ÚˆÛŒ','Ù‚ÛŒÙ…Øª','Ø±ÛŒÙ¹','ÙØ±ÙˆØ®Øª','Ø®Ø±ÛŒØ¯Ø§Ø±ÛŒ','Ø¢Ú‘Ú¾ØªÛŒ','Ø§Ù†Ø§Ø¬','Ø°Ø®ÛŒØ±Û',
   // Livestock
-  'گائے','بھینس','بکری','مرغی','جانور','دودھ','چارہ','مویشی','بیل','اونٹ',
-  'خرگوش','مچھلی','جھینگا','مرغا','ہانڈی',
+  'Ú¯Ø§Ø¦Û’','Ø¨Ú¾ÛŒÙ†Ø³','Ø¨Ú©Ø±ÛŒ','Ù…Ø±ØºÛŒ','Ø¬Ø§Ù†ÙˆØ±','Ø¯ÙˆØ¯Ú¾','Ú†Ø§Ø±Û','Ù…ÙˆÛŒØ´ÛŒ','Ø¨ÛŒÙ„','Ø§ÙˆÙ†Ù¹',
+  'Ø®Ø±Ú¯ÙˆØ´','Ù…Ú†Ú¾Ù„ÛŒ','Ø¬Ú¾ÛŒÙ†Ú¯Ø§','Ù…Ø±ØºØ§','ÛØ§Ù†ÚˆÛŒ',
   // General
-  'زراعت','کسان','کھیت','فارم','باغ','پھل','سبزی','موسم','درجہ حرارت',
-  'کسان کارڈ','ZTBL','فصلی بیمہ','زرعی','ہرے چارے','قرضہ','سبسڈی','اسکیم',
-  'محکمہ زراعت','زرعی ترقیاتی','ایگری'
+  'Ø²Ø±Ø§Ø¹Øª','Ú©Ø³Ø§Ù†','Ú©Ú¾ÛŒØª','ÙØ§Ø±Ù…','Ø¨Ø§Øº','Ù¾Ú¾Ù„','Ø³Ø¨Ø²ÛŒ','Ù…ÙˆØ³Ù…','Ø¯Ø±Ø¬Û Ø­Ø±Ø§Ø±Øª',
+  'Ú©Ø³Ø§Ù† Ú©Ø§Ø±Úˆ','ZTBL','ÙØµÙ„ÛŒ Ø¨ÛŒÙ…Û','Ø²Ø±Ø¹ÛŒ','ÛØ±Û’ Ú†Ø§Ø±Û’','Ù‚Ø±Ø¶Û','Ø³Ø¨Ø³ÚˆÛŒ','Ø§Ø³Ú©ÛŒÙ…',
+  'Ù…Ø­Ú©Ù…Û Ø²Ø±Ø§Ø¹Øª','Ø²Ø±Ø¹ÛŒ ØªØ±Ù‚ÛŒØ§ØªÛŒ','Ø§ÛŒÚ¯Ø±ÛŒ'
 ];
 
 // English keywords
@@ -70,7 +70,7 @@ const AGRI_KEYWORDS_EN = [
   'fish','shrimp','poultry farm','dairy','goat farm'
 ];
 
-// Roman Urdu keywords (Urdu words written in English letters — very common in Pakistan)
+// Roman Urdu keywords (Urdu words written in English letters â€” very common in Pakistan)
 const AGRI_KEYWORDS_ROMAN = [
   // Crops
   'fasal','phasal','faslon','gandum','gehu','chawal','dhaan','makkai','makka','maka',
@@ -140,114 +140,114 @@ const CLEARLY_OFF_TOPIC = [
 function isAgricultureRelated(text) {
   const lower = text.toLowerCase().trim();
 
-  // ── Step 1: Check Urdu script ─────────────────────────────────────────────
+  // â”€â”€ Step 1: Check Urdu script â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   for (const kw of AGRI_KEYWORDS_UR) {
     if (text.includes(kw)) return true;
   }
 
-  // ── Step 2: Check English ─────────────────────────────────────────────────
+  // â”€â”€ Step 2: Check English â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   for (const kw of AGRI_KEYWORDS_EN) {
     if (lower.includes(kw.toLowerCase())) return true;
   }
 
-  // ── Step 3: Check Roman Urdu (biggest gap fixed here) ────────────────────
+  // â”€â”€ Step 3: Check Roman Urdu (biggest gap fixed here) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   for (const kw of AGRI_KEYWORDS_ROMAN) {
     if (lower.includes(kw.toLowerCase())) return true;
   }
 
-  // ── Step 4: Smart fallback — short or vague messages pass through ─────────
-  // If message is ≤6 words, it's likely a farming question — let Claude decide
+  // â”€â”€ Step 4: Smart fallback â€” short or vague messages pass through â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // If message is â‰¤6 words, it's likely a farming question â€” let Claude decide
   const wordCount = lower.trim().split(/\s+/).length;
   if (wordCount <= 6) return true;
 
-  // ── Step 5: Check if it's clearly NON-agriculture ─────────────────────────
-  // If it clearly matches off-topic AND no agri context → block
+  // â”€â”€ Step 5: Check if it's clearly NON-agriculture â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // If it clearly matches off-topic AND no agri context â†’ block
   const isObviouslyOffTopic = CLEARLY_OFF_TOPIC.some(kw => lower.includes(kw.toLowerCase()));
-  if (!isObviouslyOffTopic) return true; // Unknown/ambiguous → let Claude answer
+  if (!isObviouslyOffTopic) return true; // Unknown/ambiguous â†’ let Claude answer
 
   return false; // Only block if clearly off-topic
 }
 
-const OFF_TOPIC_UR = `معذرت! 🌾 میں DehatiAI ہوں — صرف زراعت، فصلوں، جانوروں اور کسانی سے متعلق سوالات کا جواب دے سکتا ہوں۔
+const OFF_TOPIC_UR = `Ù…Ø¹Ø°Ø±Øª! ðŸŒ¾ Ù…ÛŒÚº DehatiAI ÛÙˆÚº â€” ØµØ±Ù Ø²Ø±Ø§Ø¹ØªØŒ ÙØµÙ„ÙˆÚºØŒ Ø¬Ø§Ù†ÙˆØ±ÙˆÚº Ø§ÙˆØ± Ú©Ø³Ø§Ù†ÛŒ Ø³Û’ Ù…ØªØ¹Ù„Ù‚ Ø³ÙˆØ§Ù„Ø§Øª Ú©Ø§ Ø¬ÙˆØ§Ø¨ Ø¯Û’ Ø³Ú©ØªØ§ ÛÙˆÚºÛ”
 
-براہ کرم ان میں سے کوئی موضوع پوچھیں:
-• فصلوں کی بیماریاں اور علاج
-• کھاد اور سپرے کا مشورہ
-• آبپاشی اور موسم
-• منڈی کی قیمتیں
-• جانوروں کی صحت
-• حکومتی زرعی اسکیمیں
+Ø¨Ø±Ø§Û Ú©Ø±Ù… Ø§Ù† Ù…ÛŒÚº Ø³Û’ Ú©ÙˆØ¦ÛŒ Ù…ÙˆØ¶ÙˆØ¹ Ù¾ÙˆÚ†Ú¾ÛŒÚº:
+â€¢ ÙØµÙ„ÙˆÚº Ú©ÛŒ Ø¨ÛŒÙ…Ø§Ø±ÛŒØ§Úº Ø§ÙˆØ± Ø¹Ù„Ø§Ø¬
+â€¢ Ú©Ú¾Ø§Ø¯ Ø§ÙˆØ± Ø³Ù¾Ø±Û’ Ú©Ø§ Ù…Ø´ÙˆØ±Û
+â€¢ Ø¢Ø¨Ù¾Ø§Ø´ÛŒ Ø§ÙˆØ± Ù…ÙˆØ³Ù…
+â€¢ Ù…Ù†ÚˆÛŒ Ú©ÛŒ Ù‚ÛŒÙ…ØªÛŒÚº
+â€¢ Ø¬Ø§Ù†ÙˆØ±ÙˆÚº Ú©ÛŒ ØµØ­Øª
+â€¢ Ø­Ú©ÙˆÙ…ØªÛŒ Ø²Ø±Ø¹ÛŒ Ø§Ø³Ú©ÛŒÙ…ÛŒÚº
 
-زراعت ہیلپ لائن: 0800-15000 (مفت)`;
+Ø²Ø±Ø§Ø¹Øª ÛÛŒÙ„Ù¾ Ù„Ø§Ø¦Ù†: 0800-15000 (Ù…ÙØª)`;
 
 
-// ─── System Prompts ────────────────────────────────────────────────────────────
+// â”€â”€â”€ System Prompts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function buildFarmingSystem() {
   const now    = new Date();
   const month  = now.getMonth() + 1;
   const hour   = now.getHours();
   const season = (month >= 5 && month <= 10)
-    ? 'خریف (چاول، مکئی، گنا، کپاس، مونگ، ماش)'
-    : 'ربیع (گندم، سرسوں، آلو، چنا، مٹر، تارا میرہ)';
-  const timeOfDay = hour < 12 ? 'صبح' : hour < 17 ? 'دوپہر' : 'شام';
+    ? 'Ø®Ø±ÛŒÙ (Ú†Ø§ÙˆÙ„ØŒ Ù…Ú©Ø¦ÛŒØŒ Ú¯Ù†Ø§ØŒ Ú©Ù¾Ø§Ø³ØŒ Ù…ÙˆÙ†Ú¯ØŒ Ù…Ø§Ø´)'
+    : 'Ø±Ø¨ÛŒØ¹ (Ú¯Ù†Ø¯Ù…ØŒ Ø³Ø±Ø³ÙˆÚºØŒ Ø¢Ù„ÙˆØŒ Ú†Ù†Ø§ØŒ Ù…Ù¹Ø±ØŒ ØªØ§Ø±Ø§ Ù…ÛŒØ±Û)';
+  const timeOfDay = hour < 12 ? 'ØµØ¨Ø­' : hour < 17 ? 'Ø¯ÙˆÙ¾ÛØ±' : 'Ø´Ø§Ù…';
   const dateStr = now.toLocaleDateString('ur-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  return `آپ DehatiAI ہیں — پنجاب، پاکستان کے کسانوں کا ماہر AI مددگار۔
-آج: ${dateStr} (${timeOfDay})
-موجودہ زرعی موسم: ${season}
-مقام: پنجاب، پاکستان
+  return `Ø¢Ù¾ DehatiAI ÛÛŒÚº â€” Ù¾Ù†Ø¬Ø§Ø¨ØŒ Ù¾Ø§Ú©Ø³ØªØ§Ù† Ú©Û’ Ú©Ø³Ø§Ù†ÙˆÚº Ú©Ø§ Ù…Ø§ÛØ± AI Ù…Ø¯Ø¯Ú¯Ø§Ø±Û”
+Ø¢Ø¬: ${dateStr} (${timeOfDay})
+Ù…ÙˆØ¬ÙˆØ¯Û Ø²Ø±Ø¹ÛŒ Ù…ÙˆØ³Ù…: ${season}
+Ù…Ù‚Ø§Ù…: Ù¾Ù†Ø¬Ø§Ø¨ØŒ Ù¾Ø§Ú©Ø³ØªØ§Ù†
 
-⚠️ انتہائی ضروری: آپ صرف اور صرف زراعت، فصلوں، جانوروں، کھاد، بیماریوں، آبپاشی، منڈی قیمتوں اور کسانی سے متعلق سوالات کا جواب دیں گے۔ اگر کوئی سوال زراعت سے بالکل غیر متعلق ہو (جیسے سیاست، فلم، کھیل، کوڈنگ وغیرہ) تو صرف یہ کہیں: "معذرت، میں صرف زرعی موضوعات پر بات کر سکتا ہوں۔"
+âš ï¸ Ø§Ù†ØªÛØ§Ø¦ÛŒ Ø¶Ø±ÙˆØ±ÛŒ: Ø¢Ù¾ ØµØ±Ù Ø§ÙˆØ± ØµØ±Ù Ø²Ø±Ø§Ø¹ØªØŒ ÙØµÙ„ÙˆÚºØŒ Ø¬Ø§Ù†ÙˆØ±ÙˆÚºØŒ Ú©Ú¾Ø§Ø¯ØŒ Ø¨ÛŒÙ…Ø§Ø±ÛŒÙˆÚºØŒ Ø¢Ø¨Ù¾Ø§Ø´ÛŒØŒ Ù…Ù†ÚˆÛŒ Ù‚ÛŒÙ…ØªÙˆÚº Ø§ÙˆØ± Ú©Ø³Ø§Ù†ÛŒ Ø³Û’ Ù…ØªØ¹Ù„Ù‚ Ø³ÙˆØ§Ù„Ø§Øª Ú©Ø§ Ø¬ÙˆØ§Ø¨ Ø¯ÛŒÚº Ú¯Û’Û” Ø§Ú¯Ø± Ú©ÙˆØ¦ÛŒ Ø³ÙˆØ§Ù„ Ø²Ø±Ø§Ø¹Øª Ø³Û’ Ø¨Ø§Ù„Ú©Ù„ ØºÛŒØ± Ù…ØªØ¹Ù„Ù‚ ÛÙˆ (Ø¬ÛŒØ³Û’ Ø³ÛŒØ§Ø³ØªØŒ ÙÙ„Ù…ØŒ Ú©Ú¾ÛŒÙ„ØŒ Ú©ÙˆÚˆÙ†Ú¯ ÙˆØºÛŒØ±Û) ØªÙˆ ØµØ±Ù ÛŒÛ Ú©ÛÛŒÚº: "Ù…Ø¹Ø°Ø±ØªØŒ Ù…ÛŒÚº ØµØ±Ù Ø²Ø±Ø¹ÛŒ Ù…ÙˆØ¶ÙˆØ¹Ø§Øª Ù¾Ø± Ø¨Ø§Øª Ú©Ø± Ø³Ú©ØªØ§ ÛÙˆÚºÛ”"
 
-آپ کا کردار:
-- فصلوں، کھادوں، بیماریوں، آبپاشی، منڈی قیمتوں اور سرکاری اسکیموں میں ماہرانہ رہنمائی
-- جواب آسان، عام فہم اردو میں (گاؤں کا ان پڑھ کسان بھی سمجھ سکے)
-- مختصر اور عملی جواب (250 الفاظ سے کم) — بلٹ پوائنٹس استعمال کریں
-- صرف پاکستان میں آسانی سے ملنے والی دوائیں اور کھادیں تجویز کریں
-- موسم اور وقت کے مطابق مشورہ دیں
-- غیر یقینی ہو تو: "مقامی زرعی افسر سے ملیں" یا "زراعت ہیلپ لائن 0800-15000"
-- کبھی غلط معلومات نہ دیں
-- اعداد اور مقدار واضح لکھیں (مثلاً: 1 بوری DAP فی ایکڑ)`;
+Ø¢Ù¾ Ú©Ø§ Ú©Ø±Ø¯Ø§Ø±:
+- ÙØµÙ„ÙˆÚºØŒ Ú©Ú¾Ø§Ø¯ÙˆÚºØŒ Ø¨ÛŒÙ…Ø§Ø±ÛŒÙˆÚºØŒ Ø¢Ø¨Ù¾Ø§Ø´ÛŒØŒ Ù…Ù†ÚˆÛŒ Ù‚ÛŒÙ…ØªÙˆÚº Ø§ÙˆØ± Ø³Ø±Ú©Ø§Ø±ÛŒ Ø§Ø³Ú©ÛŒÙ…ÙˆÚº Ù…ÛŒÚº Ù…Ø§ÛØ±Ø§Ù†Û Ø±ÛÙ†Ù…Ø§Ø¦ÛŒ
+- Ø¬ÙˆØ§Ø¨ Ø¢Ø³Ø§Ù†ØŒ Ø¹Ø§Ù… ÙÛÙ… Ø§Ø±Ø¯Ùˆ Ù…ÛŒÚº (Ú¯Ø§Ø¤Úº Ú©Ø§ Ø§Ù† Ù¾Ú‘Ú¾ Ú©Ø³Ø§Ù† Ø¨Ú¾ÛŒ Ø³Ù…Ø¬Ú¾ Ø³Ú©Û’)
+- Ù…Ø®ØªØµØ± Ø§ÙˆØ± Ø¹Ù…Ù„ÛŒ Ø¬ÙˆØ§Ø¨ (250 Ø§Ù„ÙØ§Ø¸ Ø³Û’ Ú©Ù…) â€” Ø¨Ù„Ù¹ Ù¾ÙˆØ§Ø¦Ù†Ù¹Ø³ Ø§Ø³ØªØ¹Ù…Ø§Ù„ Ú©Ø±ÛŒÚº
+- ØµØ±Ù Ù¾Ø§Ú©Ø³ØªØ§Ù† Ù…ÛŒÚº Ø¢Ø³Ø§Ù†ÛŒ Ø³Û’ Ù…Ù„Ù†Û’ ÙˆØ§Ù„ÛŒ Ø¯ÙˆØ§Ø¦ÛŒÚº Ø§ÙˆØ± Ú©Ú¾Ø§Ø¯ÛŒÚº ØªØ¬ÙˆÛŒØ² Ú©Ø±ÛŒÚº
+- Ù…ÙˆØ³Ù… Ø§ÙˆØ± ÙˆÙ‚Øª Ú©Û’ Ù…Ø·Ø§Ø¨Ù‚ Ù…Ø´ÙˆØ±Û Ø¯ÛŒÚº
+- ØºÛŒØ± ÛŒÙ‚ÛŒÙ†ÛŒ ÛÙˆ ØªÙˆ: "Ù…Ù‚Ø§Ù…ÛŒ Ø²Ø±Ø¹ÛŒ Ø§ÙØ³Ø± Ø³Û’ Ù…Ù„ÛŒÚº" ÛŒØ§ "Ø²Ø±Ø§Ø¹Øª ÛÛŒÙ„Ù¾ Ù„Ø§Ø¦Ù† 0800-15000"
+- Ú©Ø¨Ú¾ÛŒ ØºÙ„Ø· Ù…Ø¹Ù„ÙˆÙ…Ø§Øª Ù†Û Ø¯ÛŒÚº
+- Ø§Ø¹Ø¯Ø§Ø¯ Ø§ÙˆØ± Ù…Ù‚Ø¯Ø§Ø± ÙˆØ§Ø¶Ø­ Ù„Ú©Ú¾ÛŒÚº (Ù…Ø«Ù„Ø§Ù‹: 1 Ø¨ÙˆØ±ÛŒ DAP ÙÛŒ Ø§ÛŒÚ©Ú‘)`;
 }
 
 function buildChatSystem(language) {
   const now    = new Date();
   const month  = now.getMonth() + 1;
-  const season = (month >= 5 && month <= 10) ? 'خریف' : 'ربیع';
+  const season = (month >= 5 && month <= 10) ? 'Ø®Ø±ÛŒÙ' : 'Ø±Ø¨ÛŒØ¹';
   const year   = now.getFullYear();
 
   const agriOnlyRule = language === 'en'
     ? 'CRITICAL: You ONLY answer agriculture, farming, crops, livestock, soil, weather and rural Pakistan related questions. For ANY other topic, respond: "Sorry, I can only help with agriculture and farming topics. Please ask about crops, fertilizers, diseases, irrigation, livestock, or government schemes."'
-    : `⚠️ اہم: آپ صرف زراعت، فصلوں، جانوروں، مٹی، موسم اور دیہی پاکستان سے متعلق سوالات کا جواب دیں گے۔ کوئی بھی غیر زرعی سوال آنے پر صرف کہیں: "معذرت، میں صرف زرعی موضوعات پر بات کر سکتا ہوں۔ فصل، کھاد، بیماری، آبپاشی، جانور یا اسکیموں سے متعلق پوچھیں۔"`;
+    : `âš ï¸ Ø§ÛÙ…: Ø¢Ù¾ ØµØ±Ù Ø²Ø±Ø§Ø¹ØªØŒ ÙØµÙ„ÙˆÚºØŒ Ø¬Ø§Ù†ÙˆØ±ÙˆÚºØŒ Ù…Ù¹ÛŒØŒ Ù…ÙˆØ³Ù… Ø§ÙˆØ± Ø¯ÛŒÛÛŒ Ù¾Ø§Ú©Ø³ØªØ§Ù† Ø³Û’ Ù…ØªØ¹Ù„Ù‚ Ø³ÙˆØ§Ù„Ø§Øª Ú©Ø§ Ø¬ÙˆØ§Ø¨ Ø¯ÛŒÚº Ú¯Û’Û” Ú©ÙˆØ¦ÛŒ Ø¨Ú¾ÛŒ ØºÛŒØ± Ø²Ø±Ø¹ÛŒ Ø³ÙˆØ§Ù„ Ø¢Ù†Û’ Ù¾Ø± ØµØ±Ù Ú©ÛÛŒÚº: "Ù…Ø¹Ø°Ø±ØªØŒ Ù…ÛŒÚº ØµØ±Ù Ø²Ø±Ø¹ÛŒ Ù…ÙˆØ¶ÙˆØ¹Ø§Øª Ù¾Ø± Ø¨Ø§Øª Ú©Ø± Ø³Ú©ØªØ§ ÛÙˆÚºÛ” ÙØµÙ„ØŒ Ú©Ú¾Ø§Ø¯ØŒ Ø¨ÛŒÙ…Ø§Ø±ÛŒØŒ Ø¢Ø¨Ù¾Ø§Ø´ÛŒØŒ Ø¬Ø§Ù†ÙˆØ± ÛŒØ§ Ø§Ø³Ú©ÛŒÙ…ÙˆÚº Ø³Û’ Ù…ØªØ¹Ù„Ù‚ Ù¾ÙˆÚ†Ú¾ÛŒÚºÛ”"`;
 
   if (language === 'en') {
     return `You are DehatiAI, a friendly expert farming assistant for Punjab, Pakistan farmers.
 Current season: ${season} | Year: ${year}
 ${agriOnlyRule}
-Style: Talk like a knowledgeable farming friend on WhatsApp — short, practical, warm.
+Style: Talk like a knowledgeable farming friend on WhatsApp â€” short, practical, warm.
 Keep responses under 5 sentences. Recommend Pakistani-available products only.
 Helpline: 0800-15000 (free)`;
   }
 
-  const base = `آپ DehatiAI ہیں — پنجاب کے کسانوں کا دوستانہ AI ساتھی۔
-موجودہ موسم: ${season} | سال: ${year}
+  const base = `Ø¢Ù¾ DehatiAI ÛÛŒÚº â€” Ù¾Ù†Ø¬Ø§Ø¨ Ú©Û’ Ú©Ø³Ø§Ù†ÙˆÚº Ú©Ø§ Ø¯ÙˆØ³ØªØ§Ù†Û AI Ø³Ø§ØªÚ¾ÛŒÛ”
+Ù…ÙˆØ¬ÙˆØ¯Û Ù…ÙˆØ³Ù…: ${season} | Ø³Ø§Ù„: ${year}
 ${agriOnlyRule}
 
-انداز: بالکل WhatsApp پر کسی قریبی دوست کی طرح — سادہ، دوستانہ، مختصر (3-5 جملے)
-- کسان جس زبان میں لکھے اسی میں جواب دیں
-- لمبے لیکچر سے پرہیز
-- سنجیدہ بیماری پر: فوری ماہر سے ملنے کا مشورہ
-- زراعت ہیلپ لائن: 0800-15000 (مفت)`;
+Ø§Ù†Ø¯Ø§Ø²: Ø¨Ø§Ù„Ú©Ù„ WhatsApp Ù¾Ø± Ú©Ø³ÛŒ Ù‚Ø±ÛŒØ¨ÛŒ Ø¯ÙˆØ³Øª Ú©ÛŒ Ø·Ø±Ø­ â€” Ø³Ø§Ø¯ÛØŒ Ø¯ÙˆØ³ØªØ§Ù†ÛØŒ Ù…Ø®ØªØµØ± (3-5 Ø¬Ù…Ù„Û’)
+- Ú©Ø³Ø§Ù† Ø¬Ø³ Ø²Ø¨Ø§Ù† Ù…ÛŒÚº Ù„Ú©Ú¾Û’ Ø§Ø³ÛŒ Ù…ÛŒÚº Ø¬ÙˆØ§Ø¨ Ø¯ÛŒÚº
+- Ù„Ù…Ø¨Û’ Ù„ÛŒÚ©Ú†Ø± Ø³Û’ Ù¾Ø±ÛÛŒØ²
+- Ø³Ù†Ø¬ÛŒØ¯Û Ø¨ÛŒÙ…Ø§Ø±ÛŒ Ù¾Ø±: ÙÙˆØ±ÛŒ Ù…Ø§ÛØ± Ø³Û’ Ù…Ù„Ù†Û’ Ú©Ø§ Ù…Ø´ÙˆØ±Û
+- Ø²Ø±Ø§Ø¹Øª ÛÛŒÙ„Ù¾ Ù„Ø§Ø¦Ù†: 0800-15000 (Ù…ÙØª)`;
 
-  if (language === 'pj') return base + '\nپنجابی یا سرائیکی میں جواب دینا قبول ہے۔';
+  if (language === 'pj') return base + '\nÙ¾Ù†Ø¬Ø§Ø¨ÛŒ ÛŒØ§ Ø³Ø±Ø§Ø¦ÛŒÚ©ÛŒ Ù…ÛŒÚº Ø¬ÙˆØ§Ø¨ Ø¯ÛŒÙ†Ø§ Ù‚Ø¨ÙˆÙ„ ÛÛ’Û”';
   return base;
 }
 
 function aiUnavailable() {
-  return { answer: '⚠️ AI سروس ابھی دستیاب نہیں — CLAUDE_API_KEY ترتیب دیں', disabled: true };
+  return { answer: 'âš ï¸ AI Ø³Ø±ÙˆØ³ Ø§Ø¨Ú¾ÛŒ Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚº â€” CLAUDE_API_KEY ØªØ±ØªÛŒØ¨ Ø¯ÛŒÚº', disabled: true };
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function claudeAsk(prompt, systemPrompt, maxTokens = 700, temperature = 0.6) {
   const response = await claude.messages.create({
     model: CLAUDE_MODEL,
@@ -259,11 +259,11 @@ async function claudeAsk(prompt, systemPrompt, maxTokens = 700, temperature = 0.
   return response.content?.[0]?.text ?? '';
 }
 
-// ─── POST /api/ai/ask ──────────────────────────────────────────────────────────
+// â”€â”€â”€ POST /api/ai/ask â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/ask', aiLimiter, authenticateToken, async (req, res) => {
   try {
     const { question } = req.body;
-    if (!question?.trim()) return res.status(400).json({ error: 'سوال خالی نہیں ہونا چاہیے' });
+    if (!question?.trim()) return res.status(400).json({ error: 'Ø³ÙˆØ§Ù„ Ø®Ø§Ù„ÛŒ Ù†ÛÛŒÚº ÛÙˆÙ†Ø§ Ú†Ø§ÛÛŒÛ’' });
     if (!claude)           return res.json(aiUnavailable());
 
     // Fast keyword guard
@@ -275,27 +275,27 @@ router.post('/ask', aiLimiter, authenticateToken, async (req, res) => {
     res.json({ answer: text });
   } catch (err) {
     console.error('AI ask error:', err.message);
-    res.status(500).json({ error: 'AI جواب دینے میں ناکام — دوبارہ کوشش کریں' });
+    res.status(500).json({ error: 'AI Ø¬ÙˆØ§Ø¨ Ø¯ÛŒÙ†Û’ Ù…ÛŒÚº Ù†Ø§Ú©Ø§Ù… â€” Ø¯ÙˆØ¨Ø§Ø±Û Ú©ÙˆØ´Ø´ Ú©Ø±ÛŒÚº' });
   }
 });
 
-// ─── POST /api/ai/disease ──────────────────────────────────────────────────────
+// â”€â”€â”€ POST /api/ai/disease â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/disease', aiLimiter, authenticateToken, async (req, res) => {
   try {
     const { imageBase64, cropName, mimeType = 'image/jpeg' } = req.body;
-    if (!imageBase64) return res.status(400).json({ error: 'تصویر ضروری ہے' });
-    if (!claude)       return res.json({ disease: 'AI دستیاب نہیں', cause: '', treatment: '', prevention: '', disabled: true });
+    if (!imageBase64) return res.status(400).json({ error: 'ØªØµÙˆÛŒØ± Ø¶Ø±ÙˆØ±ÛŒ ÛÛ’' });
+    if (!claude)       return res.json({ disease: 'AI Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚº', cause: '', treatment: '', prevention: '', disabled: true });
 
     // Security: whitelist MIME types
     const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     const safeMime = ALLOWED_MIME.includes(mimeType) ? mimeType : 'image/jpeg';
 
     const month  = new Date().getMonth() + 1;
-    const season = (month >= 5 && month <= 10) ? 'خریف (Kharif)' : 'ربیع (Rabi)';
-    const cropText = cropName ? `Crop specified by farmer: ${cropName}\n` : 'Crop: not specified by farmer — identify from image if possible\n';
+    const season = (month >= 5 && month <= 10) ? 'Ø®Ø±ÛŒÙ (Kharif)' : 'Ø±Ø¨ÛŒØ¹ (Rabi)';
+    const cropText = cropName ? `Crop specified by farmer: ${cropName}\n` : 'Crop: not specified by farmer â€” identify from image if possible\n';
 
     // Expert-level system prompt
-    const systemPrompt = `You are Dr. Zara — a senior plant pathologist and agronomist with 20+ years of experience in Punjab, Pakistan. You have diagnosed thousands of crop diseases across wheat, rice, cotton, sugarcane, maize, vegetables, and fruits in Pakistani conditions.
+    const systemPrompt = `You are Dr. Zara â€” a senior plant pathologist and agronomist with 20+ years of experience in Punjab, Pakistan. You have diagnosed thousands of crop diseases across wheat, rice, cotton, sugarcane, maize, vegetables, and fruits in Pakistani conditions.
 
 YOUR EXPERTISE includes:
 - All major Punjab crop diseases: wheat rust (yellow/brown/black), blast, blight, smut, Karnal bunt, powdery mildew
@@ -305,7 +305,7 @@ YOUR EXPERTISE includes:
 - Nutrient deficiencies that look like disease: nitrogen (yellowing), iron chlorosis, zinc deficiency
 - Abiotic stress: heat stress, waterlogging, herbicide damage, spray burn
 
-VISUAL INSPECTION PROTOCOL — examine the image for:
+VISUAL INSPECTION PROTOCOL â€” examine the image for:
 1. Leaf color changes (yellowing, browning, purpling, whitening)
 2. Lesion patterns (spots, blotches, stripes, rings, halos)
 3. Lesion texture (water-soaked, dry, powdery, oily, sunken)
@@ -316,7 +316,7 @@ VISUAL INSPECTION PROTOCOL — examine the image for:
 8. Overall plant vigor and canopy color
 
 RESPONSE RULES:
-- Be SPECIFIC — name the exact disease/pest, not just "fungal infection"
+- Be SPECIFIC â€” name the exact disease/pest, not just "fungal infection"
 - If multiple diseases possible, list the most likely one first
 - Always consider the season context
 - Confidence: if image is unclear, say so honestly but still give best diagnosis
@@ -329,14 +329,14 @@ TASK: Carefully examine every part of this crop image and provide a detailed dis
 
 Respond STRICTLY in this exact format (use these exact Urdu labels):
 
-بیماری: [Exact disease/pest name in Urdu + English — e.g., "گندم کا پیلا زنگ (Yellow Rust / Stripe Rust)"]
-شدت: [ہلکی / درمیانی / شدید — based on what you see]
-اعتما�// ─── POST /api/ai/chat/stream (SSE streaming) ───────────────────────────────
+Ø¨ÛŒÙ…Ø§Ø±ÛŒ: [Exact disease/pest name in Urdu + English â€” e.g., "Ú¯Ù†Ø¯Ù… Ú©Ø§ Ù¾ÛŒÙ„Ø§ Ø²Ù†Ú¯ (Yellow Rust / Stripe Rust)"]
+Ø´Ø¯Øª: [ÛÙ„Ú©ÛŒ / Ø¯Ø±Ù…ÛŒØ§Ù†ÛŒ / Ø´Ø¯ÛŒØ¯ â€” based on what you see]
+Ø§Ø¹ØªÙ…Ø§Ø// â”€â”€â”€ POST /api/ai/chat/stream (SSE streaming) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
   try {
     const { messages, language = 'ur' } = req.body;
     if (!Array.isArray(messages) || messages.length === 0)
-      return res.status(400).json({ error: 'پیغامات ضروری ہیں' });
+      return res.status(400).json({ error: 'Ù¾ÛŒØºØ§Ù…Ø§Øª Ø¶Ø±ÙˆØ±ÛŒ ÛÛŒÚº' });
 
     const lastMsg = messages[messages.length - 1];
 
@@ -348,7 +348,7 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
     res.flushHeaders();
 
     if (!claude) {
-      res.write(`data: ${JSON.stringify({ text: '⚠️ AI سروس دستیاب نہیں' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ text: 'âš ï¸ AI Ø³Ø±ÙˆØ³ Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚº' })}\n\n`);
       res.write('data: [DONE]\n\n');
       return res.end();
     }
@@ -360,10 +360,10 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
       return res.end();
     }
 
-    // ── Cache lookup (only for single-turn questions, not deep conversations) ──────
+    // â”€â”€ Cache lookup (only for single-turn questions, not deep conversations) â”€â”€â”€â”€â”€â”€
     const userMessages = messages.filter(m => m.role === 'user');
     if (lastMsg.role === 'user' && userMessages.length === 1) {
-      const cached = aiCache.get(lastMsg.content, language);
+      const cached = await aiCache.get(lastMsg.content, language);
       if (cached) {
         // Stream cached answer in chunks (feels like live streaming)
         res.setHeader('X-Cache', 'HIT');
@@ -385,7 +385,7 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
       content: m.content
     }));
 
-    // Keep-alive heartbeat — prevents Railway/Nginx 30s timeout during Claude think time
+    // Keep-alive heartbeat â€” prevents Railway/Nginx 30s timeout during Claude think time
     const heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
 
     // Stream with Claude
@@ -430,13 +430,13 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
     console.error('Chat stream error:', err.message);
     try {
       clearInterval(heartbeat);
-      res.write(`data: ${JSON.stringify({ error: 'جواب دینے میں مسئلہ ہوا' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ error: 'Ø¬ÙˆØ§Ø¨ Ø¯ÛŒÙ†Û’ Ù…ÛŒÚº Ù…Ø³Ø¦Ù„Û ÛÙˆØ§' })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
     } catch {}
   }
 });
-) return res.json({ reply: '⚠️ AI سروس دستیاب نہیں' });
+) return res.json({ reply: 'âš ï¸ AI Ø³Ø±ÙˆØ³ Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚº' });
 
     const lastMsg = messages[messages.length - 1];
 
@@ -462,16 +462,16 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
     res.json({ reply: response.content?.[0]?.text ?? '' });
   } catch (err) {
     console.error('Chat error:', err.message);
-    res.status(500).json({ error: 'جواب دینے میں مسئلہ ہوا' });
+    res.status(500).json({ error: 'Ø¬ÙˆØ§Ø¨ Ø¯ÛŒÙ†Û’ Ù…ÛŒÚº Ù…Ø³Ø¦Ù„Û ÛÙˆØ§' });
   }
 });
 
-// ─── POST /api/ai/chat/stream (SSE streaming) ─────────────────────────────────
+// â”€â”€â”€ POST /api/ai/chat/stream (SSE streaming) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
   try {
     const { messages, language = 'ur' } = req.body;
     if (!Array.isArray(messages) || messages.length === 0)
-      return res.status(400).json({ error: 'پیغامات ضروری ہیں' });
+      return res.status(400).json({ error: 'Ù¾ÛŒØºØ§Ù…Ø§Øª Ø¶Ø±ÙˆØ±ÛŒ ÛÛŒÚº' });
 
     // SSE headers
     res.setHeader('Content-Type',  'text/event-stream; charset=utf-8');
@@ -481,7 +481,7 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
     res.flushHeaders();
 
     if (!claude) {
-      res.write(`data: ${JSON.stringify({ text: '⚠️ AI سروس دستیاب نہیں' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ text: 'âš ï¸ AI Ø³Ø±ÙˆØ³ Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚº' })}\n\n`);
       res.write('data: [DONE]\n\n');
       return res.end();
     }
@@ -500,7 +500,7 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
       content: m.content
     }));
 
-    // Keep-alive heartbeat — prevents Railway/Nginx 30s timeout during Claude think time
+    // Keep-alive heartbeat â€” prevents Railway/Nginx 30s timeout during Claude think time
     const heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
 
     // Stream with Claude
@@ -541,69 +541,70 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
     console.error('Chat stream error:', err.message);
     try {
       clearInterval(heartbeat);
-      res.write(`data: ${JSON.stringify({ error: 'جواب دینے میں مسئلہ ہوا' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ error: 'Ø¬ÙˆØ§Ø¨ Ø¯ÛŒÙ†Û’ Ù…ÛŒÚº Ù…Ø³Ø¦Ù„Û ÛÙˆØ§' })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
     } catch {}
   }
 });
 
-// ─── POST /api/ai/animal ──────────────────────────────────────────────────────
+// â”€â”€â”€ POST /api/ai/animal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/animal', aiLimiter, authenticateToken, async (req, res) => {
   try {
     const { animalType, symptoms, question } = req.body;
     if (!animalType && !symptoms && !question)
-      return res.status(400).json({ error: 'جانور کی قسم یا علامات ضروری ہیں' });
-    if (!claude) return res.json({ answer: '⚠️ AI سروس دستیاب نہیں' });
+      return res.status(400).json({ error: 'Ø¬Ø§Ù†ÙˆØ± Ú©ÛŒ Ù‚Ø³Ù… ÛŒØ§ Ø¹Ù„Ø§Ù…Ø§Øª Ø¶Ø±ÙˆØ±ÛŒ ÛÛŒÚº' });
+    if (!claude) return res.json({ answer: 'âš ï¸ AI Ø³Ø±ÙˆØ³ Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚº' });
 
-    const prompt = `جانور: ${animalType || 'نامعلوم'}
-علامات: ${symptoms || 'نامعلوم'}
-اضافی معلومات: ${question || 'کوئی نہیں'}
+    const prompt = `Ø¬Ø§Ù†ÙˆØ±: ${animalType || 'Ù†Ø§Ù…Ø¹Ù„ÙˆÙ…'}
+Ø¹Ù„Ø§Ù…Ø§Øª: ${symptoms || 'Ù†Ø§Ù…Ø¹Ù„ÙˆÙ…'}
+Ø§Ø¶Ø§ÙÛŒ Ù…Ø¹Ù„ÙˆÙ…Ø§Øª: ${question || 'Ú©ÙˆØ¦ÛŒ Ù†ÛÛŒÚº'}
 
-پاکستانی جانوروں کے ڈاکٹر کی طرح بتائیں:
-1. ممکنہ بیماری یا مسئلہ
-2. گھر پر فوری علاج (آسانی سے ملنے والی دوا)
-3. کیا کھانا پلانا ہے یا نہیں
-4. کیا فوری ڈاکٹر ضروری ہے؟ (ہاں/نہیں اور وجہ)
+Ù¾Ø§Ú©Ø³ØªØ§Ù†ÛŒ Ø¬Ø§Ù†ÙˆØ±ÙˆÚº Ú©Û’ ÚˆØ§Ú©Ù¹Ø± Ú©ÛŒ Ø·Ø±Ø­ Ø¨ØªØ§Ø¦ÛŒÚº:
+1. Ù…Ù…Ú©Ù†Û Ø¨ÛŒÙ…Ø§Ø±ÛŒ ÛŒØ§ Ù…Ø³Ø¦Ù„Û
+2. Ú¯Ú¾Ø± Ù¾Ø± ÙÙˆØ±ÛŒ Ø¹Ù„Ø§Ø¬ (Ø¢Ø³Ø§Ù†ÛŒ Ø³Û’ Ù…Ù„Ù†Û’ ÙˆØ§Ù„ÛŒ Ø¯ÙˆØ§)
+3. Ú©ÛŒØ§ Ú©Ú¾Ø§Ù†Ø§ Ù¾Ù„Ø§Ù†Ø§ ÛÛ’ ÛŒØ§ Ù†ÛÛŒÚº
+4. Ú©ÛŒØ§ ÙÙˆØ±ÛŒ ÚˆØ§Ú©Ù¹Ø± Ø¶Ø±ÙˆØ±ÛŒ ÛÛ’ØŸ (ÛØ§Úº/Ù†ÛÛŒÚº Ø§ÙˆØ± ÙˆØ¬Û)
 
-مختصر، واضح اردو میں — فی پوائنٹ ایک جملہ کافی ہے۔`;
+Ù…Ø®ØªØµØ±ØŒ ÙˆØ§Ø¶Ø­ Ø§Ø±Ø¯Ùˆ Ù…ÛŒÚº â€” ÙÛŒ Ù¾ÙˆØ§Ø¦Ù†Ù¹ Ø§ÛŒÚ© Ø¬Ù…Ù„Û Ú©Ø§ÙÛŒ ÛÛ’Û”`;
 
     const text = await claudeAsk(prompt, buildFarmingSystem(), 600, 0.5);
     res.json({ answer: text });
   } catch (err) {
     console.error('Animal error:', err.message);
-    res.status(500).json({ error: 'جواب دینے میں ناکام' });
+    res.status(500).json({ error: 'Ø¬ÙˆØ§Ø¨ Ø¯ÛŒÙ†Û’ Ù…ÛŒÚº Ù†Ø§Ú©Ø§Ù…' });
   }
 });
 
-// ─── POST /api/ai/fertilizer ──────────────────────────────────────────────────
+// â”€â”€â”€ POST /api/ai/fertilizer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {
   try {
     const { crop, soilType, cropAge } = req.body;
-    if (!claude) return res.json({ answer: '⚠️ AI سروس دستیاب نہیں' });
+    if (!claude) return res.json({ answer: 'âš ï¸ AI Ø³Ø±ÙˆØ³ Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚº' });
 
     const month  = new Date().getMonth() + 1;
-    const season = (month >= 5 && month <= 10) ? 'خریف' : 'ربیع';
+    const season = (month >= 5 && month <= 10) ? 'Ø®Ø±ÛŒÙ' : 'Ø±Ø¨ÛŒØ¹';
 
-    const prompt = `فصل: ${crop || 'نامعلوم'}
-مٹی کی قسم: ${soilType || 'عام دوہمی مٹی'}
-بڑھوتری کا مرحلہ: ${cropAge || 'نامعلوم'}
-موسم: ${season}
+    const prompt = `ÙØµÙ„: ${crop || 'Ù†Ø§Ù…Ø¹Ù„ÙˆÙ…'}
+Ù…Ù¹ÛŒ Ú©ÛŒ Ù‚Ø³Ù…: ${soilType || 'Ø¹Ø§Ù… Ø¯ÙˆÛÙ…ÛŒ Ù…Ù¹ÛŒ'}
+Ø¨Ú‘Ú¾ÙˆØªØ±ÛŒ Ú©Ø§ Ù…Ø±Ø­Ù„Û: ${cropAge || 'Ù†Ø§Ù…Ø¹Ù„ÙˆÙ…'}
+Ù…ÙˆØ³Ù…: ${season}
 
-پاکستان میں دستیاب کھادوں کے مطابق بتائیں:
-1. ابھی کون سی کھاد ڈالیں (نام، مقدار فی ایکڑ)
-2. ڈالنے کا طریقہ (زمین میں یا پانی کے ساتھ)
-3. اگلا مرحلہ کب اور کیا کریں
-4. ایک خاص احتیاط
+Ù¾Ø§Ú©Ø³ØªØ§Ù† Ù…ÛŒÚº Ø¯Ø³ØªÛŒØ§Ø¨ Ú©Ú¾Ø§Ø¯ÙˆÚº Ú©Û’ Ù…Ø·Ø§Ø¨Ù‚ Ø¨ØªØ§Ø¦ÛŒÚº:
+1. Ø§Ø¨Ú¾ÛŒ Ú©ÙˆÙ† Ø³ÛŒ Ú©Ú¾Ø§Ø¯ ÚˆØ§Ù„ÛŒÚº (Ù†Ø§Ù…ØŒ Ù…Ù‚Ø¯Ø§Ø± ÙÛŒ Ø§ÛŒÚ©Ú‘)
+2. ÚˆØ§Ù„Ù†Û’ Ú©Ø§ Ø·Ø±ÛŒÙ‚Û (Ø²Ù…ÛŒÙ† Ù…ÛŒÚº ÛŒØ§ Ù¾Ø§Ù†ÛŒ Ú©Û’ Ø³Ø§ØªÚ¾)
+3. Ø§Ú¯Ù„Ø§ Ù…Ø±Ø­Ù„Û Ú©Ø¨ Ø§ÙˆØ± Ú©ÛŒØ§ Ú©Ø±ÛŒÚº
+4. Ø§ÛŒÚ© Ø®Ø§Øµ Ø§Ø­ØªÛŒØ§Ø·
 
-مختصر اور واضح — قیمت اور دستیابی کا خیال رکھیں۔`;
+Ù…Ø®ØªØµØ± Ø§ÙˆØ± ÙˆØ§Ø¶Ø­ â€” Ù‚ÛŒÙ…Øª Ø§ÙˆØ± Ø¯Ø³ØªÛŒØ§Ø¨ÛŒ Ú©Ø§ Ø®ÛŒØ§Ù„ Ø±Ú©Ú¾ÛŒÚºÛ”`;
 
     const text = await claudeAsk(prompt, buildFarmingSystem(), 600, 0.5);
     res.json({ answer: text });
   } catch (err) {
     console.error('Fertilizer error:', err.message);
-    res.status(500).json({ error: 'جواب دینے میں ناکام' });
+    res.status(500).json({ error: 'Ø¬ÙˆØ§Ø¨ Ø¯ÛŒÙ†Û’ Ù…ÛŒÚº Ù†Ø§Ú©Ø§Ù…' });
   }
 });
 
 module.exports = router;
+
