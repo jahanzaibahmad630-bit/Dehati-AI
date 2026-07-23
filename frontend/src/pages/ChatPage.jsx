@@ -307,6 +307,15 @@ export default function ChatPage() {
   const recognitionRef = useRef(null);
   const { isOffline }  = useOffline();
   const [searchParams]  = useSearchParams();
+  const [netError, setNetError]   = useState('');   // network/server error message
+
+  // Bug fix: keep a ref to always have latest messages so sendMessage
+  // doesn't need 'messages' in its dep array (prevents stale closures)
+  const messagesRef = useRef(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  // Bug fix: ref to always call latest sendMessage from voice/auto-send handlers
+  const sendMessageRef = useRef(null);
 
   const isBusy = isStreaming;
 
@@ -322,8 +331,8 @@ export default function ChatPage() {
     const q = searchParams.get('q');
     if (q && q.trim()) {
       autoSentRef.current = true;
-      // Small delay so the component is fully mounted
-      const t = setTimeout(() => sendMessage(q.trim()), 400);
+      // Bug fix: use sendMessageRef so we always call the latest sendMessage
+      const t = setTimeout(() => sendMessageRef.current?.(q.trim()), 400);
       return () => clearTimeout(t);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -459,7 +468,8 @@ export default function ChatPage() {
     setFinalSpeech('');
     setInterimText('');
     setIsListening(false);
-    if (text) sendMessage(text);
+    // Bug fix: use ref so we always call the latest sendMessage (not a stale closure)
+    if (text) sendMessageRef.current?.(text);
   }, [finalSpeech, interimText]);
 
   const cancelMic = useCallback(() => {
@@ -481,6 +491,7 @@ export default function ChatPage() {
   const sendMessage = useCallback(async (text) => {
     const msg = (text || input).trim();
     if (!msg || isBusy) return;
+    setNetError(''); // clear any previous error
 
     // Stop recording if active
     if (isListening) {
@@ -538,8 +549,8 @@ export default function ChatPage() {
     setInterimText('');
     setShowQuickReplies(false);
 
-    // Build history for context
-    const history = [...messages, userMsg].slice(-10).map(m => ({ role: m.role, content: m.content }));
+    // Bug fix: use messagesRef.current so history is always current (not stale closure)
+    const history = [...messagesRef.current, userMsg].slice(-10).map(m => ({ role: m.role, content: m.content }));
 
     // Add streaming placeholder
     const streamingMsg = { role: 'assistant', content: '', streaming: true, time: new Date() };
@@ -605,6 +616,7 @@ export default function ChatPage() {
 
     } catch (err) {
       if (err.name === 'AbortError') {
+        // User manually stopped — just finalize whatever was received
         setMessages(prev => {
           const copy = [...prev];
           const last = copy[copy.length - 1];
@@ -612,38 +624,55 @@ export default function ChatPage() {
           return copy;
         });
       } else {
-        // Fallback non-streaming
+        // Network/server error — try non-streaming fallback
+        let recovered = false;
         try {
           const res2 = await fetch(`${API_URL}/api/ai/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
             body: JSON.stringify({ messages: history, language })
           });
-          const data = await res2.json();
+          if (res2.ok) {
+            const data = await res2.json();
+            setMessages(prev => {
+              const copy = [...prev];
+              copy[copy.length - 1] = { role: 'assistant', content: data.reply || data.error || 'جواب نہیں ملا', streaming: false, time: new Date() };
+              return copy;
+            });
+            recovered = true;
+          }
+        } catch {}
+        if (!recovered) {
+          // Remove the placeholder and show error banner
           setMessages(prev => {
             const copy = [...prev];
-            copy[copy.length - 1] = { role: 'assistant', content: data.reply || data.error || 'جواب نہیں ملا', streaming: false, time: new Date() };
+            const last = copy[copy.length - 1];
+            if (last?.streaming) copy.pop();
             return copy;
           });
-        } catch {
-          setMessages(prev => {
-            const copy = [...prev];
-            copy[copy.length - 1] = { role: 'assistant', content: '❌ نیٹ ورک مسئلہ — دوبارہ کوشش کریں', streaming: false, time: new Date() };
-            return copy;
-          });
+          setNetError('❌ سرور سے رابطہ نہیں — دوبارہ بھیجیں');
         }
       }
     } finally {
       setIsStreaming(false);
     }
-  }, [input, isBusy, isListening, isOffline, language, messages, hasQueuedQuestions]);
+  // Bug fix: removed 'messages' from deps — use messagesRef.current instead to avoid stale closures
+  }, [input, isBusy, isListening, isOffline, language]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
+  // Bug fix: keep sendMessageRef always pointing to latest sendMessage
+  sendMessageRef.current = sendMessage;
+
+  const stopGenerating = () => {
+    try { abortRef.current?.abort(); } catch {}
+  };
+
   const clearChat = () => {
     try { abortRef.current?.abort(); } catch {}
+    setNetError('');
     setMessages([{
       role: 'assistant',
       content: `سلام! 👋 نئی گفتگو شروع کریں — فصل، کھاد، بیماری، موسم کچھ بھی پوچھیں 🌾`,
@@ -661,10 +690,10 @@ export default function ChatPage() {
       const queue = getOfflineQueue();
       if (queue.length > 0) {
         setHasQueuedQuestions(false);
-        // Send the first queued question
         const first = queue[0];
         removeFromQueue(first.id);
-        setTimeout(() => sendMessage(first.question), 800);
+        // Bug fix: use ref so we always call the latest sendMessage
+        setTimeout(() => sendMessageRef.current?.(first.question), 800);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -795,6 +824,43 @@ export default function ChatPage() {
         </div>
       )}
 
+      {/* ── Network error banner ── */}
+      {netError && (
+        <div style={{
+          background: '#fef2f2', borderTop: '1px solid #fecaca',
+          padding: '8px 16px', display: 'flex', alignItems: 'center',
+          gap: 10, flexShrink: 0
+        }}>
+          <span style={{ flex: 1, color: '#dc2626', fontSize: '.82rem', fontFamily: '"Noto Nastaliq Urdu",serif', direction: 'rtl' }}>
+            {netError}
+          </span>
+          <button
+            onClick={() => { setNetError(''); sendMessage(input || (messagesRef.current.filter(m=>m.role==='user').slice(-1)[0]?.content || '')); }}
+            style={{ background:'#dc2626', color:'white', border:'none', borderRadius:8, padding:'4px 12px', fontSize:'.75rem', fontWeight:700, cursor:'pointer' }}
+          >دوبارہ بھیجیں</button>
+          <button onClick={() => setNetError('')} style={{ background:'transparent', border:'none', color:'#9ca3af', cursor:'pointer', fontSize:'1rem' }}>✕</button>
+        </div>
+      )}
+
+      {/* ── Stop generating button ── */}
+      {isBusy && (
+        <div style={{ padding: '6px 12px', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={stopGenerating}
+            style={{
+              background: 'white', border: '1.5px solid #6b7280',
+              borderRadius: 20, padding: '5px 18px',
+              fontSize: '.78rem', fontWeight: 700, color: '#374151',
+              cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+              display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: '0 1px 4px rgba(0,0,0,.1)'
+            }}
+          >
+            <span style={{ fontSize: '.7rem' }}>⏹</span> جواب روکیں
+          </button>
+        </div>
+      )}
+
       {/* ── Recording indicator bar ── */}
       {isListening && (
         <div style={{
@@ -892,7 +958,6 @@ export default function ChatPage() {
               e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
             }}
             disabled={isBusy}
-            maxLength={1000}
           />
         </div>
 

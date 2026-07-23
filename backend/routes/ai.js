@@ -420,6 +420,8 @@ router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {
 
 // ─── POST /api/ai/chat/stream (SSE streaming) ───────────────────────────────
 router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
+  // H5 fix: declare heartbeat BEFORE try so it is accessible in catch block
+  let heartbeat;
   try {
     const { messages, language = 'ur' } = req.body;
     if (!Array.isArray(messages) || messages.length === 0)
@@ -472,8 +474,6 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
       content: m.content
     }));
 
-    let heartbeat;
-
     // Keep-alive heartbeat — prevents Railway/Nginx 30s timeout during Claude think time
     heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
 
@@ -485,6 +485,17 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
       temperature: 0.65,
       system: [{ type: 'text', text: buildChatSystem(language), cache_control: { type: 'ephemeral' } }],
       messages: claudeMessages
+    });
+
+    // Handle Claude stream errors (prevents unhandled rejection if Claude crashes mid-stream)
+    stream.on('error', (streamErr) => {
+      console.error('Claude stream error:', streamErr.message);
+      clearInterval(heartbeat);
+      try {
+        res.write(`data: ${JSON.stringify({ error: 'AI سروس میں خرابی' })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+      } catch {}
     });
 
     stream.on('text', (text) => {
@@ -518,7 +529,7 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Chat stream error:', err.message);
     try {
-      clearInterval(heartbeat);
+      clearInterval(heartbeat); // now accessible since declared before try
       res.write(`data: ${JSON.stringify({ error: 'جواب دینے میں مسئلہ ہوا' })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
