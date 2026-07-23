@@ -5,7 +5,7 @@ node_modules/
 # Environment — NEVER commit these
 .env
 .env.local
-.env.production
+# .env.production is intentionally committed — only contains public Railway URL, no secrets
 
 # Build outputs
 dist/
