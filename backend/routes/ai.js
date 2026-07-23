@@ -1,6 +1,6 @@
 const express   = require('express');
 const Anthropic  = require('@anthropic-ai/sdk');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { aiLimiter }         = require('../middleware/rateLimit');
 const db                    = require('../lib/db');
 const aiCache               = require('../lib/aiCache');
@@ -24,30 +24,30 @@ const CLAUDE_MODEL_VIS = 'claude-sonnet-4-5'; // supports vision
 // â”€â”€â”€ Agriculture keyword guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Urdu script keywords
 const AGRI_KEYWORDS_UR = [
-  // Crops
-  'ÙØµÙ„','Ú¯Ù†Ø¯Ù…','Ú†Ø§ÙˆÙ„','Ù…Ú©Ø¦ÛŒ','Ú©Ù¾Ø§Ø³','Ú¯Ù†Ø§','Ø¢Ù„Ùˆ','Ù¹Ù…Ø§Ù¹Ø±','Ù¾ÛŒØ§Ø²','Ù…Ø±Ú†','Ù„ÛØ³Ù†','Ø³Ø±Ø³ÙˆÚº',
-  'Ú†Ù†Ø§','Ù…Ø³ÙˆØ±','Ù…ÙˆÙ†Ú¯','Ù…Ø§Ø´','Ø¬ÙˆØ§Ø±','Ø¨Ø§Ø¬Ø±Û','ØªÙ„','Ø§Ù„Ø³ÛŒ','Ú©Ù…Ø§Ø¯','Ø¯Ú¾Ø§Ù†','Ù…Ù¹Ø±','ØªØ§Ø±Ø§ Ù…ÛŒØ±Û',
-  'Ù…ÙˆÙ¹Ú¾','Ú¯ÙˆØ§Ø±','Ø³ÙˆÛŒØ§Ø¨ÛŒÙ†','Ø³ÙˆØ±Ø¬ Ù…Ú©Ú¾ÛŒ','Ø²ÛŒØªÙˆÙ†','Ø§Ù†Ø§Ø±','Ø¢Ù…','Ú©ÛŒÙ†Ùˆ','Ù…Ø§Ù„Ù¹Ø§','Ø§Ù…Ø±ÙˆØ¯',
-  // Inputs
-  'Ú©Ú¾Ø§Ø¯','DAP','ÛŒÙˆØ±ÛŒØ§','Ù¾ÙˆÙ¹Ø§Ø´','Ù†Ø§Ø¦Ù¹Ø±ÙˆØ¬Ù†','ÙØ§Ø³ÙÙˆØ±Ø³','Ø³Ù¾Ø±Û’','Ø²ÛØ±','Ø¯ÙˆØ§Ø¦ÛŒ',
-  'Ø¨ÛŒØ¬','Ù¾Ù†ÛŒØ±ÛŒ','Ù¹ÛŒÚ©Û','Ù¹ÛŒÚ©Û’',
-  // Pests & Disease
-  'Ø¨ÛŒÙ…Ø§Ø±ÛŒ','Ú©ÛŒÚ‘Ø§','Ø³Ù†ÚˆÛŒ','ØªÛŒÙ„Ø§','Ú†ÛŒÙ¾Ø§','Ø¯ÛŒÙ…Ú©','Ù¾Ú¾Ù¾Ú¾ÙˆÙ†Ø¯ÛŒ','Ø²Ù†Ú¯','Ø¬Ú¾Ù„Ø³Ø§Ø¤','Ú©Ù¹ÙˆØ§',
-  'Ø³ÙÛŒØ¯ Ù…Ú©Ú¾ÛŒ','ØªÚ¾Ø±Ù¾Ø³','Ù…Ú©Ú‘ÛŒ','Ø´Ø§Ø¦Ù†Ø±',
-  // Soil & Water
-  'Ø¢Ø¨Ù¾Ø§Ø´ÛŒ','Ù¾Ø§Ù†ÛŒ','Ù…Ù¹ÛŒ','Ø²Ù…ÛŒÙ†','Ù†Ù…ÛŒ','Ø³ÛŒÙ…','ØªÚ¾ÙˆØ±','Ù†ÛØ±','Ú©Ú¾Ø§Ù„','Ù†Ù„Ú©Û','ÚˆØ±Ù¾',
-  'Ù¹ÛŒÙˆØ¨ ÙˆÛŒÙ„','Ù…ÙˆÙ¹Ø±','Ù¾Ù…Ù¾','Ø¨Ø§Ø±Ø´','Ø§ÙˆÙ„Û’','Ø³ÛŒÙ„Ø§Ø¨','Ø®Ø´Ú© Ø³Ø§Ù„ÛŒ',
-  // Operations
-  'Ø¨ÙˆØ§Ø¦ÛŒ','Ú©Ù¹Ø§Ø¦ÛŒ','Ú¯ÙˆÚˆÛŒ','Ø±ÙˆÙ¹Ø§ÙˆÛŒÙ¹Ø±','ÛÙ„','Ù¹Ø±ÛŒÚ©Ù¹Ø±','ØªÚ¾Ø±ÛŒØ´Ø±','Ú©Ù…Ø¨Ø§Ø¦Ù†','Ú©Ø§Ø´Øª',
-  // Market
-  'Ù…Ù†ÚˆÛŒ','Ù‚ÛŒÙ…Øª','Ø±ÛŒÙ¹','ÙØ±ÙˆØ®Øª','Ø®Ø±ÛŒØ¯Ø§Ø±ÛŒ','Ø¢Ú‘Ú¾ØªÛŒ','Ø§Ù†Ø§Ø¬','Ø°Ø®ÛŒØ±Û',
-  // Livestock
-  'Ú¯Ø§Ø¦Û’','Ø¨Ú¾ÛŒÙ†Ø³','Ø¨Ú©Ø±ÛŒ','Ù…Ø±ØºÛŒ','Ø¬Ø§Ù†ÙˆØ±','Ø¯ÙˆØ¯Ú¾','Ú†Ø§Ø±Û','Ù…ÙˆÛŒØ´ÛŒ','Ø¨ÛŒÙ„','Ø§ÙˆÙ†Ù¹',
-  'Ø®Ø±Ú¯ÙˆØ´','Ù…Ú†Ú¾Ù„ÛŒ','Ø¬Ú¾ÛŒÙ†Ú¯Ø§','Ù…Ø±ØºØ§','ÛØ§Ù†ÚˆÛŒ',
-  // General
-  'Ø²Ø±Ø§Ø¹Øª','Ú©Ø³Ø§Ù†','Ú©Ú¾ÛŒØª','ÙØ§Ø±Ù…','Ø¨Ø§Øº','Ù¾Ú¾Ù„','Ø³Ø¨Ø²ÛŒ','Ù…ÙˆØ³Ù…','Ø¯Ø±Ø¬Û Ø­Ø±Ø§Ø±Øª',
-  'Ú©Ø³Ø§Ù† Ú©Ø§Ø±Úˆ','ZTBL','ÙØµÙ„ÛŒ Ø¨ÛŒÙ…Û','Ø²Ø±Ø¹ÛŒ','ÛØ±Û’ Ú†Ø§Ø±Û’','Ù‚Ø±Ø¶Û','Ø³Ø¨Ø³ÚˆÛŒ','Ø§Ø³Ú©ÛŒÙ…',
-  'Ù…Ø­Ú©Ù…Û Ø²Ø±Ø§Ø¹Øª','Ø²Ø±Ø¹ÛŒ ØªØ±Ù‚ÛŒØ§ØªÛŒ','Ø§ÛŒÚ¯Ø±ÛŒ'
+  // فصلیں
+  'فصل','گندم','چاول','مکئی','کپاس','گنا','آلو','ٹماٹر','پیاز','مرچ','لہسن','سرسوں',
+  'چنا','مسور','مونگ','ماش','جوار','باجرہ','تل','السی','کماد','دھان','مٹر','تارا میرہ',
+  'موٹھ','گوار','سویابین','سورج مکھی','زیتون','انار','آم','کینو','مالٹا','امرود',
+  // انپٹ
+  'کھاد','DAP','یوریا','پوٹاش','نائٹروجن','فاسفورس','سپرے','زہر','دوائی',
+  'بیج','پنیری','ٹیکہ','ٹیکے',
+  // کیڑے و بیماری
+  'بیماری','کیڑا','سنڈی','تیلا','چیپا','دیمک','پھپھوندی','زنگ','جھلساؤ','کٹوا',
+  'سفید مکھی','تھرپس','مکڑی','شائنر',
+  // زمین و پانی
+  'آبپاشی','پانی','مٹی','زمین','نمی','سیم','تھور','نہر','کھال','نلکی','ڈرپ',
+  'ٹیوب ویل','موٹر','پمپ','بارش','اولے','سیلاب','خشک سالی',
+  // عملیات
+  'بوائی','کٹائی','گوڈی','روٹاویٹر','ہل','ٹریکٹر','تھریشر','کمبائن','کاشت',
+  // منڈی
+  'منڈی','قیمت','ریٹ','فروخت','خریداری','آڑھتی','اناج','ذخیرہ',
+  // جانور
+  'گائے','بھینس','بکری','مرغی','جانور','دودھ','چارہ','مویشی','بیل','اونٹ',
+  'خرگوش','مچھلی','جھینگا','مرغا','ہانڈی',
+  // عمومی
+  'زراعت','کسان','کھیت','فارم','باغ','پھل','سبزی','موسم','درجہ حرارت',
+  'کسان کارڈ','ZTBL','فصلی بیمہ','زرعی','ہرے چارے','قرضہ','سبسڈی','اسکیم',
+  'محکمہ زراعت','زرعی ترقیاتی','ایگری'
 ];
 
 // English keywords
@@ -168,17 +168,17 @@ function isAgricultureRelated(text) {
   return false; // Only block if clearly off-topic
 }
 
-const OFF_TOPIC_UR = `Ù…Ø¹Ø°Ø±Øª! ðŸŒ¾ Ù…ÛŒÚº DehatiAI ÛÙˆÚº â€” ØµØ±Ù Ø²Ø±Ø§Ø¹ØªØŒ ÙØµÙ„ÙˆÚºØŒ Ø¬Ø§Ù†ÙˆØ±ÙˆÚº Ø§ÙˆØ± Ú©Ø³Ø§Ù†ÛŒ Ø³Û’ Ù…ØªØ¹Ù„Ù‚ Ø³ÙˆØ§Ù„Ø§Øª Ú©Ø§ Ø¬ÙˆØ§Ø¨ Ø¯Û’ Ø³Ú©ØªØ§ ÛÙˆÚºÛ”
+const OFF_TOPIC_UR = `معذرت! 🌾 میں DehatiAI ہوں — صرف زراعت، فصلوں، جانوروں اور کسانی سے متعلق سوالات کا جواب دے سکتا ہوں۔
 
-Ø¨Ø±Ø§Û Ú©Ø±Ù… Ø§Ù† Ù…ÛŒÚº Ø³Û’ Ú©ÙˆØ¦ÛŒ Ù…ÙˆØ¶ÙˆØ¹ Ù¾ÙˆÚ†Ú¾ÛŒÚº:
-â€¢ ÙØµÙ„ÙˆÚº Ú©ÛŒ Ø¨ÛŒÙ…Ø§Ø±ÛŒØ§Úº Ø§ÙˆØ± Ø¹Ù„Ø§Ø¬
-â€¢ Ú©Ú¾Ø§Ø¯ Ø§ÙˆØ± Ø³Ù¾Ø±Û’ Ú©Ø§ Ù…Ø´ÙˆØ±Û
-â€¢ Ø¢Ø¨Ù¾Ø§Ø´ÛŒ Ø§ÙˆØ± Ù…ÙˆØ³Ù…
-â€¢ Ù…Ù†ÚˆÛŒ Ú©ÛŒ Ù‚ÛŒÙ…ØªÛŒÚº
-â€¢ Ø¬Ø§Ù†ÙˆØ±ÙˆÚº Ú©ÛŒ ØµØ­Øª
-â€¢ Ø­Ú©ÙˆÙ…ØªÛŒ Ø²Ø±Ø¹ÛŒ Ø§Ø³Ú©ÛŒÙ…ÛŒÚº
+براہ کرم ان میں سے کوئی موضوع پوچھیں:
+• فصلوں کی بیماریاں اور علاج
+• کھاد اور سپرے کا مشورہ
+• آبپاشی اور موسم
+• منڈی کی قیمتیں
+• جانوروں کی صحت
+• حکومتی زرعی اسکیمیں
 
-Ø²Ø±Ø§Ø¹Øª ÛÛŒÙ„Ù¾ Ù„Ø§Ø¦Ù†: 0800-15000 (Ù…ÙØª)`;
+زراعت ہیلپ لائن: 0800-15000 (مفت)`;
 
 
 // â”€â”€â”€ System Prompts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -419,7 +419,7 @@ router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {
 });
 
 // ─── POST /api/ai/chat/stream (SSE streaming) ───────────────────────────────
-router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
+router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
   // H5 fix: declare heartbeat BEFORE try so it is accessible in catch block
   let heartbeat;
   try {
@@ -449,10 +449,19 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
       return res.end();
     }
 
-    // ——— Cache lookup (only for single-turn questions, not deep conversations) ———
+    // CRITICAL FIX: Start heartbeat IMMEDIATELY after SSE setup.
+    // Must be before cache lookup — if DB hangs on getCacheFromDB(), the handler
+    // freezes and the client sees "..." forever. Heartbeat forces keep-alive.
+    heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 8000);
+
+    // Optional: disable Nagle's algorithm to prevent Railway proxy buffering
+    try { if (req.socket) { req.socket.setNoDelay(true); } } catch {}
+
+    // ——— Cache lookup with 3-second timeout (prevents DB TCP hang) ———
     const userMessages = messages.filter(m => m.role === 'user');
     if (lastMsg.role === 'user' && userMessages.length === 1) {
-      const cached = await aiCache.get(lastMsg.content, language);
+      const cacheTimeout = new Promise(resolve => setTimeout(() => resolve(null), 3000));
+      const cached = await Promise.race([aiCache.get(lastMsg.content, language), cacheTimeout]);
       if (cached) {
         // Stream cached answer in chunks (feels like live streaming)
         res.setHeader('X-Cache', 'HIT');
@@ -462,6 +471,7 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
           // Tiny delay so UI renders progressively
           await new Promise(r => setTimeout(r, 8));
         }
+        clearInterval(heartbeat);
         res.write('data: [DONE]\n\n');
         return res.end();
       }
@@ -473,9 +483,6 @@ router.post('/chat/stream', aiLimiter, authenticateToken, async (req, res) => {
       role: m.role === 'assistant' ? 'assistant' : 'user',
       content: m.content
     }));
-
-    // Keep-alive heartbeat — prevents Railway/Nginx 30s timeout during Claude think time
-    heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
 
     // Stream with Claude
     let fullReply = '';

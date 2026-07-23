@@ -577,37 +577,58 @@ export default function ChatPage() {
       const decoder = new TextDecoder();
       let fullReply = '';
       let buffer    = '';
+      let gotFirstChunk = false;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6).trim();
-          if (data === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.text) {
-              fullReply += parsed.text;
-              setMessages(prev => {
-                const copy = [...prev];
-                copy[copy.length - 1] = { role: 'assistant', content: fullReply, streaming: true, time: new Date() };
-                return copy;
-              });
-            }
-          } catch {}
+      // ── 10-second no-data timeout ─────────────────────────────────────────
+      // If no actual text arrives within 10s (Railway buffering / DB hang),
+      // abort the stream and fall back to the reliable non-streaming endpoint.
+      const noDataTimer = setTimeout(() => {
+        if (!gotFirstChunk) {
+          try { controller.abort(); } catch {}
         }
+      }, 10000);
+
+      try {
+        outer: while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6).trim();
+            if (data === '[DONE]') break outer;   // properly exit while loop
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.text) {
+                gotFirstChunk = true;             // cancel the timeout
+                fullReply += parsed.text;
+                setMessages(prev => {
+                  const copy = [...prev];
+                  copy[copy.length - 1] = { role: 'assistant', content: fullReply, streaming: true, time: new Date() };
+                  return copy;
+                });
+              }
+            } catch {}
+          }
+        }
+      } finally {
+        clearTimeout(noDataTimer);
+        reader.cancel().catch(() => {});
+      }
+
+      if (!gotFirstChunk) {
+        // Stream connected but sent no text — treat as failure, fall to fallback
+        throw new Error('stream_empty');
       }
 
       // Finalize
       setMessages(prev => {
         const copy = [...prev];
-        copy[copy.length - 1] = { role: 'assistant', content: fullReply || '...', streaming: false, time: new Date() };
+        copy[copy.length - 1] = { role: 'assistant', content: fullReply, streaming: false, time: new Date() };
         return copy;
       });
 
@@ -615,8 +636,13 @@ export default function ChatPage() {
       if (fullReply) saveAIAnswer(msg, fullReply).catch(() => {});
 
     } catch (err) {
-      if (err.name === 'AbortError') {
-        // User manually stopped — just finalize whatever was received
+      if (err.name === 'AbortError' && abortRef.current?.signal?.reason !== 'user_stop') {
+        // Timed-out abort (10s no-data) — fall through to non-streaming fallback
+        err._isTimeout = true;
+      }
+
+      if (err.name === 'AbortError' && !err._isTimeout) {
+        // User manually pressed Stop — finalize whatever was received
         setMessages(prev => {
           const copy = [...prev];
           const last = copy[copy.length - 1];
@@ -624,26 +650,29 @@ export default function ChatPage() {
           return copy;
         });
       } else {
-        // Network/server error — try non-streaming fallback
+        // Stream failed / timed-out / empty — try reliable non-streaming fallback
         let recovered = false;
         try {
           const res2 = await fetch(`${API_URL}/api/ai/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-            body: JSON.stringify({ messages: history, language })
+            body: JSON.stringify({ messages: history, language }),
+            signal: AbortSignal.timeout(30000)   // 30s hard timeout
           });
           if (res2.ok) {
             const data = await res2.json();
+            const reply = data.reply || data.error || 'جواب نہیں ملا';
             setMessages(prev => {
               const copy = [...prev];
-              copy[copy.length - 1] = { role: 'assistant', content: data.reply || data.error || 'جواب نہیں ملا', streaming: false, time: new Date() };
+              copy[copy.length - 1] = { role: 'assistant', content: reply, streaming: false, time: new Date() };
               return copy;
             });
+            if (reply) saveAIAnswer(msg, reply).catch(() => {});
             recovered = true;
           }
         } catch {}
         if (!recovered) {
-          // Remove the placeholder and show error banner
+          // Both streaming and fallback failed — show retry banner
           setMessages(prev => {
             const copy = [...prev];
             const last = copy[copy.length - 1];
@@ -667,7 +696,7 @@ export default function ChatPage() {
   sendMessageRef.current = sendMessage;
 
   const stopGenerating = () => {
-    try { abortRef.current?.abort(); } catch {}
+    try { abortRef.current?.abort('user_stop'); } catch {}
   };
 
   const clearChat = () => {
