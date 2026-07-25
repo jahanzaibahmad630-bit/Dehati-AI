@@ -3,6 +3,8 @@ import { getWeatherByCoords, getWeatherByCity, askAI } from '../services/api';
 import { usePermission, PERMISSION_MESSAGES } from '../hooks/usePermission';
 import { useOffline } from '../hooks/useOffline';
 import AIDisclaimer from '../components/ui/AIDisclaimer';
+import MarkdownRenderer from '../components/MarkdownRenderer';
+
 
 const CITIES = [
   'lahore','faisalabad','multan','rawalpindi','gujranwala','sialkot',
@@ -179,7 +181,8 @@ export default function WeatherPage() {
                   <span style={{ fontWeight: 700 }}>🌾 آج کے موسم کے مطابق مشورہ</span>
                   <AIDisclaimer small />
                 </div>
-                <div className="ai-response-body">{advice}</div>
+                <MarkdownRenderer text={advice} />
+
               </div>
             )}
           </>

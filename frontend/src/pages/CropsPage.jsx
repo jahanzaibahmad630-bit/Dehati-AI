@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { askAI } from '../services/api';
 import AIDisclaimer from '../components/ui/AIDisclaimer';
+import MarkdownRenderer from '../components/MarkdownRenderer';
+
 import { useOffline } from '../hooks/useOffline';
 
 // ─── Default crops shown on first load ─────────────────────────────────────────
@@ -546,7 +548,8 @@ export default function CropsPage() {
                 <span style={{ fontWeight: 700 }}>🌾 AI زرعی مشورہ</span>
                 <AIDisclaimer small />
               </div>
-              <div className="ai-response-body">{aiAdvice}</div>
+              <MarkdownRenderer text={aiAdvice} />
+
             </div>
           )}
         </div>

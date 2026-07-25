@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { askAnimalHealth } from '../../services/api';
 import AIDisclaimer from '../ui/AIDisclaimer';
 import { useOffline } from '../../hooks/useOffline';
+import MarkdownRenderer from '../MarkdownRenderer';
+
 
 const ANIMALS = ['موئشی / بھینس', 'بکری / بھیڑ', 'مرغی', 'گھوڑا / خچر'];
 const SYMPTOMS = ['بخار', 'بھوک نہیں', 'دودھ کم', 'پاخانہ ڈھیلا', 'کھانسی', 'جلد کا مسئلہ', 'سوجن', 'کمزوری', 'آنکھ کی تکلیف', 'لنگڑانا'];
@@ -93,7 +95,8 @@ export default function AnimalHealthAdvisor() {
             <span style={{ fontWeight: 700 }}>💊 AI مشورہ</span>
             <AIDisclaimer small />
           </div>
-          <div className="ai-response-body">{result}</div>
+          <MarkdownRenderer text={result} />
+
           <div style={{ marginTop: '.5rem', background: 'var(--danger-light)', borderRadius: 'var(--radius-sm)', padding: '.5rem .75rem', fontSize: '.72rem', color: 'var(--danger)', fontWeight: 700 }}>
             ⚠️ یہ ابتدائی معلومات ہیں — سنگین بیماری میں جانوروں کے ڈاکٹر سے ملیں
           </div>

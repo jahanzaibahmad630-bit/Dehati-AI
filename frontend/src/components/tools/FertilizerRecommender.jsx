@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { askFertilizer } from '../../services/api';
 import AIDisclaimer from '../ui/AIDisclaimer';
 import { useOffline } from '../../hooks/useOffline';
+import MarkdownRenderer from '../MarkdownRenderer';
+
 
 const CROPS = ['گندم', 'چاول', 'کپاس', 'گنا', 'مکئی', 'آلو', 'ٹماٹر', 'پیاز', 'سرسوں', 'مرچ'];
 const SOILS = ['ریتلی', 'چکنی', 'دوہمی', 'شوریدہ / کلری', 'ریڈ سوائل', 'ذرخیز (کالی مٹی)'];
@@ -69,7 +71,8 @@ export default function FertilizerRecommender() {
             <span style={{ fontWeight: 700 }}>🌱 کھاد سفارش</span>
             <AIDisclaimer small />
           </div>
-          <div className="ai-response-body">{result}</div>
+          <MarkdownRenderer text={result} />
+
         </div>
       )}
     </div>
