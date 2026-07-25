@@ -4,6 +4,8 @@ import { useOffline } from '../hooks/useOffline';
 import { useAuth } from '../context/AuthContext';
 import { getDir, getFont, getAlign } from '../utils/textDir';
 import { searchOffline, saveAIAnswer, queueQuestion, getOfflineQueue, removeFromQueue } from '../services/offlineDB';
+import MarkdownRenderer from '../components/MarkdownRenderer';
+
 
 import { API_URL } from '../config';
 
@@ -248,7 +250,13 @@ function MessageBubble({ msg }) {
             border: isUser ? 'none' : isOffline ? '1px solid #fbbf24' : '1px solid #f0f0f0',
           }}
         >
-          {msg.streaming && msg.content === '' ? <TypingDots /> : formatContent(msg.content)}
+          {msg.streaming && msg.content === '' ? (
+            <TypingDots />
+          ) : isUser ? (
+            formatContent(msg.content)
+          ) : (
+            <MarkdownRenderer text={msg.content} />
+          )}
           {msg.streaming && msg.content !== '' && (
             <span style={{
               display: 'inline-block', width: 2, height: '1em',
@@ -260,6 +268,7 @@ function MessageBubble({ msg }) {
             }} />
           )}
         </div>
+
 
         {/* Timestamp */}
         {msg.time && !msg.streaming && (
