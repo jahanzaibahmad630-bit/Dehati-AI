@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const bcrypt  = require('bcryptjs');
 const { requireAdmin, signAdminToken } = require('../middleware/auth');
 const { adminLoginLimiter } = require('../middleware/rateLimit');
@@ -135,13 +135,13 @@ router.get('/health', requireAdmin, async (req, res) => {
       const status  = e.status || e.statusCode || '?';
       let hint = '';
       if (status === 401 || errStr.includes('authentication')) {
-        hint = 'Invalid API key â€” set correct CLAUDE_API_KEY in Railway Variables';
+        hint = 'Invalid API key — set correct CLAUDE_API_KEY in Railway Variables';
       } else if (status === 403 || errStr.includes('permission') || errStr.includes('credit')) {
-        hint = 'Account has no credits â€” add billing at console.anthropic.com/settings/billing';
+        hint = 'Account has no credits — add billing at console.anthropic.com/settings/billing';
       } else if (errStr.includes('not_found') || status === 404) {
-        hint = 'Model not available for this key â€” account may need billing or verification at console.anthropic.com';
+        hint = 'Model not available for this key — account may need billing or verification at console.anthropic.com';
       } else if (status === 429) {
-        hint = 'Rate limit hit â€” too many requests';
+        hint = 'Rate limit hit — too many requests';
       }
       checks.claude = {
         status: 'error',
@@ -190,25 +190,25 @@ router.get('/health', requireAdmin, async (req, res) => {
 });
 
 
-// â”€â”€â”€ GET /api/admin/prices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ——— GET /api/admin/prices —————————————————————————————————————————————————————————————————————
 // Returns all crops with their base reference price and any admin-entered DB price
 router.get('/prices', requireAdmin, async (req, res) => {
   const BASE_PRICES = [
-    { key: 'Ú¯Ù†Ø¯Ù…',         base: 3900  },
-    { key: 'Ø¨Ø§Ø³Ù…ØªÛŒ Ú†Ø§ÙˆÙ„', base: 4800  },
-    { key: 'Ù…Ú©Ø¦ÛŒ',          base: 1800  },
-    { key: 'کپاس',         base: 9500  },
-    { key: 'Ú¯Ù†Ø§',          base: 475   },
-    { key: 'Ø¢Ù„Ùˆ',          base: 1400  },
-    { key: 'Ù¹Ù…Ø§Ù¹Ø±',       base: 2200  },
-    { key: 'Ù¾ÛŒØ§Ø²',         base: 1100  },
-    { key: 'Ù…Ø±Ú†',          base: 6500  },
-    { key: 'Ù„ÛØ³Ù†',         base: 18000 },
-    { key: 'Ø³Ø±Ø³ÙˆÚº',       base: 7200  },
-    { key: 'Ú†Ù†Ø§',          base: 8500  },
-    { key: 'Ù…Ø³ÙˆØ±',         base: 6800  },
-    { key: 'DAP کھاد',   base: 10500 },
-    { key: 'ÛŒÙˆØ±ÛŒØ§',        base: 3900  },
+    { key: 'گندم',           nameEn: 'Wheat',     base: 3900,  unit: 'من (40 کلو)',   category: 'اناج'     },
+    { key: 'باسمتی چاول',   nameEn: 'Basmati',   base: 4800,  unit: 'من (40 کلو)',   category: 'اناج'     },
+    { key: 'مکئی',            nameEn: 'Maize',     base: 1800,  unit: 'من (40 کلو)',   category: 'اناج'     },
+    { key: 'کپاس',           nameEn: 'Cotton',    base: 9500,  unit: 'من (40 کلو)',   category: 'نقدی فصل'  },
+    { key: 'گنا',            nameEn: 'Sugarcane', base: 475,   unit: 'من (40 کلو)',   category: 'نقدی فصل'  },
+    { key: 'آلو',            nameEn: 'Potato',    base: 1400,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'ٹماٹر',         nameEn: 'Tomato',    base: 2200,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'پیاز',           nameEn: 'Onion',     base: 1100,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'مرچ',            nameEn: 'Chili',     base: 6500,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'لہسن',           nameEn: 'Garlic',    base: 18000, unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'سرسوں',         nameEn: 'Mustard',   base: 7200,  unit: 'من (40 کلو)',   category: 'تیلدار'   },
+    { key: 'چنا',            nameEn: 'Chickpea',  base: 8500,  unit: 'من (40 کلو)',   category: 'دالیں'    },
+    { key: 'مسور',           nameEn: 'Lentil',    base: 6800,  unit: 'من (40 کلو)',   category: 'دالیں'    },
+    { key: 'DAP کھاد',     nameEn: 'DAP',       base: 10500, unit: 'بوری (50 کلو)', category: 'کھاد'     },
+    { key: 'یوریا',          nameEn: 'Urea',      base: 3900,  unit: 'بوری (50 کلو)', category: 'کھاد'     },
   ];
 
   try {
@@ -239,21 +239,21 @@ router.get('/prices', requireAdmin, async (req, res) => {
 // Returns each crop with source label: real (DB) or sample (base reference)
 router.get('/prices/public', async (req, res) => {
   const BASE_PRICES = [
-    { key: 'Ú¯Ù†Ø¯Ù…',         nameEn: 'Wheat',     base: 3900,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø§Ù†Ø§Ø¬'     },
-    { key: 'Ø¨Ø§Ø³Ù…ØªÛŒ Ú†Ø§ÙˆÙ„', nameEn: 'Basmati',   base: 4800,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø§Ù†Ø§Ø¬'     },
-    { key: 'Ù…Ú©Ø¦ÛŒ',          nameEn: 'Maize',     base: 1800,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø§Ù†Ø§Ø¬'     },
-    { key: 'کپاس',         nameEn: 'Cotton',    base: 9500,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ù†Ù‚Ø¯ÛŒ ÙØµÙ„'  },
-    { key: 'Ú¯Ù†Ø§',          nameEn: 'Sugarcane', base: 475,   unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ù†Ù‚Ø¯ÛŒ ÙØµÙ„'  },
-    { key: 'Ø¢Ù„Ùˆ',          nameEn: 'Potato',    base: 1400,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø³Ø¨Ø²ÛŒ'     },
-    { key: 'Ù¹Ù…Ø§Ù¹Ø±',       nameEn: 'Tomato',    base: 2200,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø³Ø¨Ø²ÛŒ'     },
-    { key: 'Ù¾ÛŒØ§Ø²',         nameEn: 'Onion',     base: 1100,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø³Ø¨Ø²ÛŒ'     },
-    { key: 'Ù…Ø±Ú†',          nameEn: 'Chili',     base: 6500,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø³Ø¨Ø²ÛŒ'     },
-    { key: 'Ù„ÛØ³Ù†',         nameEn: 'Garlic',    base: 18000, unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø³Ø¨Ø²ÛŒ'     },
-    { key: 'Ø³Ø±Ø³ÙˆÚº',       nameEn: 'Mustard',   base: 7200,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'ØªÛŒÙ„Ø¯Ø§Ø±'   },
-    { key: 'Ú†Ù†Ø§',          nameEn: 'Chickpea',  base: 8500,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø¯Ø§Ù„ÛŒÚº'    },
-    { key: 'Ù…Ø³ÙˆØ±',         nameEn: 'Lentil',    base: 6800,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø¯Ø§Ù„ÛŒÚº'    },
-    { key: 'DAP کھاد',   nameEn: 'DAP',       base: 10500, unit: 'Ø¨ÙˆØ±ÛŒ (50 Ú©Ù„Ùˆ)', category: 'کھاد'     },
-    { key: 'ÛŒÙˆØ±ÛŒØ§',        nameEn: 'Urea',      base: 3900,  unit: 'Ø¨ÙˆØ±ÛŒ (50 Ú©Ù„Ùˆ)', category: 'کھاد'     },
+    { key: 'گندم',           nameEn: 'Wheat',     base: 3900,  unit: 'من (40 کلو)',   category: 'اناج'     },
+    { key: 'باسمتی چاول',   nameEn: 'Basmati',   base: 4800,  unit: 'من (40 کلو)',   category: 'اناج'     },
+    { key: 'مکئی',            nameEn: 'Maize',     base: 1800,  unit: 'من (40 کلو)',   category: 'اناج'     },
+    { key: 'کپاس',           nameEn: 'Cotton',    base: 9500,  unit: 'من (40 کلو)',   category: 'نقدی فصل'  },
+    { key: 'گنا',            nameEn: 'Sugarcane', base: 475,   unit: 'من (40 کلو)',   category: 'نقدی فصل'  },
+    { key: 'آلو',            nameEn: 'Potato',    base: 1400,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'ٹماٹر',         nameEn: 'Tomato',    base: 2200,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'پیاز',           nameEn: 'Onion',     base: 1100,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'مرچ',            nameEn: 'Chili',     base: 6500,  unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'لہسن',           nameEn: 'Garlic',    base: 18000, unit: 'من (40 کلو)',   category: 'سبزی'     },
+    { key: 'سرسوں',         nameEn: 'Mustard',   base: 7200,  unit: 'من (40 کلو)',   category: 'تیلدار'   },
+    { key: 'چنا',            nameEn: 'Chickpea',  base: 8500,  unit: 'من (40 کلو)',   category: 'دالیں'    },
+    { key: 'مسور',           nameEn: 'Lentil',    base: 6800,  unit: 'من (40 کلو)',   category: 'دالیں'    },
+    { key: 'DAP کھاد',     nameEn: 'DAP',       base: 10500, unit: 'بوری (50 کلو)', category: 'کھاد'     },
+    { key: 'یوریا',          nameEn: 'Urea',      base: 3900,  unit: 'بوری (50 کلو)', category: 'کھاد'     },
   ];
 
   try {
@@ -276,7 +276,7 @@ router.get('/prices/public', async (req, res) => {
           isReal:     true,
           sourceNote: entry.source_note,
           updatedAt:  entry.updated_at,
-          dataLabel:  'Ø¢Ø¬ Ø¯Ø±Ø¬ Ú©ÛŒ Ú¯Ø¦ÛŒ Ù‚ÛŒÙ…Øª',
+          dataLabel:  'آج درج کی گئی قیمت',
           dataLabelEn: 'Price entered today',
         };
       }
@@ -292,7 +292,7 @@ router.get('/prices/public', async (req, res) => {
         isReal:     false,
         sourceNote: 'sample-reference',
         updatedAt:  null,
-        dataLabel:  'Ø­ÙˆØ§Ù„Û Ù‚ÛŒÙ…Øª â€” Ù†Ù…ÙˆÙ†Û ÚˆÛŒÙ¹Ø§',
+        dataLabel:  'حوالہ قیمت — نمونہ ڈیٹا',
         dataLabelEn: 'Reference price â€” sample data',
       };
     });
@@ -304,14 +304,14 @@ router.get('/prices/public', async (req, res) => {
     console.error('GET /admin/prices/public error:', err.message);
     // Graceful fallback: serve base prices as sample data
     const BASE_FALLBACK = [
-      { key: 'Ú¯Ù†Ø¯Ù…', nameEn: 'Wheat', base: 3900, unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)', category: 'Ø§Ù†Ø§Ø¬' },
-      { key: 'کپاس', nameEn: 'Cotton', base: 9500, unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)', category: 'Ù†Ù‚Ø¯ÛŒ ÙØµÙ„' },
-      { key: 'DAP کھاد', nameEn: 'DAP', base: 10500, unit: 'Ø¨ÙˆØ±ÛŒ (50 Ú©Ù„Ùˆ)', category: 'کھاد' },
+      { key: 'گندم', nameEn: 'Wheat', base: 3900, unit: 'من (40 کلو)', category: 'اناج' },
+      { key: 'کپاس', nameEn: 'Cotton', base: 9500, unit: 'من (40 کلو)', category: 'نقدی فصل' },
+      { key: 'DAP کھاد', nameEn: 'DAP', base: 10500, unit: 'بوری (50 کلو)', category: 'کھاد' },
     ];
     res.json({
       prices: BASE_FALLBACK.map((i, idx) => ({ ...i, id: idx+1, nameUrdu: i.key, price: i.base,
         isReal: false, sourceNote: 'fallback', updatedAt: null,
-        dataLabel: 'Ø¯ÛŒÙ¹Ø§ Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚº â€” Ø­ÙˆØ§Ù„Û Ù‚ÛŒÙ…Øª', dataLabelEn: 'Data unavailable â€” reference only' })),
+        dataLabel: 'ڈیٹا دستیاب نہیں — حوالہ قیمت', dataLabelEn: 'Data unavailable — reference only' })),
       servedAt: new Date().toISOString(), realCount: 0, error: 'db_unavailable'
     });
   }

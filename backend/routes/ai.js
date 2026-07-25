@@ -8,13 +8,14 @@ const aiCache               = require('../lib/aiCache');
 const router = express.Router();
 
 // â”€â”€â”€ Claude Client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ————————————————————————————————————————————————————————————————————————————————
 let claude = null;
 
 if (process.env.CLAUDE_API_KEY) {
   claude = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
-  console.log('âœ… Claude API configured â€” model: claude-sonnet-4-5');
+  console.log('✅ Claude API configured — model: claude-sonnet-4-5');
 } else {
-  console.warn('âš ï¸  CLAUDE_API_KEY not set â€” AI features disabled');
+  console.warn('⚠️  CLAUDE_API_KEY not set — AI features disabled');
 }
 
 // claude-sonnet-4-5 = Claude Sonnet 4.x (platform.claude.com enterprise)
