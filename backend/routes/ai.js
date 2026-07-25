@@ -181,15 +181,16 @@ const OFF_TOPIC_UR = `معذرت! 🌾 میں DehatiAI ہوں — صرف زرا�
 زراعت ہیلپ لائن: 0800-15000 (مفت)`;
 
 
-// â”€â”€â”€ System Prompts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ——— System Prompts ——————————————————————————————————————————————————————————
 function buildFarmingSystem() {
   const now    = new Date();
   const month  = now.getMonth() + 1;
   const hour   = now.getHours();
   const season = (month >= 5 && month <= 10)
-    ? 'Ø®Ø±ÛŒÙ (Ú†Ø§ÙˆÙ„ØŒ Ù…Ú©Ø¦ÛŒØŒ Ú¯Ù†Ø§ØŒ Ú©Ù¾Ø§Ø³ØŒ Ù…ÙˆÙ†Ú¯ØŒ Ù…Ø§Ø´)'
-    : 'Ø±Ø¨ÛŒØ¹ (Ú¯Ù†Ø¯Ù…ØŒ Ø³Ø±Ø³ÙˆÚºØŒ Ø¢Ù„ÙˆØŒ Ú†Ù†Ø§ØŒ Ù…Ù¹Ø±ØŒ ØªØ§Ø±Ø§ Ù…ÛŒØ±Û)';
-  const timeOfDay = hour < 12 ? 'ØµØ¨Ø­' : hour < 17 ? 'Ø¯ÙˆÙ¾ÛØ±' : 'Ø´Ø§Ù…';
+    ? 'خریف (چاول، مکئی، گنا، کپاس، مونگ، ماش)'
+    : 'ربیع (گندم، سرسوں، آلو، چنا، مٹر، تارا میرا)';
+  const timeOfDay = hour < 12 ? 'صبح' : hour < 17 ? 'دوپہر' : 'شام';
+
   const dateStr = now.toLocaleDateString('ur-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   return `آپ DehatiAI ہیں — پنجاب، پاکستان کے کسانوں کا ماہر AI مددگار۔
@@ -262,7 +263,7 @@ async function claudeAsk(prompt, systemPrompt, maxTokens = 700, temperature = 0.
 }
 
 // ——— POST /api/ai/ask ——————————————————————————————————————————————————————
-router.post('/ask', aiLimiter, authenticateToken, async (req, res) => {
+router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
   try {
     const { question, language = 'ur' } = req.body;
     if (!question?.trim()) return res.status(400).json({ error: 'سوال خالی نہیں ہونا چاہیے' });
@@ -453,6 +454,9 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
     // Must be before cache lookup — if DB hangs on getCacheFromDB(), the handler
     // freezes and the client sees "..." forever. Heartbeat forces keep-alive.
     heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 8000);
+
+    // Cleanup on client disconnect (prevents heartbeat interval leak)
+    req.on('close', () => { clearInterval(heartbeat); });
 
     // Optional: disable Nagle's algorithm to prevent Railway proxy buffering
     try { if (req.socket) { req.socket.setNoDelay(true); } } catch {}

@@ -168,7 +168,8 @@ function canvasResize(file, maxDim, quality = 0.82) {
         quality
       );
     };
-    img.onerror = reject;
+    img.onerror = (err) => { URL.revokeObjectURL(url); reject(err); };
+
     img.src = url;
   });
 }

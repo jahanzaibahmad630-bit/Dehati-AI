@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
   // Decode JWT payload (no crypto — just parse base64) to check expiry
   function isTokenExpired(token) {
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      let b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); while(b64.length%4)b64+='='; const payload = JSON.parse(atob(b64));
       return payload.exp && payload.exp * 1000 < Date.now();
     } catch {
       return true; // malformed token → treat as expired
@@ -60,16 +60,22 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (phone, password) => {
-    const res = await fetch(`${API_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'لاگ ان ناکام');
-    saveSession(data.token, data.user);
-    return data;
+    try {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'لاگ ان ناکام');
+      saveSession(data.token, data.user);
+      return data;
+    } catch (err) {
+      if (err.message === 'Failed to fetch') throw new Error('انٹرنیٹ یا سرور کا مسئلہ ہے');
+      throw err;
+    }
   };
+
 
   const guestLogin = async () => {
     const res = await fetch(`${API_URL}/api/auth/guest`, {

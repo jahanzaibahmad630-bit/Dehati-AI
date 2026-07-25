@@ -76,7 +76,8 @@ router.post('/login', async (req, res) => {
 
     // Timing-safe: always run bcrypt (prevents user enumeration)
     const user = await db.findUserByPhone(cleanPhone);
-    const dummyHash = '$2b$10$invalidhashtopreventtimingattacksonusernotfound00000000';
+    // Must be a valid 60-char bcrypt hash. Invalid hash causes bcrypt.compare() to throw 500.
+    const dummyHash = '$2b$10$e9Mp6aHmgmMtOiRZrg7WzuR3hJK9Kl.J0j.s3mF/XtHHZ8.mY2oC';
     const hashToCheck = user ? user.password_hash : dummyHash;
     const isMatch = await bcrypt.compare(password, hashToCheck);
 

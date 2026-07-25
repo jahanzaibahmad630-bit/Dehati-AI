@@ -132,7 +132,11 @@ export default function DiseasePage() {
 
   const speak = (text) => {
     if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
+    // Toggle: tap again while speaking = cancel (prevents overlapping audio)
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      return;
+    }
     const utt = new SpeechSynthesisUtterance(text);
     utt.lang = 'ur-PK'; utt.rate = 0.85;
     window.speechSynthesis.speak(utt);
@@ -142,7 +146,7 @@ export default function DiseasePage() {
     ? `بیماری: ${result.disease}۔ وجہ: ${result.cause}۔ علامات: ${result.symptoms || ''}۔ علاج: ${result.treatment}۔ بچاؤ: ${result.prevention}۔ فوری اقدام: ${result.urgentAction || ''}`
     : '';
 
-  const isUrgent = result?.urgentAction?.toLowerCase().startsWith('yes') ||
+  const isUrgent = Boolean(result?.urgentAction?.trim()) ||
                    result?.severity?.includes('شدید');
 
   return (

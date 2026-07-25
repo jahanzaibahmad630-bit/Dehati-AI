@@ -41,6 +41,7 @@ async function fetchWeather(lat, lon) {
   if (!resp.ok) throw new Error(`Open-Meteo API error: ${resp.status}`);
 
   const data = await resp.json();
+  if (!data?.current) throw new Error('Invalid Open-Meteo response — missing current weather data');
   const c = data.current;
   const info = getWeatherInfo(c.weather_code);
 

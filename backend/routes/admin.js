@@ -197,7 +197,7 @@ router.get('/prices', requireAdmin, async (req, res) => {
     { key: 'Ú¯Ù†Ø¯Ù…',         base: 3900  },
     { key: 'Ø¨Ø§Ø³Ù…ØªÛŒ Ú†Ø§ÙˆÙ„', base: 4800  },
     { key: 'Ù…Ú©Ø¦ÛŒ',          base: 1800  },
-    { key: 'Ú©Ù¾Ø§Ø³',         base: 9500  },
+    { key: 'کپاس',         base: 9500  },
     { key: 'Ú¯Ù†Ø§',          base: 475   },
     { key: 'Ø¢Ù„Ùˆ',          base: 1400  },
     { key: 'Ù¹Ù…Ø§Ù¹Ø±',       base: 2200  },
@@ -207,7 +207,7 @@ router.get('/prices', requireAdmin, async (req, res) => {
     { key: 'Ø³Ø±Ø³ÙˆÚº',       base: 7200  },
     { key: 'Ú†Ù†Ø§',          base: 8500  },
     { key: 'Ù…Ø³ÙˆØ±',         base: 6800  },
-    { key: 'DAP Ú©Ú¾Ø§Ø¯',   base: 10500 },
+    { key: 'DAP کھاد',   base: 10500 },
     { key: 'ÛŒÙˆØ±ÛŒØ§',        base: 3900  },
   ];
 
@@ -242,7 +242,7 @@ router.get('/prices/public', async (req, res) => {
     { key: 'Ú¯Ù†Ø¯Ù…',         nameEn: 'Wheat',     base: 3900,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø§Ù†Ø§Ø¬'     },
     { key: 'Ø¨Ø§Ø³Ù…ØªÛŒ Ú†Ø§ÙˆÙ„', nameEn: 'Basmati',   base: 4800,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø§Ù†Ø§Ø¬'     },
     { key: 'Ù…Ú©Ø¦ÛŒ',          nameEn: 'Maize',     base: 1800,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø§Ù†Ø§Ø¬'     },
-    { key: 'Ú©Ù¾Ø§Ø³',         nameEn: 'Cotton',    base: 9500,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ù†Ù‚Ø¯ÛŒ ÙØµÙ„'  },
+    { key: 'کپاس',         nameEn: 'Cotton',    base: 9500,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ù†Ù‚Ø¯ÛŒ ÙØµÙ„'  },
     { key: 'Ú¯Ù†Ø§',          nameEn: 'Sugarcane', base: 475,   unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ù†Ù‚Ø¯ÛŒ ÙØµÙ„'  },
     { key: 'Ø¢Ù„Ùˆ',          nameEn: 'Potato',    base: 1400,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø³Ø¨Ø²ÛŒ'     },
     { key: 'Ù¹Ù…Ø§Ù¹Ø±',       nameEn: 'Tomato',    base: 2200,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø³Ø¨Ø²ÛŒ'     },
@@ -252,8 +252,8 @@ router.get('/prices/public', async (req, res) => {
     { key: 'Ø³Ø±Ø³ÙˆÚº',       nameEn: 'Mustard',   base: 7200,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'ØªÛŒÙ„Ø¯Ø§Ø±'   },
     { key: 'Ú†Ù†Ø§',          nameEn: 'Chickpea',  base: 8500,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø¯Ø§Ù„ÛŒÚº'    },
     { key: 'Ù…Ø³ÙˆØ±',         nameEn: 'Lentil',    base: 6800,  unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)',   category: 'Ø¯Ø§Ù„ÛŒÚº'    },
-    { key: 'DAP Ú©Ú¾Ø§Ø¯',   nameEn: 'DAP',       base: 10500, unit: 'Ø¨ÙˆØ±ÛŒ (50 Ú©Ù„Ùˆ)', category: 'Ú©Ú¾Ø§Ø¯'     },
-    { key: 'ÛŒÙˆØ±ÛŒØ§',        nameEn: 'Urea',      base: 3900,  unit: 'Ø¨ÙˆØ±ÛŒ (50 Ú©Ù„Ùˆ)', category: 'Ú©Ú¾Ø§Ø¯'     },
+    { key: 'DAP کھاد',   nameEn: 'DAP',       base: 10500, unit: 'Ø¨ÙˆØ±ÛŒ (50 Ú©Ù„Ùˆ)', category: 'کھاد'     },
+    { key: 'ÛŒÙˆØ±ÛŒØ§',        nameEn: 'Urea',      base: 3900,  unit: 'Ø¨ÙˆØ±ÛŒ (50 Ú©Ù„Ùˆ)', category: 'کھاد'     },
   ];
 
   try {
@@ -305,8 +305,8 @@ router.get('/prices/public', async (req, res) => {
     // Graceful fallback: serve base prices as sample data
     const BASE_FALLBACK = [
       { key: 'Ú¯Ù†Ø¯Ù…', nameEn: 'Wheat', base: 3900, unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)', category: 'Ø§Ù†Ø§Ø¬' },
-      { key: 'Ú©Ù¾Ø§Ø³', nameEn: 'Cotton', base: 9500, unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)', category: 'Ù†Ù‚Ø¯ÛŒ ÙØµÙ„' },
-      { key: 'DAP Ú©Ú¾Ø§Ø¯', nameEn: 'DAP', base: 10500, unit: 'Ø¨ÙˆØ±ÛŒ (50 Ú©Ù„Ùˆ)', category: 'Ú©Ú¾Ø§Ø¯' },
+      { key: 'کپاس', nameEn: 'Cotton', base: 9500, unit: 'Ù…Ù† (40 Ú©Ù„Ùˆ)', category: 'Ù†Ù‚Ø¯ÛŒ ÙØµÙ„' },
+      { key: 'DAP کھاد', nameEn: 'DAP', base: 10500, unit: 'Ø¨ÙˆØ±ÛŒ (50 Ú©Ù„Ùˆ)', category: 'کھاد' },
     ];
     res.json({
       prices: BASE_FALLBACK.map((i, idx) => ({ ...i, id: idx+1, nameUrdu: i.key, price: i.base,

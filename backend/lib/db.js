@@ -442,7 +442,7 @@ async function setCacheInDB(cacheKey, answer, language = 'ur', ttlSeconds = 6048
   try {
     await pool.query(
       `INSERT INTO ai_cache (cache_key, answer, language, expires_at)
-       VALUES ($1, $2, $3, NOW() + ($4 || ' seconds')::INTERVAL)
+       VALUES ($1, $2, $3, NOW() + ($4 * INTERVAL '1 second'))
        ON CONFLICT (cache_key) DO UPDATE
          SET answer     = EXCLUDED.answer,
              language   = EXCLUDED.language,

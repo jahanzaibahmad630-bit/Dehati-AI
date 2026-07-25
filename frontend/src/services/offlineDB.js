@@ -263,6 +263,9 @@ function openDB() {
 
     req.onsuccess = async (e) => {
       _db = e.target.result;
+      // Reset _db if browser closes the connection (backgrounding, version upgrade, quota exceeded)
+      _db.onclose = () => { _db = null; };
+      _db.onerror = () => { _db = null; };
       resolve(_db);
       // Seed FAQ if empty
       await seedFAQ(_db);

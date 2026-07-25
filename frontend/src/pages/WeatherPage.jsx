@@ -57,7 +57,7 @@ export default function WeatherPage() {
       setLoading(true); setError('');
       try {
         const pos = await new Promise((res, rej) =>
-          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 15000, maximumAge: 300000, enableHighAccuracy: false })
         );
         const data = await getWeatherByCoords(pos.coords.latitude, pos.coords.longitude);
         await fetchWeatherAndAdvice(data);

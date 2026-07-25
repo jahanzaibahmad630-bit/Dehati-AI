@@ -653,12 +653,20 @@ export default function ChatPage() {
         // Stream failed / timed-out / empty — try reliable non-streaming fallback
         let recovered = false;
         try {
-          const res2 = await fetch(`${API_URL}/api/ai/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-            body: JSON.stringify({ messages: history, language }),
-            signal: AbortSignal.timeout(30000)   // 30s hard timeout
-          });
+          // Use explicit AbortController for timeout (AbortSignal.timeout not supported on older mobile browsers)
+          const fallbackController = new AbortController();
+          const fallbackTimeout = setTimeout(() => fallbackController.abort(), 30000);
+          let res2;
+          try {
+            res2 = await fetch(`${API_URL}/api/ai/chat`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+              body: JSON.stringify({ messages: history, language }),
+              signal: fallbackController.signal
+            });
+          } finally {
+            clearTimeout(fallbackTimeout);
+          }
           if (res2.ok) {
             const data = await res2.json();
             const reply = data.reply || data.error || 'جواب نہیں ملا';
