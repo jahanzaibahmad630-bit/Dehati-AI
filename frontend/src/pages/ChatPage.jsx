@@ -653,15 +653,17 @@ export default function ChatPage() {
         // Stream failed / timed-out / empty — try reliable non-streaming fallback
         let recovered = false;
         try {
-          // Use explicit AbortController for timeout (AbortSignal.timeout not supported on older mobile browsers)
+          // CRITICAL: Fallback is /api/ai/ask (NOT /api/ai/chat which returns 404)
+          // /api/ai/ask expects { question, language } — not { messages }
+          const lastUserMsg = history.filter(m => m.role === 'user').slice(-1)[0]?.content || msg;
           const fallbackController = new AbortController();
           const fallbackTimeout = setTimeout(() => fallbackController.abort(), 30000);
           let res2;
           try {
-            res2 = await fetch(`${API_URL}/api/ai/chat`, {
+            res2 = await fetch(`${API_URL}/api/ai/ask`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-              body: JSON.stringify({ messages: history, language }),
+              body: JSON.stringify({ question: lastUserMsg, language }),
               signal: fallbackController.signal
             });
           } finally {
@@ -669,7 +671,7 @@ export default function ChatPage() {
           }
           if (res2.ok) {
             const data = await res2.json();
-            const reply = data.reply || data.error || 'جواب نہیں ملا';
+            const reply = data.reply || data.answer || data.error || 'جواب نہیں ملا';
             setMessages(prev => {
               const copy = [...prev];
               copy[copy.length - 1] = { role: 'assistant', content: reply, streaming: false, time: new Date() };
@@ -679,6 +681,7 @@ export default function ChatPage() {
             recovered = true;
           }
         } catch {}
+
         if (!recovered) {
           // Both streaming and fallback failed — show retry banner
           setMessages(prev => {
