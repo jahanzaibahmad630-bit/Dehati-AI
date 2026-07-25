@@ -1,7 +1,7 @@
 // AdminPanel v2.1 — with Announcements tab
 import { useState, useEffect, useCallback } from 'react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_URL as API } from '../../config';
 
 async function adminFetch(path, options = {}) {
   const token = sessionStorage.getItem('dehati_admin_token');

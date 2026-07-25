@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SCHEMES as STATIC_SCHEMES } from '../data/schemes';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_URL as API } from '../config';
 
 function SchemeCard({ scheme }) {
   const [open, setOpen] = useState(false);

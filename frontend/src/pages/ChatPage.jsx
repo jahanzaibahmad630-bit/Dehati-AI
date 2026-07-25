@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { getDir, getFont, getAlign } from '../utils/textDir';
 import { searchOffline, saveAIAnswer, queueQuestion, getOfflineQueue, removeFromQueue } from '../services/offlineDB';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_URL } from '../config';
 
 function getToken() {
   return localStorage.getItem('dehati_token');

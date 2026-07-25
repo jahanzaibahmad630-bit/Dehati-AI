@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from 'react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_URL as API } from '../../config';
 const CATEGORIES = ['سب', 'اناج', 'نقدی فصل', 'سبزی', 'تیلدار', 'دالیں', 'کھاد'];
 
 // How old an admin price can be before we show it as "stale"
