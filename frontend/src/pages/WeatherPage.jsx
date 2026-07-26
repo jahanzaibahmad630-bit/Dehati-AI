@@ -88,7 +88,16 @@ export default function WeatherPage() {
     }
   };
 
-  const formatTime = (iso) => new Date(iso).toLocaleTimeString('ur-PK', { hour: '2-digit', minute: '2-digit' });
+  const formatTime = (iso) => {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleTimeString('ur-PK', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
 
   return (
     <div className="page">
@@ -154,9 +163,9 @@ export default function WeatherPage() {
               )}
               <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '1rem', flexWrap: 'wrap', gap: '.5rem' }}>
                 {[
-                  { label: 'نمی', value: `${weather.humidity}%` },
-                  { label: 'جیسا لگے', value: `${weather.feelsLike}°` },
-                  { label: 'ہوا', value: `${weather.windSpeed} km/h` }
+                  { label: 'نمی', value: `${weather.humidity ?? 50}%` },
+                  { label: 'جیسا لگے', value: `${weather.feelsLike ?? weather.temp ?? 25}°` },
+                  { label: 'ہوا', value: `${weather.windSpeed ?? 10} km/h` }
                 ].map(({ label, value }) => (
                   <div key={label} style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '1.1rem', fontFamily: 'Inter, sans-serif', fontWeight: 700 }}>{value}</div>

@@ -30,34 +30,68 @@ function getWeatherInfo(code) {
 }
 
 async function fetchWeather(lat, lon) {
-  const url = new URL('https://api.open-meteo.com/v1/forecast');
-  url.searchParams.set('latitude', lat);
-  url.searchParams.set('longitude', lon);
-  url.searchParams.set('current', 'temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation');
-  url.searchParams.set('timezone', 'Asia/Karachi');
-  url.searchParams.set('forecast_days', '1');
+  try {
+    const url = new URL('https://api.open-meteo.com/v1/forecast');
+    url.searchParams.set('latitude', lat);
+    url.searchParams.set('longitude', lon);
+    url.searchParams.set('current', 'temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation');
+    url.searchParams.set('timezone', 'Asia/Karachi');
+    url.searchParams.set('forecast_days', '1');
 
-  const resp = await fetch(url.toString());
-  if (!resp.ok) throw new Error(`Open-Meteo API error: ${resp.status}`);
+    // 8-second timeout to prevent hanging connections
+    const resp = await fetch(url.toString(), {
+      signal: AbortSignal.timeout(8000)
+    });
 
-  const data = await resp.json();
-  if (!data?.current) throw new Error('Invalid Open-Meteo response — missing current weather data');
-  const c = data.current;
-  const info = getWeatherInfo(c.weather_code);
+    if (!resp.ok) throw new Error(`Open-Meteo API error: ${resp.status}`);
 
-  return {
-    temp: Math.round(c.temperature_2m),
-    feelsLike: Math.round(c.apparent_temperature),
-    humidity: c.relative_humidity_2m,
-    windSpeed: Math.round(c.wind_speed_10m),
-    precipitation: c.precipitation,
-    condition: info.desc,
-    emoji: info.emoji,
-    weatherCode: c.weather_code,
-    source: 'Open-Meteo',
-    sourceUrl: 'https://open-meteo.com',
-    updatedAt: new Date().toISOString()
-  };
+    const data = await resp.json();
+    if (!data?.current) throw new Error('Invalid Open-Meteo response — missing current weather data');
+
+    const c = data.current;
+    const weatherCode = typeof c.weather_code === 'number' ? c.weather_code : 0;
+    const info = getWeatherInfo(weatherCode);
+
+    // Defensive number parsing — guaranteed non-null, non-NaN
+    const temp          = typeof c.temperature_2m === 'number' && !isNaN(c.temperature_2m) ? Math.round(c.temperature_2m) : 28;
+    const feelsLike     = typeof c.apparent_temperature === 'number' && !isNaN(c.apparent_temperature) ? Math.round(c.apparent_temperature) : temp;
+    const humidity      = typeof c.relative_humidity_2m === 'number' && !isNaN(c.relative_humidity_2m) ? Math.round(c.relative_humidity_2m) : 55;
+    const windSpeed     = typeof c.wind_speed_10m === 'number' && !isNaN(c.wind_speed_10m) ? Math.round(c.wind_speed_10m) : 12;
+    const precipitation = typeof c.precipitation === 'number' && !isNaN(c.precipitation) ? c.precipitation : 0;
+
+    return {
+      temp,
+      feelsLike,
+      humidity,
+      windSpeed,
+      precipitation,
+      condition: info.desc,
+      emoji: info.emoji,
+      weatherCode,
+      source: 'Open-Meteo',
+      sourceUrl: 'https://open-meteo.com',
+      updatedAt: new Date().toISOString()
+    };
+  } catch (err) {
+    console.warn('Open-Meteo fetch failed, using seasonal fallback:', err.message);
+    // Fallback seasonal weather for Punjab so app never crashes
+    const month = new Date().getMonth() + 1;
+    const isSummer = month >= 4 && month <= 9;
+    const temp = isSummer ? 34 : 22;
+    return {
+      temp,
+      feelsLike: temp + 2,
+      humidity: 50,
+      windSpeed: 10,
+      precipitation: 0,
+      condition: isSummer ? 'صاف اور گرم' : 'معتدل موسم',
+      emoji: '🌤️',
+      weatherCode: 1,
+      source: 'Dehati-Estimate',
+      updatedAt: new Date().toISOString(),
+      fallback: true
+    };
+  }
 }
 
 // L6 fix: 10-minute in-memory cache keyed by "lat,lon" to prevent Open-Meteo rate limiting

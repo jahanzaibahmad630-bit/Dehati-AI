@@ -18,9 +18,9 @@ if (process.env.CLAUDE_API_KEY) {
   console.warn('⚠️  CLAUDE_API_KEY not set — AI features disabled');
 }
 
-// claude-3-5-sonnet-20241022 = Anthropic Claude 3.5 Sonnet (supports text, vision, prompt caching, SSE streaming)
-const CLAUDE_MODEL     = 'claude-3-5-sonnet-20241022';
-const CLAUDE_MODEL_VIS = 'claude-3-5-sonnet-20241022';
+// claude-sonnet-4-5 = Claude Sonnet 4.x (platform.claude.com enterprise)
+const CLAUDE_MODEL     = 'claude-sonnet-4-5';
+const CLAUDE_MODEL_VIS = 'claude-sonnet-4-5'; // supports vision
 
 // â”€â”€â”€ Agriculture keyword guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Urdu script keywords
@@ -570,23 +570,20 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
       }
     });
 
-    try {
-      const finalMsg = await stream.finalMessage();
-      // Non-blocking token tracking (fire and forget)
-      if (finalMsg?.usage) {
-        const db = require('../lib/db');
-        db.logAIUsage({
-          endpoint: 'ask',
-          tokensIn:    finalMsg.usage.input_tokens || 0,
-          tokensOut:   finalMsg.usage.output_tokens || 0,
-          cacheTokens: finalMsg.usage.cache_read_input_tokens || 0
-        }).catch(() => {});
-      }
-    } finally {
-      clearInterval(heartbeat);
-      res.write('data: [DONE]\n\n');
-      res.end();
+    const finalMsg = await stream.finalMessage();
+    // Non-blocking token tracking (fire and forget)
+    if (finalMsg?.usage) {
+      const db = require('../lib/db');
+      db.logAIUsage({
+        endpoint: 'ask',
+        tokensIn:    finalMsg.usage.input_tokens || 0,
+        tokensOut:   finalMsg.usage.output_tokens || 0,
+        cacheTokens: finalMsg.usage.cache_read_input_tokens || 0
+      }).catch(() => {});
     }
+    clearInterval(heartbeat);
+    res.write('data: [DONE]\n\n');
+    res.end();
 
     // Post-response: save to cache + chat_logs (non-blocking)
     if (lastMsg.role === 'user' && fullReply) {

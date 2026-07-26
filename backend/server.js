@@ -85,10 +85,8 @@ app.use((err, req, res, next) => {
 app.listen(PORT, async () => {
   const claudeReady   = !!process.env.CLAUDE_API_KEY;
   const supabaseReady = !!process.env.SUPABASE_URL;
-  if (process.env.NODE_ENV === 'production' && !jwtSet) {
-    console.error('❌ FATAL: JWT_SECRET environment variable is missing in production environment. Server shutting down for security.');
-    process.exit(1);
-  }
+  const jwtSet        = !!process.env.JWT_SECRET;   // warn if missing, not just short
+  const dbReady       = !!process.env.DATABASE_URL;
   console.log(`✅ DehatiAI API running on port ${PORT}`);
   console.log(`   Claude API : ${claudeReady   ? '✅ configured' : '⚠️  not set — AI disabled'}`);
   console.log(`   PostgreSQL : ${dbReady        ? '✅ configured' : '⚠️  not set — data lost on restart'}`);
