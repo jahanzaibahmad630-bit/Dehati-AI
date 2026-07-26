@@ -280,7 +280,7 @@ async function claudeAsk(prompt, systemPrompt, maxTokens = 700, temperature = 0.
   return response.content?.[0]?.text ?? '';
 }
 
-// ——— POST /api/ai/ask ——————————————————————————————————————————————————————
+// ——— POST /api/ai/ask ——————————————————————————————————————————————————
 router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
   try {
     const { question, language = 'ur' } = req.body;
@@ -296,12 +296,35 @@ router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
 
     // M4 fix: Cache lookup — reuse previous answers for identical questions
     const cached = await aiCache.get(q, language);
-    if (cached) return res.json({ answer: cached, fromCache: true });
+    if (cached) {
+      // Still log cached hits so admin can see what farmers are asking
+      db.saveChatLog({
+        userId:    req.user?.id    || null,
+        userName:  req.user?.name  || null,
+        userPhone: req.user?.phone || null,
+        question:  q,
+        answer:    cached,
+        language
+      }).catch(() => {});
+      return res.json({ answer: cached, fromCache: true });
+    }
 
     const text = await claudeAsk(q, buildFarmingSystem(), 700, 0.6);
 
     // M4 fix: Save to cache for future requests
     if (text) aiCache.set(q, language, text);
+
+    // Save to chat_logs so it appears in admin Questions tab
+    if (text) {
+      db.saveChatLog({
+        userId:    req.user?.id    || null,
+        userName:  req.user?.name  || null,
+        userPhone: req.user?.phone || null,
+        question:  q,
+        answer:    text,
+        language
+      }).catch(() => {});
+    }
 
     res.json({ answer: text });
   } catch (err) {
@@ -430,6 +453,19 @@ router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {
 مختصر اور واضح — قیمت اور دستیابی کا خیال رکھیں`;
 
     const text = await claudeAsk(prompt, buildFarmingSystem(), 600, 0.5);
+
+    // Log to Questions tab: prefix with tool name so admin knows which page
+    if (text) {
+      db.saveChatLog({
+        userId:    req.user?.id    || null,
+        userName:  req.user?.name  || null,
+        userPhone: req.user?.phone || null,
+        question:  `[کھاد] فصل: ${crop || 'نامعلوم'} | مٹی: ${soilType || 'عام'} | عمر: ${cropAge || 'نامعلوم'}`,
+        answer:    text,
+        language:  'ur'
+      }).catch(() => {});
+    }
+
     res.json({ answer: text });
   } catch (err) {
     console.error('Fertilizer error:', err.message);
@@ -596,6 +632,19 @@ router.post('/animal', aiLimiter, authenticateToken, async (req, res) => {
 مختصر، واضح اردو میں — فی پوائنٹ ایک جملہ کافی ہے`;
 
     const text = await claudeAsk(prompt, buildFarmingSystem(), 600, 0.5);
+
+    // Log to Questions tab: prefix with tool name
+    if (text) {
+      db.saveChatLog({
+        userId:    req.user?.id    || null,
+        userName:  req.user?.name  || null,
+        userPhone: req.user?.phone || null,
+        question:  `[جانور] ${animalType || 'نامعلوم'}: ${(symptoms || question || '').slice(0, 200)}`,
+        answer:    text,
+        language:  'ur'
+      }).catch(() => {});
+    }
+
     res.json({ answer: text });
   } catch (err) {
     console.error('Animal error:', err.message);
