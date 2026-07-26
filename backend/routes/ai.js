@@ -18,9 +18,9 @@ if (process.env.CLAUDE_API_KEY) {
   console.warn('⚠️  CLAUDE_API_KEY not set — AI features disabled');
 }
 
-// claude-sonnet-4-5 = Claude Sonnet 4.x (platform.claude.com enterprise)
-const CLAUDE_MODEL     = 'claude-sonnet-4-5';
-const CLAUDE_MODEL_VIS = 'claude-sonnet-4-5'; // supports vision
+// claude-3-5-sonnet-20241022 = Anthropic Claude 3.5 Sonnet (supports text, vision, prompt caching, SSE streaming)
+const CLAUDE_MODEL     = 'claude-3-5-sonnet-20241022';
+const CLAUDE_MODEL_VIS = 'claude-3-5-sonnet-20241022';
 
 // â”€â”€â”€ Agriculture keyword guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Urdu script keywords
