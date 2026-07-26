@@ -570,20 +570,23 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
       }
     });
 
-    const finalMsg = await stream.finalMessage();
-    // Non-blocking token tracking (fire and forget)
-    if (finalMsg?.usage) {
-      const db = require('../lib/db');
-      db.logAIUsage({
-        endpoint: 'ask',
-        tokensIn:    finalMsg.usage.input_tokens || 0,
-        tokensOut:   finalMsg.usage.output_tokens || 0,
-        cacheTokens: finalMsg.usage.cache_read_input_tokens || 0
-      }).catch(() => {});
+    try {
+      const finalMsg = await stream.finalMessage();
+      // Non-blocking token tracking (fire and forget)
+      if (finalMsg?.usage) {
+        const db = require('../lib/db');
+        db.logAIUsage({
+          endpoint: 'ask',
+          tokensIn:    finalMsg.usage.input_tokens || 0,
+          tokensOut:   finalMsg.usage.output_tokens || 0,
+          cacheTokens: finalMsg.usage.cache_read_input_tokens || 0
+        }).catch(() => {});
+      }
+    } finally {
+      clearInterval(heartbeat);
+      res.write('data: [DONE]\n\n');
+      res.end();
     }
-    clearInterval(heartbeat);
-    res.write('data: [DONE]\n\n');
-    res.end();
 
     // Post-response: save to cache + chat_logs (non-blocking)
     if (lastMsg.role === 'user' && fullReply) {

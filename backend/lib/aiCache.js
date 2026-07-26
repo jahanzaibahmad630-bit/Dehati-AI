@@ -48,6 +48,9 @@ function l1Get(key) {
   const entry = l1.get(key);
   if (!entry) return null;
   if (entry.expiresAt < Date.now()) { l1.delete(key); return null; }
+  // Re-insert key on hit to update insertion order (true LRU eviction)
+  l1.delete(key);
+  l1.set(key, entry);
   return entry.value;
 }
 
