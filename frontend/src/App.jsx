@@ -19,6 +19,7 @@ import PriceAlertPage from './pages/PriceAlertPage';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminPanel from './pages/admin/AdminPanel';
 import AnnouncementBanner from './components/ui/AnnouncementBanner';
+import EmergencyAlertBanner from './components/EmergencyAlertBanner';
 import InstallBanner from './components/ui/InstallBanner';
 
 
@@ -67,6 +68,7 @@ function AppShell() {
     <div className="app-container">
       <Header />
       <OfflineBanner />
+      <EmergencyAlertBanner />
       <AnnouncementBanner />
       <PrivacyNotice />
 

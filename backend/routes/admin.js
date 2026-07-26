@@ -6,6 +6,7 @@ const { supabase } = require('../lib/supabase');
 const { getRecentRegistrations } = require('../lib/memStore');
 const db       = require('../lib/db');
 const aiCache  = require('../lib/aiCache');
+const { logAuditAction, getAuditLogs, getAIUsage, createEmergencyAlert, getEmergencyAlerts, deleteEmergencyAlert, exportAllData, purgeChatLogs } = require('../lib/db');
 
 const router = express.Router();
 
@@ -97,6 +98,7 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
     if (!id) return res.status(400).json({ error: 'User ID required' });
     await db.deleteUser(id);
+    await logAuditAction({ actionType: 'USER_DELETED', target: id, ip: req.ip });
     res.json({ success: true, deletedId: id });
   } catch (err) {
     console.error('Admin delete user error:', err.message);
@@ -593,10 +595,79 @@ router.get('/chatlogs', requireAdmin, async (req, res) => {
 router.post('/cache/flush', requireAdmin, async (req, res) => {
   try {
     const deleted = await aiCache.flush(true);
+    await logAuditAction({ actionType: 'CACHE_FLUSHED', ip: req.ip });
     res.json({ success: true, deleted, message: 'AI cache cleared from memory and database' });
   } catch (err) {
     res.status(500).json({ error: 'Cache flush failed: ' + err.message });
   }
+});
+
+// ─── GET /api/admin/audit-logs ────────────────────────────────────────────────
+router.get('/audit-logs', requireAdmin, async (req, res) => {
+  try {
+    const page  = parseInt(req.query.page  || '1');
+    const limit = parseInt(req.query.limit || '30');
+    const data  = await getAuditLogs({ page, limit });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── GET /api/admin/ai-usage ─────────────────────────────────────────────────
+router.get('/ai-usage', requireAdmin, async (req, res) => {
+  try {
+    const data = await getAIUsage();
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── POST /api/admin/emergency-alerts ────────────────────────────────────────
+router.post('/emergency-alerts', requireAdmin, async (req, res) => {
+  try {
+    const { title, body, severity, targetDistricts, expiresAt } = req.body;
+    if (!title?.trim() || !body?.trim()) return res.status(400).json({ error: 'Title and body required' });
+    const alert = await createEmergencyAlert({ title, body, severity, targetDistricts: targetDistricts || [], expiresAt: expiresAt || null });
+    // Audit log
+    await logAuditAction({ actionType: 'EMERGENCY_ALERT_CREATED', target: title, payload: { severity, targetDistricts }, ip: req.ip });
+    res.json({ success: true, alert });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── GET /api/admin/emergency-alerts ─────────────────────────────────────────
+router.get('/emergency-alerts', requireAdmin, async (req, res) => {
+  try {
+    const alerts = await getEmergencyAlerts();
+    res.json({ alerts });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── DELETE /api/admin/emergency-alerts/:id ───────────────────────────────────
+router.delete('/emergency-alerts/:id', requireAdmin, async (req, res) => {
+  try {
+    await deleteEmergencyAlert(req.params.id);
+    await logAuditAction({ actionType: 'EMERGENCY_ALERT_DELETED', target: req.params.id, ip: req.ip });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── GET /api/admin/export ───────────────────────────────────────────────────
+router.get('/export', requireAdmin, async (req, res) => {
+  try {
+    const data = await exportAllData();
+    await logAuditAction({ actionType: 'DATA_EXPORT', ip: req.ip });
+    res.setHeader('Content-Disposition', `attachment; filename="dehati_backup_${new Date().toISOString().split('T')[0]}.json"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── DELETE /api/admin/logs/purge ────────────────────────────────────────────
+router.delete('/logs/purge', requireAdmin, async (req, res) => {
+  try {
+    const days   = parseInt(req.query.days || '90');
+    const purged = await purgeChatLogs(days);
+    await logAuditAction({ actionType: 'CHAT_LOGS_PURGED', payload: { days, purged }, ip: req.ip });
+    res.json({ success: true, purged });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 module.exports = router;

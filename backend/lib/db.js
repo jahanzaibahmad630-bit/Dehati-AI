@@ -77,6 +77,7 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS ai_cache_expires_idx ON ai_cache(expires_at);
     `);
     console.log('✅ PostgreSQL tables ready (users + mandi_prices + chat_logs + ai_cache)');
+    await ensureAuditTables();
   } catch (err) {
     console.error('❌ initDB error:', err.message);
   }
@@ -497,6 +498,151 @@ async function getCacheStats() {
   }
 }
 
+// ─── Admin Audit Logs ─────────────────────────────────────────────────────────
+async function ensureAuditTables() {
+  if (!pool) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_audit_logs (
+        id          BIGSERIAL PRIMARY KEY,
+        admin_id    TEXT NOT NULL DEFAULT 'admin',
+        action_type TEXT NOT NULL,
+        target      TEXT,
+        payload     JSONB,
+        ip_address  TEXT,
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS audit_logs_created_idx ON admin_audit_logs(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS ai_usage_stats (
+        id           BIGSERIAL PRIMARY KEY,
+        endpoint     TEXT NOT NULL,
+        tokens_in    INTEGER DEFAULT 0,
+        tokens_out   INTEGER DEFAULT 0,
+        cache_tokens INTEGER DEFAULT 0,
+        cost_usd     NUMERIC(10,6) DEFAULT 0,
+        created_at   TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS ai_usage_created_idx ON ai_usage_stats(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS emergency_alerts (
+        id               BIGSERIAL PRIMARY KEY,
+        title            TEXT NOT NULL,
+        body             TEXT NOT NULL,
+        severity         TEXT NOT NULL DEFAULT 'INFO',
+        target_districts TEXT[],
+        active           BOOLEAN DEFAULT TRUE,
+        created_by       TEXT DEFAULT 'admin',
+        expires_at       TIMESTAMPTZ,
+        created_at       TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Audit/AI-usage/Emergency tables ready');
+  } catch (err) {
+    console.error('❌ ensureAuditTables error:', err.message);
+  }
+}
+
+async function logAuditAction({ adminId = 'admin', actionType, target = null, payload = null, ip = null }) {
+  if (!pool) return;
+  try {
+    await pool.query(
+      `INSERT INTO admin_audit_logs (admin_id, action_type, target, payload, ip_address)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [adminId, actionType, target, payload ? JSON.stringify(payload) : null, ip]
+    );
+  } catch (err) { console.warn('logAuditAction error:', err.message); }
+}
+
+async function getAuditLogs({ page = 1, limit = 30 } = {}) {
+  if (!pool) return { logs: [], total: 0 };
+  const offset = (page - 1) * limit;
+  try {
+    const [{ rows }, { rows: cr }] = await Promise.all([
+      pool.query(`SELECT * FROM admin_audit_logs ORDER BY created_at DESC LIMIT $1 OFFSET $2`, [limit, offset]),
+      pool.query(`SELECT COUNT(*) as c FROM admin_audit_logs`)
+    ]);
+    return { logs: rows, total: parseInt(cr[0]?.c || 0, 10) };
+  } catch (err) { return { logs: [], total: 0 }; }
+}
+
+async function logAIUsage({ endpoint, tokensIn = 0, tokensOut = 0, cacheTokens = 0 }) {
+  if (!pool) return;
+  // Claude Sonnet 4.x pricing (USD per million tokens)
+  const costIn    = (tokensIn    / 1_000_000) * 3.00;
+  const costOut   = (tokensOut   / 1_000_000) * 15.00;
+  const costCache = (cacheTokens / 1_000_000) * 0.30;
+  const costUsd   = parseFloat((costIn + costOut + costCache).toFixed(6));
+  try {
+    await pool.query(
+      `INSERT INTO ai_usage_stats (endpoint, tokens_in, tokens_out, cache_tokens, cost_usd)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [endpoint, tokensIn, tokensOut, cacheTokens, costUsd]
+    );
+  } catch (err) { console.warn('logAIUsage error:', err.message); }
+}
+
+async function getAIUsage() {
+  if (!pool) return { today: null, month: null, allTime: null, recent: [] };
+  try {
+    const [todayRes, monthRes, allTimeRes, recentRes] = await Promise.all([
+      pool.query(`SELECT COALESCE(SUM(tokens_in),0) as tin, COALESCE(SUM(tokens_out),0) as tout, COALESCE(SUM(cache_tokens),0) as tc, COALESCE(SUM(cost_usd),0) as cost, COUNT(*) as calls FROM ai_usage_stats WHERE created_at >= NOW() - INTERVAL '24 hours'`),
+      pool.query(`SELECT COALESCE(SUM(tokens_in),0) as tin, COALESCE(SUM(tokens_out),0) as tout, COALESCE(SUM(cache_tokens),0) as tc, COALESCE(SUM(cost_usd),0) as cost, COUNT(*) as calls FROM ai_usage_stats WHERE created_at >= NOW() - INTERVAL '30 days'`),
+      pool.query(`SELECT COALESCE(SUM(tokens_in),0) as tin, COALESCE(SUM(tokens_out),0) as tout, COALESCE(SUM(cache_tokens),0) as tc, COALESCE(SUM(cost_usd),0) as cost, COUNT(*) as calls FROM ai_usage_stats`),
+      pool.query(`SELECT endpoint, tokens_in, tokens_out, cache_tokens, cost_usd, created_at FROM ai_usage_stats ORDER BY created_at DESC LIMIT 20`)
+    ]);
+    const fmt = (r) => ({ tokensIn: parseInt(r.tin), tokensOut: parseInt(r.tout), cacheTokens: parseInt(r.tc), costUsd: parseFloat(parseFloat(r.cost).toFixed(4)), calls: parseInt(r.calls) });
+    return { today: fmt(todayRes.rows[0]), month: fmt(monthRes.rows[0]), allTime: fmt(allTimeRes.rows[0]), recent: recentRes.rows };
+  } catch (err) { console.warn('getAIUsage error:', err.message); return { today: null, month: null, allTime: null, recent: [] }; }
+}
+
+async function createEmergencyAlert({ title, body, severity = 'INFO', targetDistricts = [], expiresAt = null, createdBy = 'admin' }) {
+  if (!pool) return null;
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO emergency_alerts (title, body, severity, target_districts, expires_at, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [title, body, severity, targetDistricts, expiresAt, createdBy]
+    );
+    return rows[0];
+  } catch (err) { console.warn('createEmergencyAlert error:', err.message); return null; }
+}
+
+async function getEmergencyAlerts({ activeOnly = false } = {}) {
+  if (!pool) return [];
+  try {
+    const where = activeOnly ? `WHERE active = true AND (expires_at IS NULL OR expires_at > NOW())` : '';
+    const { rows } = await pool.query(`SELECT * FROM emergency_alerts ${where} ORDER BY created_at DESC LIMIT 50`);
+    return rows;
+  } catch (err) { return []; }
+}
+
+async function deleteEmergencyAlert(id) {
+  if (!pool) return false;
+  try { await pool.query(`DELETE FROM emergency_alerts WHERE id=$1`, [id]); return true; } catch { return false; }
+}
+
+async function exportAllData() {
+  if (!pool) return { users: [], prices: [], chatLogs: [], emergencyAlerts: [], exportedAt: new Date().toISOString() };
+  try {
+    const [usersRes, pricesRes, logsRes, alertsRes] = await Promise.all([
+      pool.query(`SELECT id,name,phone,district,land_size,created_at,is_guest FROM users ORDER BY created_at DESC`),
+      pool.query(`SELECT * FROM mandi_prices ORDER BY updated_at DESC`),
+      pool.query(`SELECT id,user_name,user_phone,question,language,created_at FROM chat_logs ORDER BY created_at DESC LIMIT 5000`),
+      pool.query(`SELECT * FROM emergency_alerts ORDER BY created_at DESC`)
+    ]);
+    return { users: usersRes.rows, prices: pricesRes.rows, chatLogs: logsRes.rows, emergencyAlerts: alertsRes.rows, exportedAt: new Date().toISOString() };
+  } catch (err) { console.warn('exportAllData error:', err.message); return {}; }
+}
+
+async function purgeChatLogs(days = 90) {
+  if (!pool) return 0;
+  try {
+    const { rowCount } = await pool.query(`DELETE FROM chat_logs WHERE created_at < NOW() - ($1 * INTERVAL '1 day')`, [days]);
+    return rowCount || 0;
+  } catch (err) { console.warn('purgeChatLogs error:', err.message); return 0; }
+}
+
 module.exports = {
   pool, initDB, testConnection,
   findUserByPhone, createUser, getAllUsers,
@@ -504,5 +650,7 @@ module.exports = {
   deleteUser, isUsingPersistentDB,
   setPriceDB, getPricesDB, deletePriceDB,
   saveChatLog, getChatLogs,
-  getCacheFromDB, setCacheInDB, flushCacheDB, getCacheStats
+  getCacheFromDB, setCacheInDB, flushCacheDB, getCacheStats,
+  ensureAuditTables, logAuditAction, getAuditLogs, logAIUsage, getAIUsage,
+  createEmergencyAlert, getEmergencyAlerts, deleteEmergencyAlert, exportAllData, purgeChatLogs
 };

@@ -205,6 +205,339 @@ function HealthBadge({ status, latency, dark }) {
   );
 }
 
+const PUNJAB_DISTRICTS = ['lahore','faisalabad','multan','rawalpindi','gujranwala','sialkot','bahawalpur','sargodha','sheikhupura','rahim_yar_khan','jhang','gujrat','okara','sahiwal','kasur','dera_ghazi_khan','vehari','mianwali','khanewal','pakpattan'];
+
+function AIUsageTab({ dark }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await adminFetch('/ai-usage');
+      const json = await res.json();
+      setData(json);
+    } catch {}
+    setLoading(false);
+  };
+  
+  useEffect(() => { load(); }, []);
+  
+  const card = (label, val, sub, color) => (
+    <div style={{ background: dark ? '#0F172A' : '#f8fafc', borderRadius: 12, padding: '1rem', border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}` }}>
+      <div style={{ fontSize: '.75rem', color: dark ? '#94A3B8' : '#6b7280', fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: color || (dark ? '#F1F5F9' : '#111827'), lineHeight: 1.2 }}>{val ?? '—'}</div>
+      {sub && <div style={{ fontSize: '.72rem', color: dark ? '#64748B' : '#9ca3af', marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
+  
+  const Section = ({ title, period }) => period ? (
+    <div>
+      <h3 style={{ fontWeight: 700, color: dark ? '#94A3B8' : '#374151', fontSize: '.875rem', marginBottom: '.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '.75rem', marginBottom: '1.5rem' }}>
+        {card('API Calls', period.calls, 'Total requests', '#10B981')}
+        {card('Input Tokens', period.tokensIn?.toLocaleString(), 'Farmer questions', '#3B82F6')}
+        {card('Output Tokens', period.tokensOut?.toLocaleString(), 'AI responses', '#8B5CF6')}
+        {card('Cache Tokens', period.cacheTokens?.toLocaleString(), 'Prompt cache reads', '#F59E0B')}
+        {card('Cost (USD)', `$${period.costUsd?.toFixed(4)}`, 'Estimated spend', '#EF4444')}
+      </div>
+    </div>
+  ) : null;
+  
+  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: dark ? '#64748B' : '#9ca3af' }}>Loading AI usage data...</div>;
+  
+  if (!data?.today) return (
+    <div style={{ background: dark ? '#1E293B' : '#fffbeb', border: '1px solid #fbbf24', borderRadius: 12, padding: '1.5rem', color: '#92400e' }}>
+      <div style={{ fontWeight: 700 }}>⚠️ AI Usage tracking requires PostgreSQL</div>
+      <div style={{ fontSize: '.875rem', marginTop: '.5rem' }}>Add a Railway PostgreSQL plugin to enable token and cost tracking.</div>
+    </div>
+  );
+  
+  return (
+    <div>
+      <div style={{ background: 'linear-gradient(135deg, #065F46, #10B981)', borderRadius: 16, padding: '1.25rem', color: 'white', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: '.75rem', opacity: .8, fontWeight: 600 }}>ALL TIME TOTAL SPEND</div>
+        <div style={{ fontSize: '2.5rem', fontWeight: 900, lineHeight: 1 }}>${data.allTime?.costUsd?.toFixed(4) ?? '0.0000'}</div>
+        <div style={{ fontSize: '.8rem', opacity: .75 }}>Based on Anthropic Claude Sonnet 4.x pricing ($3/$15 per M tokens)</div>
+      </div>
+      <Section title="Today (Last 24h)" period={data.today} />
+      <Section title="This Month (30 Days)" period={data.month} />
+      {data.recent?.length > 0 && (
+        <div>
+          <h3 style={{ fontWeight: 700, color: dark ? '#94A3B8' : '#374151', fontSize: '.875rem', marginBottom: '.75rem', textTransform: 'uppercase' }}>Recent API Calls</h3>
+          <div style={{ background: dark ? '#1E293B' : 'white', borderRadius: 12, overflow: 'hidden', border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: dark ? '#0F172A' : '#f8fafc' }}>
+                  {['Endpoint','Tokens In','Tokens Out','Cache','Cost','Time'].map(h => <th key={h} style={{ padding: '.5rem .75rem', textAlign: 'left', fontSize: '.72rem', fontWeight: 700, color: dark ? '#64748B' : '#9ca3af', textTransform: 'uppercase' }}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {data.recent.map((r, i) => (
+                  <tr key={i} style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#f0f0f0'}` }}>
+                    <td style={{ padding: '.5rem .75rem', fontSize: '.8rem', color: dark ? '#F1F5F9' : '#111827', fontWeight: 600 }}>{r.endpoint}</td>
+                    <td style={{ padding: '.5rem .75rem', fontSize: '.8rem', color: dark ? '#94A3B8' : '#374151' }}>{Number(r.tokens_in).toLocaleString()}</td>
+                    <td style={{ padding: '.5rem .75rem', fontSize: '.8rem', color: dark ? '#94A3B8' : '#374151' }}>{Number(r.tokens_out).toLocaleString()}</td>
+                    <td style={{ padding: '.5rem .75rem', fontSize: '.8rem', color: '#F59E0B' }}>{Number(r.cache_tokens).toLocaleString()}</td>
+                    <td style={{ padding: '.5rem .75rem', fontSize: '.8rem', color: '#EF4444', fontWeight: 700 }}>${parseFloat(r.cost_usd).toFixed(6)}</td>
+                    <td style={{ padding: '.5rem .75rem', fontSize: '.72rem', color: dark ? '#64748B' : '#9ca3af' }}>{new Date(r.created_at).toLocaleString('en-PK', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AuditLogTab({ dark }) {
+  const [logs, setLogs] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await adminFetch(`/audit-logs?page=${page}&limit=30`);
+      const d = await res.json();
+      setLogs(d.logs || []);
+      setTotal(d.total || 0);
+    } catch {}
+    setLoading(false);
+  };
+  
+  useEffect(() => { load(); }, [page]);
+  
+  const ACTION_COLORS = {
+    USER_DELETED: '#EF4444',
+    CACHE_FLUSHED: '#F59E0B',
+    PRICE_UPDATE: '#3B82F6',
+    EMERGENCY_ALERT_CREATED: '#EF4444',
+    EMERGENCY_ALERT_DELETED: '#6B7280',
+    DATA_EXPORT: '#10B981',
+    CHAT_LOGS_PURGED: '#F59E0B',
+  };
+  
+  const totalPages = Math.max(1, Math.ceil(total / 30));
+  
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ fontSize: '.875rem', color: dark ? '#64748B' : '#6b7280' }}>Immutable log of all admin actions — {total} total entries</div>
+        <button onClick={load} style={{ padding: '.4rem .875rem', borderRadius: 8, border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`, background: 'transparent', color: dark ? '#94A3B8' : '#374151', cursor: 'pointer', fontSize: '.8rem' }}>🔄 Refresh</button>
+      </div>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem', color: dark ? '#64748B' : '#9ca3af' }}>Loading...</div>
+      ) : logs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: dark ? '#64748B' : '#9ca3af', background: dark ? '#1E293B' : 'white', borderRadius: 12, border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>
+          <div style={{ fontSize: '2rem', marginBottom: 8 }}>📋</div>
+          <div>No audit logs yet. Actions will appear here as admins make changes.</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+          {logs.map(log => (
+            <div key={log.id} style={{ background: dark ? '#1E293B' : 'white', borderRadius: 10, padding: '.875rem 1rem', border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}`, display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <span style={{ background: `${ACTION_COLORS[log.action_type] || '#6B7280'}18`, color: ACTION_COLORS[log.action_type] || '#6B7280', borderRadius: 6, padding: '2px 10px', fontSize: '.72rem', fontWeight: 700, whiteSpace: 'nowrap' }}>{log.action_type}</span>
+              {log.target && <span style={{ fontSize: '.82rem', color: dark ? '#F1F5F9' : '#111827', fontWeight: 600 }}>{log.target}</span>}
+              {log.ip_address && <span style={{ fontSize: '.75rem', color: dark ? '#475569' : '#9ca3af', fontFamily: 'monospace' }}>IP: {log.ip_address}</span>}
+              <span style={{ fontSize: '.72rem', color: dark ? '#475569' : '#9ca3af', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{new Date(log.created_at).toLocaleString('en-PK', { dateStyle: 'short', timeStyle: 'short' })}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', marginTop: '1rem' }}>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: '.4rem .875rem', borderRadius: 8, border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`, background: 'transparent', color: dark ? '#94A3B8' : '#374151', cursor: 'pointer' }}>← Prev</button>
+          <span style={{ padding: '.4rem .875rem', color: dark ? '#64748B' : '#6b7280', fontSize: '.875rem' }}>{page} / {totalPages}</span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: '.4rem .875rem', borderRadius: 8, border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`, background: 'transparent', color: dark ? '#94A3B8' : '#374151', cursor: 'pointer' }}>Next →</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmergencyAlertsTab({ dark }) {
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ title: '', body: '', severity: 'WARNING', targetDistricts: [], expiresAt: '' });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  
+  const load = async () => {
+    setLoading(true);
+    try { const res = await adminFetch('/emergency-alerts'); const d = await res.json(); setAlerts(d.alerts || []); } catch {}
+    setLoading(false);
+  };
+  
+  useEffect(() => { load(); }, []);
+  
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.title.trim() || !form.body.trim()) return;
+    setSaving(true);
+    try {
+      const res = await adminFetch('/emergency-alerts', { method: 'POST', body: JSON.stringify(form) });
+      if (res.ok) { flash('✅ Alert broadcast successfully!'); setForm({ title: '', body: '', severity: 'WARNING', targetDistricts: [], expiresAt: '' }); load(); }
+      else flash('❌ Failed to broadcast alert');
+    } catch { flash('❌ Network error'); }
+    setSaving(false);
+  };
+  
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this emergency alert?')) return;
+    await adminFetch(`/emergency-alerts/${id}`, { method: 'DELETE' });
+    load();
+  };
+  
+  const toggleDistrict = (d) => setForm(f => ({ ...f, targetDistricts: f.targetDistricts.includes(d) ? f.targetDistricts.filter(x => x !== d) : [...f.targetDistricts, d] }));
+  
+  const SEV_COLOR = { INFO: '#3B82F6', WARNING: '#F59E0B', CRITICAL: '#EF4444' };
+  const inp = { width: '100%', padding: '.6rem .875rem', borderRadius: 8, border: `1.5px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`, background: dark ? '#0F172A' : 'white', color: dark ? '#F1F5F9' : '#111827', fontSize: '.875rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', outline: 'none' };
+  
+  return (
+    <div>
+      {msg && <div style={{ background: msg.startsWith('✅') ? '#f0fdf4' : '#fef2f2', color: msg.startsWith('✅') ? '#16a34a' : '#dc2626', padding: '.75rem 1rem', borderRadius: 8, marginBottom: '1rem', fontWeight: 600, fontSize: '.875rem' }}>{msg}</div>}
+      
+      {/* Broadcast Form */}
+      <div style={{ background: dark ? '#1E293B' : 'white', borderRadius: 16, padding: '1.5rem', border: `1.5px solid ${dark ? 'rgba(239,68,68,0.3)' : '#fecaca'}`, marginBottom: '1.5rem' }}>
+        <h3 style={{ fontWeight: 700, color: '#EF4444', fontSize: '1rem', marginBottom: '1rem' }}>🚨 Broadcast Emergency Alert</h3>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '.75rem' }}>
+            <label style={{ display: 'block', fontSize: '.78rem', fontWeight: 700, color: dark ? '#94A3B8' : '#374151', marginBottom: '.3rem' }}>Alert Title *</label>
+            <input value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))} placeholder="ملتان میں گلابی سنڈی کا حملہ" style={inp} required />
+          </div>
+          <div style={{ marginBottom: '.75rem' }}>
+            <label style={{ display: 'block', fontSize: '.78rem', fontWeight: 700, color: dark ? '#94A3B8' : '#374151', marginBottom: '.3rem' }}>Alert Body * (Urdu)</label>
+            <textarea value={form.body} onChange={e => setForm(f => ({...f, body: e.target.value}))} placeholder="فوری سپرے کریں..." rows={3} style={{ ...inp, resize: 'vertical', direction: 'rtl' }} required />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', marginBottom: '.75rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '.78rem', fontWeight: 700, color: dark ? '#94A3B8' : '#374151', marginBottom: '.3rem' }}>Severity</label>
+              <select value={form.severity} onChange={e => setForm(f => ({...f, severity: e.target.value}))} style={inp}>
+                <option value="INFO">ℹ️ INFO</option>
+                <option value="WARNING">⚠️ WARNING</option>
+                <option value="CRITICAL">🚨 CRITICAL</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '.78rem', fontWeight: 700, color: dark ? '#94A3B8' : '#374151', marginBottom: '.3rem' }}>Expires At (optional)</label>
+              <input type="datetime-local" value={form.expiresAt} onChange={e => setForm(f => ({...f, expiresAt: e.target.value}))} style={inp} />
+            </div>
+          </div>
+          <div style={{ marginBottom: '.75rem' }}>
+            <label style={{ display: 'block', fontSize: '.78rem', fontWeight: 700, color: dark ? '#94A3B8' : '#374151', marginBottom: '.5rem' }}>Target Districts (empty = all Punjab)</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.4rem' }}>
+              {PUNJAB_DISTRICTS.map(d => (
+                <button type="button" key={d} onClick={() => toggleDistrict(d)} style={{ padding: '.3rem .7rem', borderRadius: 20, border: '1.5px solid', borderColor: form.targetDistricts.includes(d) ? '#EF4444' : (dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'), background: form.targetDistricts.includes(d) ? '#FEF2F2' : 'transparent', color: form.targetDistricts.includes(d) ? '#EF4444' : (dark ? '#94A3B8' : '#6b7280'), fontSize: '.72rem', fontWeight: form.targetDistricts.includes(d) ? 700 : 400, cursor: 'pointer', textTransform: 'capitalize' }}>{d.replace('_', ' ')}</button>
+              ))}
+            </div>
+          </div>
+          <button type="submit" disabled={saving || !form.title.trim() || !form.body.trim()} style={{ padding: '.7rem 1.5rem', background: saving ? '#e5e7eb' : '#EF4444', color: saving ? '#9ca3af' : 'white', border: 'none', borderRadius: 10, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', fontSize: '.875rem', fontFamily: 'Inter, sans-serif' }}>
+            {saving ? 'Broadcasting...' : '🚨 Broadcast Alert'}
+          </button>
+        </form>
+      </div>
+      
+      {/* Active Alerts List */}
+      <h3 style={{ fontWeight: 700, color: dark ? '#F1F5F9' : '#111827', fontSize: '1rem', marginBottom: '.75rem' }}>Active Alerts ({alerts.length})</h3>
+      {loading ? <div style={{ textAlign: 'center', padding: '2rem', color: dark ? '#64748B' : '#9ca3af' }}>Loading...</div> : alerts.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '2rem', color: dark ? '#64748B' : '#9ca3af', background: dark ? '#1E293B' : 'white', borderRadius: 12, border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>No active emergency alerts.</div>
+      ) : alerts.map(a => (
+        <div key={a.id} style={{ background: dark ? '#1E293B' : 'white', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '.75rem', border: `1.5px solid ${SEV_COLOR[a.severity]}44` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.4rem' }}>
+                <span style={{ background: `${SEV_COLOR[a.severity]}18`, color: SEV_COLOR[a.severity], borderRadius: 6, padding: '2px 10px', fontSize: '.72rem', fontWeight: 700 }}>{a.severity}</span>
+                <span style={{ fontWeight: 700, fontSize: '.9rem', color: dark ? '#F1F5F9' : '#111827' }}>{a.title}</span>
+              </div>
+              <div style={{ fontSize: '.85rem', color: dark ? '#94A3B8' : '#374151', direction: 'rtl', lineHeight: 1.6 }}>{a.body}</div>
+              {a.target_districts?.length > 0 && <div style={{ fontSize: '.72rem', color: dark ? '#64748B' : '#9ca3af', marginTop: '.4rem' }}>Districts: {a.target_districts.join(', ')}</div>}
+              <div style={{ fontSize: '.72rem', color: dark ? '#475569' : '#9ca3af', marginTop: '.3rem' }}>{new Date(a.created_at).toLocaleString('en-PK')}</div>
+            </div>
+            <button onClick={() => handleDelete(a.id)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '.35rem .7rem', cursor: 'pointer', fontSize: '.75rem', fontWeight: 700, flexShrink: 0 }}>Delete</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ExportTab({ dark }) {
+  const [exporting, setExporting] = useState(false);
+  const [purging, setPurging] = useState(false);
+  const [purgeDays, setPurgeDays] = useState(90);
+  const [msg, setMsg] = useState('');
+  
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 4000); };
+  
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await adminFetch('/export');
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `dehati_backup_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      flash(`✅ Exported: ${data.users?.length || 0} users, ${data.prices?.length || 0} prices, ${data.chatLogs?.length || 0} chat logs`);
+    } catch { flash('❌ Export failed'); }
+    setExporting(false);
+  };
+  
+  const handlePurge = async () => {
+    if (!confirm(`Permanently delete all chat logs older than ${purgeDays} days? This cannot be undone.`)) return;
+    setPurging(true);
+    try {
+      const res = await adminFetch(`/logs/purge?days=${purgeDays}`, { method: 'DELETE' });
+      const d = await res.json();
+      flash(`✅ Purged ${d.purged || 0} old chat log entries`);
+    } catch { flash('❌ Purge failed'); }
+    setPurging(false);
+  };
+  
+  const cardStyle = { background: dark ? '#1E293B' : 'white', borderRadius: 16, padding: '1.5rem', border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}`, marginBottom: '1rem' };
+  
+  return (
+    <div>
+      {msg && <div style={{ background: msg.startsWith('✅') ? '#f0fdf4' : '#fef2f2', color: msg.startsWith('✅') ? '#16a34a' : '#dc2626', padding: '.75rem 1rem', borderRadius: 8, marginBottom: '1rem', fontWeight: 600, fontSize: '.875rem' }}>{msg}</div>}
+      
+      <div style={cardStyle}>
+        <h3 style={{ fontWeight: 700, color: dark ? '#10B981' : '#059669', fontSize: '1rem', marginBottom: '.5rem' }}>💾 Full Database Backup</h3>
+        <p style={{ fontSize: '.875rem', color: dark ? '#64748B' : '#6b7280', marginBottom: '1rem' }}>Download a complete JSON snapshot of all users, market prices, chat logs, and emergency alerts. Store this securely as your disaster recovery backup.</p>
+        <button onClick={handleExport} disabled={exporting} style={{ padding: '.75rem 1.5rem', background: exporting ? '#e5e7eb' : '#10B981', color: exporting ? '#9ca3af' : 'white', border: 'none', borderRadius: 10, fontWeight: 700, cursor: exporting ? 'not-allowed' : 'pointer', fontSize: '.875rem', fontFamily: 'Inter, sans-serif' }}>
+          {exporting ? 'Preparing export...' : '⬇️ Download Full Backup (JSON)'}
+        </button>
+      </div>
+      
+      <div style={{ ...cardStyle, border: `1.5px solid ${dark ? 'rgba(239,68,68,0.2)' : '#fecaca'}` }}>
+        <h3 style={{ fontWeight: 700, color: '#EF4444', fontSize: '1rem', marginBottom: '.5rem' }}>🗑️ Chat Log Retention Purge</h3>
+        <p style={{ fontSize: '.875rem', color: dark ? '#64748B' : '#6b7280', marginBottom: '1rem' }}>Permanently delete chat logs older than a certain number of days to prevent database bloat and ensure user privacy compliance.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+            <label style={{ fontSize: '.875rem', fontWeight: 600, color: dark ? '#94A3B8' : '#374151' }}>Delete logs older than:</label>
+            <select value={purgeDays} onChange={e => setPurgeDays(parseInt(e.target.value))} style={{ padding: '.4rem .75rem', borderRadius: 8, border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`, background: dark ? '#0F172A' : 'white', color: dark ? '#F1F5F9' : '#111827', fontFamily: 'Inter, sans-serif', fontSize: '.875rem' }}>
+              <option value={30}>30 days</option>
+              <option value={60}>60 days</option>
+              <option value={90}>90 days</option>
+              <option value={180}>180 days</option>
+              <option value={365}>1 year</option>
+            </select>
+          </div>
+          <button onClick={handlePurge} disabled={purging} style={{ padding: '.6rem 1.25rem', background: purging ? '#e5e7eb' : '#FEF2F2', color: purging ? '#9ca3af' : '#dc2626', border: '1.5px solid #fecaca', borderRadius: 10, fontWeight: 700, cursor: purging ? 'not-allowed' : 'pointer', fontSize: '.875rem', fontFamily: 'Inter, sans-serif' }}>
+            {purging ? 'Purging...' : '⚠️ Purge Old Logs'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Admin Panel ───────────────────────────────────────────────────────────
 const TABS = [
   { id: 'dashboard',     label: 'Dashboard'     },
@@ -215,6 +548,10 @@ const TABS = [
   { id: 'prices',        label: 'Prices'        },
   { id: 'health',        label: 'Health'        },
   { id: 'recent',        label: 'Activity'      },
+  { id: 'ai-usage',  label: '🤖 AI Costs'    },
+  { id: 'audit',     label: '🔒 Audit Log'   },
+  { id: 'emergency', label: '🚨 Alerts'      },
+  { id: 'export',    label: '💾 Export'      },
 ];
 
 export default function AdminPanel({ onLogout }) {
@@ -459,6 +796,10 @@ export default function AdminPanel({ onLogout }) {
           {tab === 'prices'        && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Market Prices Editor</h2><PricesTab /></>}
           {tab === 'health'        && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>System Health</h2><HealthTab /></>}
           {tab === 'recent'        && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Recent Registrations</h2><RecentTab /></>}
+          {tab === 'ai-usage'      && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>AI Token & Cost Usage</h2><AIUsageTab dark={dark} /></>}
+          {tab === 'audit'         && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Admin Audit Log</h2><AuditLogTab dark={dark} /></>}
+          {tab === 'emergency'     && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Emergency Alert Dispatcher</h2><EmergencyAlertsTab dark={dark} /></>}
+          {tab === 'export'        && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Database Export & Backup</h2><ExportTab dark={dark} /></>}
         </div>
       </div>
     </div>

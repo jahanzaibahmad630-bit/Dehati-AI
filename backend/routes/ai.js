@@ -267,6 +267,16 @@ async function claudeAsk(prompt, systemPrompt, maxTokens = 700, temperature = 0.
     system: [{ type: 'text', text: sysText, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: prompt }]
   });
+  // Non-blocking token tracking (fire and forget)
+  if (response?.usage) {
+    const db = require('../lib/db');
+    db.logAIUsage({
+      endpoint: 'ask',
+      tokensIn:    response.usage.input_tokens || 0,
+      tokensOut:   response.usage.output_tokens || 0,
+      cacheTokens: response.usage.cache_read_input_tokens || 0
+    }).catch(() => {});
+  }
   return response.content?.[0]?.text ?? '';
 }
 
@@ -524,7 +534,17 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
       }
     });
 
-    await stream.finalMessage();
+    const finalMsg = await stream.finalMessage();
+    // Non-blocking token tracking (fire and forget)
+    if (finalMsg?.usage) {
+      const db = require('../lib/db');
+      db.logAIUsage({
+        endpoint: 'ask',
+        tokensIn:    finalMsg.usage.input_tokens || 0,
+        tokensOut:   finalMsg.usage.output_tokens || 0,
+        cacheTokens: finalMsg.usage.cache_read_input_tokens || 0
+      }).catch(() => {});
+    }
     clearInterval(heartbeat);
     res.write('data: [DONE]\n\n');
     res.end();

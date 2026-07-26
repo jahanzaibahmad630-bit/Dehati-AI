@@ -54,6 +54,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Public emergency alerts (no auth needed)
+app.get('/api/public/emergency-alerts', async (req, res) => {
+  try {
+    const db = require('./lib/db');
+    const alerts = await db.getEmergencyAlerts({ activeOnly: true });
+    res.json({ alerts });
+  } catch (err) {
+    res.json({ alerts: [] });
+  }
+});
+
 // Routes
 app.use('/api/auth',    authRoutes);
 app.use('/api/ai',      aiRoutes);
