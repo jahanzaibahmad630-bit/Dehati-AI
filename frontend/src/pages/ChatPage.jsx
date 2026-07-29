@@ -3,9 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import { useOffline } from '../hooks/useOffline';
 import { useAuth } from '../context/AuthContext';
 import { getDir, getFont, getAlign } from '../utils/textDir';
+import { createSpeechEngine } from '../utils/speech';
 import { searchOffline, saveAIAnswer, queueQuestion, getOfflineQueue, removeFromQueue } from '../services/offlineDB';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 
+const CHAT_HISTORY_KEY = 'dehati_chat_history';
+const MAX_SESSIONS = 30;  // Keep up to 30 past sessions in localStorage
 
 import { API_URL } from '../config';
 
@@ -150,6 +153,16 @@ function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCan
           fontSize: '.85rem', fontWeight: 700, cursor: 'pointer'
         }}>❌ منسوخ</button>
 
+        {/* Retry button for noise corruption */}
+        {!isListening && !iosError && (
+          <button onClick={onRetry} style={{
+            background: 'rgba(245,158,11,0.15)', color: '#f59e0b',
+            border: '1px solid rgba(245,158,11,0.4)',
+            borderRadius: 24, padding: '10px 22px',
+            fontSize: '.85rem', fontWeight: 700, cursor: 'pointer'
+          }}>🔄 دوبارہ</button>
+        )}
+
         {hasText && (
           <button onClick={onSend} style={{
             background: 'linear-gradient(135deg,#2e5a27,#4a7c40)',
@@ -165,8 +178,8 @@ function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCan
         {iosError
           ? 'iPhone Safari — voice limited. Type or use Android Chrome.'
           : isListening
-            ? 'Tap ⏹ to stop recording'
-            : 'Connecting to microphone...'}
+            ? 'سن رہے ہیں... خاموش ہونے سے 2.5 سیکنڈ بعد خود بخود رک جائے گا'
+            : 'مایک سے مل رہے ہیں...'}
       </div>
     </div>
   );
@@ -290,6 +303,70 @@ function MessageBubble({ msg }) {
 // ── Main Chat ──────────────────────────────────────────────────────────────────
 export default function ChatPage() {
   const { user } = useAuth();
+
+  // ── Chat Session History (localStorage) ─────────────────────────────────────
+  const [chatHistory, setChatHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '[]'); } catch { return []; }
+  });
+  const [showSidebar, setShowSidebar] = useState(false);
+  const currentSessionId = useRef(Date.now().toString());
+
+  const saveChatSession = useCallback((msgs) => {
+    const convo = msgs.filter(m => m.role !== 'assistant' || msgs.indexOf(m) > 0); // skip welcome
+    const userMsgs = convo.filter(m => m.role === 'user');
+    if (userMsgs.length === 0) return; // Don't save empty sessions
+
+    // Auto-generate title from first user message (max 30 chars)
+    const firstQ = userMsgs[0]?.content || '';
+    const title = firstQ.length > 30 ? firstQ.slice(0, 28) + '…' : firstQ;
+
+    const session = {
+      id: currentSessionId.current,
+      title: title || 'گفتگو',
+      date: new Date().toISOString(),
+      messages: convo.slice(-20), // store last 20 msgs per session
+      messageCount: userMsgs.length
+    };
+
+    setChatHistory(prev => {
+      const filtered = prev.filter(s => s.id !== session.id);
+      const updated = [session, ...filtered].slice(0, MAX_SESSIONS);
+      try { localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
+  const loadSession = useCallback((session) => {
+    setShowSidebar(false);
+    currentSessionId.current = session.id;
+    setMessages(session.messages.map(m => ({ ...m, time: m.time ? new Date(m.time) : new Date() })));
+    setShowQuickReplies(false);
+    setNetError('');
+  }, []);
+
+  const deleteSession = useCallback((id, e) => {
+    e.stopPropagation();
+    setChatHistory(prev => {
+      const updated = prev.filter(s => s.id !== id);
+      try { localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
+  const formatSessionDate = (isoStr) => {
+    try {
+      const d = new Date(isoStr);
+      const now = new Date();
+      const diffMs = now - d;
+      const diffH = Math.floor(diffMs / 3600000);
+      if (diffH < 1) return 'ابھی';
+      if (diffH < 24) return `${diffH} گھنٹے پہلے`;
+      const diffD = Math.floor(diffH / 24);
+      if (diffD < 7) return `${diffD} دن پہلے`;
+      return d.toLocaleDateString('ur-PK', { month: 'short', day: 'numeric' });
+    } catch { return ''; }
+  };
+
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -309,14 +386,14 @@ export default function ChatPage() {
   const [hasQueuedQuestions, setHasQueuedQuestions] = useState(
     () => getOfflineQueue().length > 0
   );
-
-  const bottomRef      = useRef(null);
-  const inputRef       = useRef(null);
-  const abortRef       = useRef(null);
-  const recognitionRef = useRef(null);
-  const { isOffline }  = useOffline();
-  const [searchParams]  = useSearchParams();
   const [netError, setNetError]   = useState('');   // network/server error message
+
+  const bottomRef       = useRef(null);
+  const inputRef        = useRef(null);
+  const abortRef        = useRef(null);
+  const speechEngineRef = useRef(null); // Upgraded speech engine
+  const { isOffline }   = useOffline();
+  const [searchParams]  = useSearchParams();
 
   // Bug fix: keep a ref to always have latest messages so sendMessage
   // doesn't need 'messages' in its dep array (prevents stale closures)
@@ -347,16 +424,15 @@ export default function ChatPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Cleanup on unmount — MUST call _stopped() before stop() to prevent zombie auto-restart
+  // Cleanup on unmount — Stop speech engine before unmounting
   useEffect(() => {
     return () => {
-      try { recognitionRef.current?._stopped?.(); } catch {} // prevent onend auto-restart
-      try { recognitionRef.current?.stop(); } catch {}
+      try { speechEngineRef.current?.stop(); } catch {}
       try { abortRef.current?.abort(); } catch {}
     };
   }, []);
 
-  // ── Voice input ─────────────────────────────────────────────────────────────
+  // ── Voice input (Hardware-Noise-Resilient Engine with 2.5s Silence Buffer) ─────
   const startListening = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -364,108 +440,57 @@ export default function ChatPage() {
       return;
     }
 
-    // Show overlay, reset state
     setShowMicOverlay(true);
     setIosError(false);
     setFinalSpeech('');
     setInterimText('');
 
-    const lang = LANGS.find(l => l.key === language)?.srLang || 'ur-PK';
+    // Stop any previous engine
+    try { speechEngineRef.current?.stop(); } catch {}
 
-    let accumulated   = '';
-    let stopped       = false;
-    let gotSpeech     = false;   // did we ever get actual text?
-    let emptyEnds     = 0;       // consecutive ends with no speech (iOS symptom)
-    const MAX_EMPTY   = isIOS ? 2 : 99; // iOS: give up after 2 empty cycles
+    const engine = createSpeechEngine({
+      langKey: language,
+      silenceMs: 2500, // 2.5s silence buffer — allows rural farmers to pause mid-sentence
 
-    function createRecognition() {
-      const recognition = new SR();
-      recognition.lang            = lang;
-      recognition.continuous      = false; // better mobile/iOS support
-      recognition.interimResults  = true;
-      recognition.maxAlternatives = 1;
-
-      recognition.onstart = () => {
+      onInterim: (text) => {
+        setInterimText(text);
         setIsListening(true);
-      };
+      },
 
-      recognition.onresult = (e) => {
-        gotSpeech = true;
-        emptyEnds = 0; // reset counter — real speech came through
-        let sessionFinal = '';
-        let interim = '';
-        for (let i = 0; i < e.results.length; i++) {
-          const t = e.results[i][0].transcript;
-          if (e.results[i].isFinal) sessionFinal += t + ' ';
-          else interim += t;
-        }
-        if (sessionFinal.trim()) {
-          accumulated += sessionFinal;
-          setFinalSpeech(accumulated.trim());
-        }
-        setInterimText(interim);
-      };
+      onFinalWord: (accumulated) => {
+        setFinalSpeech(accumulated);
+        setIsListening(true);
+      },
 
-      recognition.onerror = (e) => {
-        console.warn('Speech error:', e.error);
+      onStopped: (finalText) => {
+        // Silence buffer expired or user stopped — commit speech
         setIsListening(false);
-        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-          stopped = true;
+        setInterimText('');
+        if (finalText) {
+          setFinalSpeech(finalText);
+          // Auto-send if configured (WhatsApp-style immediate send on silence)
+          // Currently keeps overlay open so user can review and confirm
+        }
+      },
+
+      onError: (errType) => {
+        setIsListening(false);
+        if (errType === 'permission_denied') {
           setShowMicOverlay(false);
           alert('مائیک کی اجازت دیں:\nSettings → Safari → Microphone → Allow');
-        }
-        if (e.error === 'service-not-allowed' && isIOS) {
-          stopped = true;
+        } else if (errType === 'ios_limit') {
           setIosError(true);
         }
-      };
+      }
+    });
 
-      recognition.onend = () => {
-        setIsListening(false);
-        if (stopped) return;
-
-        if (!gotSpeech) {
-          emptyEnds++;
-        }
-
-        // iOS symptom: keeps ending immediately with no speech
-        if (emptyEnds >= MAX_EMPTY) {
-          stopped = true;
-          setIosError(true); // show helpful iOS message
-          return;
-        }
-
-        // Auto-restart (Android Chrome / desktop)
-        setTimeout(() => {
-          if (!stopped) {
-            try {
-              const next = createRecognition();
-              recognitionRef.current = next;
-              recognitionRef.current._stopped = () => { stopped = true; };
-              next.start();
-            } catch {}
-          }
-        }, 200);
-      };
-
-      return recognition;
-    }
-
-    const recognition = createRecognition();
-    recognitionRef.current = recognition;
-    recognitionRef.current._stopped = () => { stopped = true; };
-    try {
-      recognition.start();
-    } catch (err) {
-      console.error('Recognition start error:', err);
-      setShowMicOverlay(false);
-    }
+    speechEngineRef.current = engine;
+    engine?.start();
   }, [language]);
 
 
   const stopListening = useCallback(() => {
-    try { recognitionRef.current?._stopped?.(); } catch {}
-    try { recognitionRef.current?.stop(); } catch {}
+    try { speechEngineRef.current?.stop(); } catch {}
     setIsListening(false);
   }, []);
 
@@ -504,7 +529,7 @@ export default function ChatPage() {
 
     // Stop recording if active
     if (isListening) {
-      try { recognitionRef.current?.stop(); } catch {}
+      try { speechEngineRef.current?.stop(); } catch {}
       setIsListening(false);
       setInterimText('');
     }
@@ -720,7 +745,10 @@ export default function ChatPage() {
   };
 
   const clearChat = () => {
+    // Save current session before clearing
+    saveChatSession(messagesRef.current);
     try { abortRef.current?.abort(); } catch {}
+    currentSessionId.current = Date.now().toString(); // New session ID
     setNetError('');
     setMessages([{
       role: 'assistant',
@@ -759,6 +787,129 @@ export default function ChatPage() {
       position: 'relative', overflow: 'hidden'
     }}>
 
+      {/* ── Recent Chats Sidebar (collapsible drawer) ── */}
+      {showSidebar && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          display: 'flex'
+        }}>
+          {/* Backdrop */}
+          <div
+            onClick={() => setShowSidebar(false)}
+            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}
+          />
+          {/* Drawer */}
+          <div style={{
+            position: 'relative', width: 300, maxWidth: '85vw',
+            background: '#0f172a', height: '100%',
+            display: 'flex', flexDirection: 'column',
+            boxShadow: '4px 0 24px rgba(0,0,0,0.4)',
+            animation: 'sidebarSlideIn 0.25s ease-out'
+          }}>
+            {/* Sidebar Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #1a3a16, #2e5a27)',
+              padding: '16px 14px',
+              paddingTop: 'calc(16px + env(safe-area-inset-top))'
+            }}>
+              <div style={{ color: 'white', fontWeight: 800, fontSize: '1rem', fontFamily: 'Inter, sans-serif', marginBottom: 10 }}>
+                🌾 DehatiAI
+              </div>
+              <button
+                onClick={() => { setShowSidebar(false); clearChat(); }}
+                style={{
+                  width: '100%', background: 'rgba(255,255,255,0.15)',
+                  border: '1.5px solid rgba(255,255,255,0.3)',
+                  borderRadius: 10, padding: '9px 14px',
+                  color: 'white', fontWeight: 800, fontSize: '.88rem',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                  fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl'
+                }}
+              >
+                <span style={{ fontSize: '1.1rem' }}>✏️</span>
+                + نئی بات چیت
+              </button>
+            </div>
+
+            {/* Session List */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+              {chatHistory.length === 0 ? (
+                <div style={{
+                  padding: '2rem 1rem', textAlign: 'center',
+                  color: '#64748b', fontSize: '.82rem',
+                  fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl'
+                }}>
+                  کوئی پرانی گفتگو نہیں۔<br/>سوال کریں — پھر یہاں ظاہر ہو گا۔
+                </div>
+              ) : (
+                <>
+                  <div style={{ padding: '8px 14px 4px', fontSize: '.7rem', color: '#475569', fontFamily: 'Inter, sans-serif', letterSpacing: '.04em', textTransform: 'uppercase' }}>
+                    گزشتہ گفتگوئیں
+                  </div>
+                  {chatHistory.map(session => (
+                    <div
+                      key={session.id}
+                      onClick={() => loadSession(session)}
+                      style={{
+                        padding: '10px 14px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        borderRadius: 8, margin: '2px 6px',
+                        transition: 'background 0.15s',
+                        background: session.id === currentSessionId.current
+                          ? 'rgba(16,185,129,0.12)'
+                          : 'transparent',
+                        border: session.id === currentSessionId.current
+                          ? '1px solid rgba(16,185,129,0.3)'
+                          : '1px solid transparent'
+                      }}
+                      onMouseEnter={e => { if (session.id !== currentSessionId.current) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                      onMouseLeave={e => { if (session.id !== currentSessionId.current) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <span style={{ fontSize: '1rem', flexShrink: 0 }}>💬</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          color: '#e2e8f0', fontSize: '.83rem', fontWeight: 600,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          direction: getDir(session.title), fontFamily: getFont(session.title)
+                        }}>
+                          {session.title}
+                        </div>
+                        <div style={{ color: '#475569', fontSize: '.68rem', marginTop: 2, fontFamily: 'Inter, sans-serif' }}>
+                          {formatSessionDate(session.date)} • {session.messageCount} سوالات
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => deleteSession(session.id, e)}
+                        title="حذف کریں"
+                        style={{
+                          background: 'transparent', border: 'none',
+                          color: '#475569', cursor: 'pointer', fontSize: '.9rem',
+                          padding: '2px 4px', borderRadius: 4, flexShrink: 0,
+                          opacity: 0.7, transition: 'opacity 0.15s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                        onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+                      >🗑️</button>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* Sidebar Footer */}
+            <div style={{
+              padding: '12px 14px',
+              paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+              borderTop: '1px solid #1e293b'
+            }}>
+              <div style={{ fontSize: '.7rem', color: '#334155', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
+                DehatiAI • زراعت ہیلپ لائن: 0800-17000
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── WhatsApp Mic Overlay ── */}
       {showMicOverlay && (
         <MicOverlay
@@ -768,6 +919,7 @@ export default function ChatPage() {
           onStop={stopListening}
           onSend={sendVoiceMessage}
           onCancel={cancelMic}
+          onRetry={retryMic}
           iosError={iosError}
         />
       )}
@@ -781,11 +933,23 @@ export default function ChatPage() {
         boxShadow: '0 2px 8px rgba(0,0,0,.2)', flexShrink: 0, zIndex: 10
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Sidebar toggle (hamburger) */}
+          <button
+            onClick={() => setShowSidebar(true)}
+            title="گزشتہ گفتگوئیں"
+            style={{
+              width: 36, height: 36, borderRadius: 10, border: 'none',
+              background: 'rgba(255,255,255,.15)', color: 'white',
+              cursor: 'pointer', fontSize: '1rem',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0
+            }}
+          >☰</button>
           <div style={{
-            width: 40, height: 40, borderRadius: '50%',
+            width: 36, height: 36, borderRadius: '50%',
             background: 'rgba(255,255,255,.15)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.3rem', border: '2px solid rgba(255,255,255,.3)'
+            fontSize: '1.2rem', border: '2px solid rgba(255,255,255,.3)'
           }}>🌾</div>
           <div>
             <div style={{ color: 'white', fontWeight: 700, fontSize: '.95rem', fontFamily: 'Inter, sans-serif' }}>DehatiAI</div>
@@ -1042,6 +1206,10 @@ export default function ChatPage() {
 
       {/* ── CSS animations ── */}
       <style>{`
+        @keyframes sidebarSlideIn {
+          from { transform: translateX(-100%); opacity: 0; }
+          to   { transform: translateX(0);     opacity: 1; }
+        }
         @keyframes msgFadeIn {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }

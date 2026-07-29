@@ -34,11 +34,18 @@ export async function askAI(question) {
   return handleResponse(res);
 }
 
-export async function detectDisease(imageBase64, cropName, mimeType = 'image/jpeg') {
+export async function detectDisease(imageBase64, cropName, mimeType = 'image/jpeg', diseaseKey = null) {
   const res = await fetch(`${API_URL}/api/ai/disease`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ imageBase64, cropName, mimeType })
+    body: JSON.stringify({ imageBase64, cropName, mimeType, diseaseKey })
+  });
+  return handleResponse(res);
+}
+
+export async function getDiseaseCatalog() {
+  const res = await fetch(`${API_URL}/api/ai/disease-catalog`, {
+    headers: authHeaders()
   });
   return handleResponse(res);
 }

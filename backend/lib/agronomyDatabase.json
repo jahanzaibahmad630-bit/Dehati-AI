@@ -1,0 +1,459 @@
+{
+  "note": "Pakistan Agronomy Prescription Dictionary — Ground-truth agronomic advisories verified for Punjab & Sindh farming ecosystems. Formulation strength varies by brand — confirm exact rate on the product label.",
+  "wheat_brown_rust": {
+    "name_ur": "گندم کا بھورا زنگ (براؤن رسٹ)",
+    "name_en": "Wheat Brown Rust",
+    "treatment_summary": "بیماری کی ابتدائی علامات پر فوری سپرے کریں، دیر ہونے پر نقصان بڑھ جاتا ہے۔",
+    "withholding_period_days": 30,
+    "organic_alternative": "نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر احتیاطی سپرے کریں یا لکڑی کی راکھ پتوں پر چھڑکیں۔",
+    "medicines": [
+      {
+        "brand": "Tilt / Bumper 250EC",
+        "active": "Propiconazole 25%",
+        "dosage": "200 ملی لیٹر فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 30,
+        "suppliers": ["Syngenta", "FMC"],
+        "estimated_price_pkr": "Rs. 1,250 - 1,600"
+      },
+      {
+        "brand": "Folicur / Orius 250EW",
+        "active": "Tebuconazole 25%",
+        "dosage": "200 ملی لیٹر فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 30,
+        "suppliers": ["Bayer", "Engro"],
+        "estimated_price_pkr": "Rs. 1,400 - 1,850"
+      },
+      {
+        "brand": "Amistar Top",
+        "active": "Azoxystrobin 20% + Difenoconazole 12.5%",
+        "dosage": "200 ملی لیٹر فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 21,
+        "suppliers": ["Syngenta"],
+        "estimated_price_pkr": "Rs. 2,200 - 2,700"
+      }
+    ],
+    "prevention": "زنگ کے خلاف مزاحم اقسام کاشت کریں، متوازن کھاد (زیادہ نائٹروجن سے گریز) دیں، اور کھیت کا باقاعدہ معائنہ کرتے رہیں۔"
+  },
+  "wheat_yellow_stripe_rust": {
+    "name_ur": "گندم کا پیلا زنگ (یلو رسٹ)",
+    "name_en": "Wheat Yellow/Stripe Rust",
+    "treatment_summary": "پتوں پر پیلی دھاریاں نظر آتے ہی سپرے شروع کریں، ٹھنڈے و نم موسم میں پھیلاؤ تیز ہوتا ہے۔",
+    "withholding_period_days": 30,
+    "organic_alternative": "نیم کا تیل 5 ملی لیٹر فی لیٹر پانی + ہلدی پاؤڈر کا محلول سپرے کریں۔",
+    "medicines": [
+      {
+        "brand": "Tilt / Bumper 250EC",
+        "active": "Propiconazole 25%",
+        "dosage": "200 ملی لیٹر فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 30,
+        "suppliers": ["Syngenta", "FMC"],
+        "estimated_price_pkr": "Rs. 1,250 - 1,600"
+      },
+      {
+        "brand": "Nativo 75WG",
+        "active": "Tebuconazole 50% + Trifloxystrobin 25%",
+        "dosage": "80 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 30,
+        "suppliers": ["Bayer"],
+        "estimated_price_pkr": "Rs. 1,800 - 2,300"
+      },
+      {
+        "brand": "Score 250EC",
+        "active": "Difenoconazole 25%",
+        "dosage": "100 ملی لیٹر فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 21,
+        "suppliers": ["Syngenta"],
+        "estimated_price_pkr": "Rs. 1,100 - 1,450"
+      }
+    ],
+    "prevention": "منظور شدہ مزاحم اقسام کاشت کریں، بروقت کاشت کریں اور ارد گرد کے متاثرہ کھیتوں پر نظر رکھیں۔"
+  },
+  "wheat_powdery_mildew": {
+    "name_ur": "گندم کی پاؤڈری پھپھوندی",
+    "name_en": "Wheat Powdery Mildew",
+    "treatment_summary": "پتوں پر سفید پاؤڈر جیسی تہہ نظر آنے پر سپرے کریں۔",
+    "withholding_period_days": 14,
+    "organic_alternative": "بیکنگ سوڈا 5 گرام + نیم تیل 5 ملی لیٹر فی لیٹر پانی محلول۔",
+    "medicines": [
+      {
+        "brand": "Kumulus DF",
+        "active": "Sulphur 80%",
+        "dosage": "600-800 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 7,
+        "suppliers": ["BASF", "Local"],
+        "estimated_price_pkr": "Rs. 850 - 1,150"
+      },
+      {
+        "brand": "Tilt 250EC",
+        "active": "Propiconazole 25%",
+        "dosage": "200 ملی لیٹر فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 30,
+        "suppliers": ["Syngenta"],
+        "estimated_price_pkr": "Rs. 1,250 - 1,600"
+      },
+      {
+        "brand": "Nativo 75WG",
+        "active": "Tebuconazole 50% + Trifloxystrobin 25%",
+        "dosage": "80 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 30,
+        "suppliers": ["Bayer"],
+        "estimated_price_pkr": "Rs. 1,800 - 2,300"
+      }
+    ],
+    "prevention": "بیج کی مناسب مقدار استعمال کریں تاکہ فصل زیادہ گھنی نہ ہو، اور نائٹروجن کھاد کا زیادہ استعمال نہ کریں۔"
+  },
+  "wheat_septoria_blotch": {
+    "name_ur": "گندم کا سیپٹوریا بلاچ",
+    "name_en": "Wheat Septoria Blotch",
+    "treatment_summary": "نچلے پتوں پر بھورے دھبے نظر آنے پر سپرے کریں، خاص طور پر بارش کے موسم میں۔",
+    "withholding_period_days": 14,
+    "organic_alternative": "کاپر آکسی کلورائڈ اور نیم کے تیل کا احتیاطی سپرے۔",
+    "medicines": [
+      {
+        "brand": "Antracol 70WP",
+        "active": "Propineb 70%",
+        "dosage": "600 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 14,
+        "suppliers": ["Bayer"],
+        "estimated_price_pkr": "Rs. 1,200 - 1,500"
+      },
+      {
+        "brand": "Daconil / Bravo",
+        "active": "Chlorothalonil 75%",
+        "dosage": "400 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 14,
+        "suppliers": ["Syngenta", "FMC"],
+        "estimated_price_pkr": "Rs. 1,350 - 1,700"
+      }
+    ],
+    "prevention": "فصل کی باقیات کو تلف کریں اور مناسب فاصلے پر کاشت کریں تاکہ ہوا کی گزرگاہ رہے۔"
+  },
+  "potato_late_blight": {
+    "name_ur": "آلو کا لیٹ بلائٹ (پچھیتا جھلساؤ)",
+    "name_en": "Potato Late Blight",
+    "treatment_summary": "نم اور ٹھنڈے موسم میں پتوں پر پانی بھرے دھبے نظر آتے ہی فوری سپرے کریں، تاخیر پوری فصل تباہ کر سکتی ہے۔",
+    "withholding_period_days": 14,
+    "organic_alternative": "کاپر ڈرنچ اور چھاچھ (کھٹی لسی) 10٪ محلول کا احتیاطی چھڑکاؤ۔",
+    "medicines": [
+      {
+        "brand": "Ridomil Gold MZ 68WG",
+        "active": "Metalaxyl-M 4% + Mancozeb 64%",
+        "dosage": "600 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 14,
+        "suppliers": ["Syngenta"],
+        "estimated_price_pkr": "Rs. 1,650 - 2,100"
+      },
+      {
+        "brand": "Curzate M8",
+        "active": "Cymoxanil 8% + Mancozeb 64%",
+        "dosage": "600 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 14,
+        "suppliers": ["FMC"],
+        "estimated_price_pkr": "Rs. 1,450 - 1,800"
+      },
+      {
+        "brand": "Acrobat MZ",
+        "active": "Dimethomorph 9% + Mancozeb 60%",
+        "dosage": "600 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 14,
+        "suppliers": ["BASF"],
+        "estimated_price_pkr": "Rs. 1,550 - 1,950"
+      }
+    ],
+    "prevention": "صحت بخش اور تصدیق شدہ بیج استعمال کریں، پودوں کے درمیان مناسب فاصلہ رکھیں اور کھیت میں پانی کھڑا نہ ہونے دیں۔"
+  },
+  "potato_early_blight": {
+    "name_ur": "آلو کا ارلی بلائٹ (ابتدائی جھلساؤ)",
+    "name_en": "Potato Early Blight",
+    "treatment_summary": "پرانے پتوں پر ہدف نما (target-shaped) دھبے نظر آنے پر سپرے کریں۔",
+    "withholding_period_days": 7,
+    "organic_alternative": "نیم تیل + بیکنگ سوڈا 5 گرام فی لیٹر پانی۔",
+    "medicines": [
+      {
+        "brand": "Daconil / Bravo",
+        "active": "Chlorothalonil 75%",
+        "dosage": "400 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 7,
+        "suppliers": ["Syngenta"],
+        "estimated_price_pkr": "Rs. 1,350 - 1,700"
+      },
+      {
+        "brand": "Indofil M-45",
+        "active": "Mancozeb 80%",
+        "dosage": "800 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 7,
+        "suppliers": ["Indofil", "Engro"],
+        "estimated_price_pkr": "Rs. 950 - 1,250"
+      }
+    ],
+    "prevention": "متوازن کھاد دیں اور فصل کی گردش اپنائیں تاکہ زمین میں پھپھوندی جمع نہ ہو۔"
+  },
+  "rice_brown_leaf_spot": {
+    "name_ur": "چاول کا بھورا پتا داغ",
+    "name_en": "Rice Brown Leaf Spot",
+    "treatment_summary": "پتوں پر بھورے بیضوی دھبے نظر آنے پر سپرے کریں۔",
+    "withholding_period_days": 21,
+    "organic_alternative": "پوٹاشیم سلفیٹ اور نیم کھلی کا زمین میں استعمال۔",
+    "medicines": [
+      {
+        "brand": "Indofil M-45",
+        "active": "Mancozeb 80%",
+        "dosage": "800 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 21,
+        "suppliers": ["Indofil", "Engro"],
+        "estimated_price_pkr": "Rs. 950 - 1,250"
+      },
+      {
+        "brand": "Bavistin",
+        "active": "Carbendazim 50%",
+        "dosage": "200 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 21,
+        "suppliers": ["BASF"],
+        "estimated_price_pkr": "Rs. 850 - 1,100"
+      }
+    ],
+    "prevention": "متوازن کھاد استعمال کریں (پوٹاش کی کمی نہ ہونے دیں) اور معیاری بیج کاشت کریں۔"
+  },
+  "rice_blast": {
+    "name_ur": "چاول کا بلاسٹ (جھلساؤ)",
+    "name_en": "Rice Blast",
+    "treatment_summary": "پتوں یا بالیوں پر آنکھ نما دھبے نظر آتے ہی فوری سپرے کریں۔",
+    "withholding_period_days": 21,
+    "organic_alternative": "سلفر پوڈر کی دھونی اور کھیت سے زائد نائٹروجن کا اخراج۔",
+    "medicines": [
+      {
+        "brand": "Beam 75WP",
+        "active": "Tricyclazole 75%",
+        "dosage": "120 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 21,
+        "suppliers": ["Dow/Corteva", "FMC"],
+        "estimated_price_pkr": "Rs. 1,400 - 1,800"
+      },
+      {
+        "brand": "Amistar Top",
+        "active": "Azoxystrobin + Difenoconazole",
+        "dosage": "200 ملی لیٹر فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 21,
+        "suppliers": ["Syngenta"],
+        "estimated_price_pkr": "Rs. 2,200 - 2,700"
+      }
+    ],
+    "prevention": "زیادہ نائٹروجن کھاد سے گریز کریں، صحت مند بیج استعمال کریں اور کھیت میں پانی کا مناسب انتظام رکھیں۔"
+  },
+  "cotton_leaf_curl_virus": {
+    "name_ur": "کپاس کا پتا مروڑ وائرس (CLCuV)",
+    "name_en": "Cotton Leaf Curl Virus",
+    "treatment_summary": "یہ وائرس سفید مکھی (whitefly) سے پھیلتا ہے — کوئی براہ راست زہر وائرس کا علاج نہیں کرتا، سفید مکھی کا خاتمہ ہی اصل حکمت عملی ہے۔",
+    "withholding_period_days": 21,
+    "organic_alternative": "پیلا چپکنے والا کارڈ (Yellow Sticky Trap) 20 فی ایکڑ لگائیں اور نیم تیل سپرے کریں۔",
+    "medicines": [
+      {
+        "brand": "Confidor 200SL",
+        "active": "Imidacloprid 200g/L",
+        "dosage": "80 ملی لیٹر فی ایکڑ",
+        "method": "سپرے (سفید مکھی کنٹرول)",
+        "withholding_period_days": 21,
+        "suppliers": ["Bayer"],
+        "estimated_price_pkr": "Rs. 950 - 1,300"
+      },
+      {
+        "brand": "Polo / Aphlok",
+        "active": "Diafenthiuron 50%",
+        "dosage": "400 گرام فی ایکڑ",
+        "method": "سپرے (سفید مکھی کنٹرول)",
+        "withholding_period_days": 14,
+        "suppliers": ["Syngenta"],
+        "estimated_price_pkr": "Rs. 1,800 - 2,200"
+      }
+    ],
+    "prevention": "مزاحم اقسام کاشت کریں، متاثرہ پودے فوری اکھاڑ دیں اور کھیت کے اردگرد جڑی بوٹیاں (میزبان پودے) صاف رکھیں۔"
+  },
+  "cotton_anthracnose": {
+    "name_ur": "کپاس کا انتھراکنوز",
+    "name_en": "Cotton Anthracnose",
+    "treatment_summary": "ٹینڈوں اور پتوں پر گہرے دھبے نظر آنے پر سپرے کریں۔",
+    "withholding_period_days": 21,
+    "organic_alternative": "بیج کا ٹریٹمنٹ ٹرائیکوڈرما (Biocontrol) سے کریں۔",
+    "medicines": [
+      {
+        "brand": "Bavistin",
+        "active": "Carbendazim 50%",
+        "dosage": "200 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 21,
+        "suppliers": ["BASF"],
+        "estimated_price_pkr": "Rs. 850 - 1,100"
+      },
+      {
+        "brand": "Indofil M-45",
+        "active": "Mancozeb 80%",
+        "dosage": "800 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 21,
+        "suppliers": ["Indofil", "Engro"],
+        "estimated_price_pkr": "Rs. 950 - 1,250"
+      }
+    ],
+    "prevention": "منظور شدہ زہر سے بیج کا ٹریٹمنٹ کریں اور فصل کی باقیات تلف کریں۔"
+  },
+  "tomato_early_blight": {
+    "name_ur": "ٹماٹر کا ارلی بلائٹ",
+    "name_en": "Tomato Early Blight",
+    "treatment_summary": "نچلے پرانے پتوں پر ہدف نما دھبے نظر آنے پر سپرے کریں۔",
+    "withholding_period_days": 7,
+    "organic_alternative": "نیم کے پتے اُبال کر پنچھاہٹ کا سپرے کریں یا لسی سپرے کریں۔",
+    "medicines": [
+      {
+        "brand": "Daconil / Bravo",
+        "active": "Chlorothalonil 75%",
+        "dosage": "400 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 5,
+        "suppliers": ["Syngenta"],
+        "estimated_price_pkr": "Rs. 1,350 - 1,700"
+      },
+      {
+        "brand": "Amistar Top",
+        "active": "Azoxystrobin + Difenoconazole",
+        "dosage": "200 ملی لیٹر فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 7,
+        "suppliers": ["Syngenta"],
+        "estimated_price_pkr": "Rs. 2,200 - 2,700"
+      }
+    ],
+    "prevention": "پودوں کے درمیان مناسب فاصلہ رکھیں، نچلے متاثرہ پتے توڑ دیں اور اوپر سے پانی دینے کے بجائے جڑوں میں پانی دیں۔"
+  },
+  "tomato_yellow_leaf_curl_virus": {
+    "name_ur": "ٹماٹر کا پتا مروڑ وائرس",
+    "name_en": "Tomato Yellow Leaf Curl Virus",
+    "treatment_summary": "یہ وائرس سفید مکھی سے پھیلتا ہے — سفید مکھی کو روکنا ہی وائرس سے بچاؤ کا واحد ذریعہ ہے۔",
+    "withholding_period_days": 7,
+    "organic_alternative": "پیلا چپکنے والا کارڈ نرسری میں لگائیں اور پودے جالی سے ڈھانپیں۔",
+    "medicines": [
+      {
+        "brand": "Confidor 200SL",
+        "active": "Imidacloprid 200g/L",
+        "dosage": "80 ملی لیٹر فی ایکڑ",
+        "method": "سپرے (سفید مکھی کنٹرول)",
+        "withholding_period_days": 7,
+        "suppliers": ["Bayer"],
+        "estimated_price_pkr": "Rs. 950 - 1,300"
+      },
+      {
+        "brand": "Actara 25WG",
+        "active": "Thiamethoxam 25%",
+        "dosage": "40 گرام فی ایکڑ",
+        "method": "سپرے (سفید مکھی کنٹرول)",
+        "withholding_period_days": 7,
+        "suppliers": ["Syngenta"],
+        "estimated_price_pkr": "Rs. 650 - 900"
+      }
+    ],
+    "prevention": "نرسری کو جالی سے ڈھانپیں، مزاحم اقسام کاشت کریں اور متاثرہ پودے فوری اکھاڑ دیں۔"
+  },
+  "citrus_canker": {
+    "name_ur": "کھٹی پھلوں کا کینکر",
+    "name_en": "Citrus Canker",
+    "treatment_summary": "پتوں، ٹہنیوں اور پھل پر ابھرے ہوئے زخم نظر آنے پر کاپر پر مبنی زہر کا سپرے کریں۔",
+    "withholding_period_days": 14,
+    "organic_alternative": "بورڈو مکسچر (Bordeaux Mixture 1%) کا سپرے کریں۔",
+    "medicines": [
+      {
+        "brand": "Cuprocaffaro / Copper Oxychloride 50WP",
+        "active": "Copper Oxychloride 50%",
+        "dosage": "600 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 14,
+        "suppliers": ["Local", "FMC"],
+        "estimated_price_pkr": "Rs. 1,100 - 1,450"
+      },
+      {
+        "brand": "Kocide",
+        "active": "Copper Hydroxide 53.8%",
+        "dosage": "400 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 14,
+        "suppliers": ["Corteva"],
+        "estimated_price_pkr": "Rs. 1,500 - 1,900"
+      }
+    ],
+    "prevention": "تیز ہوا سے بچاؤ کے لیے ونڈ بریک لگائیں، کینچی کو زہر آلود کریں اور متاثرہ شاخیں کاٹ کر تلف کریں۔"
+  },
+  "mango_anthracnose": {
+    "name_ur": "آم کا انتھراکنوز",
+    "name_en": "Mango Anthracnose",
+    "treatment_summary": "پھول، پتوں اور پھل پر کالے دھبے نظر آنے پر سپرے کریں، خاص طور پر پھول آنے کے وقت۔",
+    "withholding_period_days": 14,
+    "organic_alternative": "آم کی کٹی چھٹی کے بعد کاپر آکسی کلورائڈ اور نیم تیل کا احتیاطی لیپ۔",
+    "medicines": [
+      {
+        "brand": "Bavistin",
+        "active": "Carbendazim 50%",
+        "dosage": "250 گرام فی 100 لیٹر پانی",
+        "method": "سپرے",
+        "withholding_period_days": 14,
+        "suppliers": ["BASF"],
+        "estimated_price_pkr": "Rs. 850 - 1,100"
+      },
+      {
+        "brand": "Amistar Top",
+        "active": "Azoxystrobin + Difenoconazole",
+        "dosage": "100 ملی لیٹر فی 100 لیٹر پانی",
+        "method": "سپرے",
+        "withholding_period_days": 14,
+        "suppliers": ["Syngenta"],
+        "estimated_price_pkr": "Rs. 2,200 - 2,700"
+      }
+    ],
+    "prevention": "باغ میں ہوا کی گزرگاہ کے لیے کانٹ چھانٹ کریں اور بارش کے فوراً بعد سپرے کریں۔"
+  },
+  "sugarcane_red_rot": {
+    "name_ur": "گنے کی ریڈ رَاٹ (سرخ گلاؤ)",
+    "name_en": "Sugarcane Red Rot",
+    "treatment_summary": "صحت مند سیٹ (بیج) کا انتخاب اور کاشت سے پہلے سیٹ ٹریٹمنٹ ضروری ہے۔",
+    "withholding_period_days": 30,
+    "organic_alternative": "بیج کو گرم پانی (52 ڈگری سینٹی گریڈ) میں 30 منٹ تک ڈبو کر کاشت کریں۔",
+    "medicines": [
+      {
+        "brand": "Bavistin",
+        "active": "Carbendazim 50%",
+        "dosage": "250 گرام فی 100 لیٹر پانی",
+        "method": "سیٹ ٹریٹمنٹ",
+        "withholding_period_days": 30,
+        "suppliers": ["BASF"],
+        "estimated_price_pkr": "Rs. 850 - 1,100"
+      },
+      {
+        "brand": "Topsin-M 70WP",
+        "active": "Thiophanate Methyl 70%",
+        "dosage": "250 گرام فی 100 لیٹر پانی",
+        "method": "سیٹ ٹریٹمنٹ",
+        "withholding_period_days": 30,
+        "suppliers": ["Nippon/Local"],
+        "estimated_price_pkr": "Rs. 1,150 - 1,500"
+      }
+    ],
+    "prevention": "مزاحم اقسام کاشت کریں، متاثرہ کھیت کی گنڈیریوں کو بیج کے طور پر استعمال نہ کریں اور فصل کی گردش اپنائیں۔"
+  }
+}
