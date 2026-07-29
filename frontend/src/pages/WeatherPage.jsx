@@ -4,6 +4,7 @@ import { usePermission, PERMISSION_MESSAGES } from '../hooks/usePermission';
 import { useOffline } from '../hooks/useOffline';
 import AIDisclaimer from '../components/ui/AIDisclaimer';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import AudioPlayer from '../components/ui/AudioPlayer';
 
 
 const CITIES = [
@@ -186,12 +187,18 @@ export default function WeatherPage() {
 
             {advice && (
               <div className="ai-response-card animate-fade-in-up">
-                <div className="ai-response-header">
+                <div className="ai-response-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                   <span style={{ fontWeight: 700 }}>🌾 آج کے موسم کے مطابق مشورہ</span>
-                  <AIDisclaimer small />
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <AIDisclaimer small />
+                    <AudioPlayer
+                      text={advice}
+                      langKey="ur"
+                      label="🔊 مشورہ سنیں"
+                    />
+                  </div>
                 </div>
                 <MarkdownRenderer text={advice} />
-
               </div>
             )}
           </>

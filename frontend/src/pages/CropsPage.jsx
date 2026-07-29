@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { askAI } from '../services/api';
 import AIDisclaimer from '../components/ui/AIDisclaimer';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import AudioPlayer from '../components/ui/AudioPlayer';
 
 import { useOffline } from '../hooks/useOffline';
 
@@ -569,12 +570,18 @@ export default function CropsPage() {
           </button>
           {aiAdvice && (
             <div className="ai-response-card animate-fade-in-up" style={{ marginTop: '.75rem' }}>
-              <div className="ai-response-header">
+              <div className="ai-response-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                 <span style={{ fontWeight: 700 }}>🌾 AI زرعی مشورہ</span>
-                <AIDisclaimer small />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <AIDisclaimer small />
+                  <AudioPlayer
+                    text={aiAdvice}
+                    langKey="ur"
+                    label="🔊 سنیں"
+                  />
+                </div>
               </div>
               <MarkdownRenderer text={aiAdvice} />
-
             </div>
           )}
         </div>

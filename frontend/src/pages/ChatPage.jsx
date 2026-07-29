@@ -6,6 +6,7 @@ import { getDir, getFont, getAlign } from '../utils/textDir';
 import { createSpeechEngine } from '../utils/speech';
 import { searchOffline, saveAIAnswer, queueQuestion, getOfflineQueue, removeFromQueue } from '../services/offlineDB';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import AudioPlayer from '../components/ui/AudioPlayer';
 
 const CHAT_HISTORY_KEY = 'dehati_chat_history';
 const MAX_SESSIONS = 30;  // Keep up to 30 past sessions in localStorage
@@ -283,16 +284,24 @@ function MessageBubble({ msg }) {
         </div>
 
 
-        {/* Timestamp */}
+        {/* Timestamp + Audio Player row */}
         {msg.time && !msg.streaming && (
           <div style={{
-            fontSize: '0.67rem', color: '#9ca3af', marginTop: 3,
+            fontSize: '0.67rem', color: '#9ca3af', marginTop: 4,
             padding: '0 4px',
-            display: 'flex', alignItems: 'center', gap: 3,
+            display: 'flex', alignItems: 'center', gap: 6,
             flexDirection: isUser ? 'row-reverse' : 'row'
           }}>
             {formatTime(msg.time)}
             {isUser && <span style={{ color: '#4ade80' }}>✓✓</span>}
+            {/* Compact audio player — only for AI messages with content */}
+            {!isUser && msg.content && (
+              <AudioPlayer
+                text={msg.content}
+                langKey="ur"
+                compact={true}
+              />
+            )}
           </div>
         )}
       </div>

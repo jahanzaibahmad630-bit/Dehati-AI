@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AudioPlayer from '../components/ui/AudioPlayer';
 
 import { API_URL as API } from '../config';
 
@@ -20,10 +21,17 @@ function AlertItem({ alert, onDelete, priceMap }) {
   const currentPrice = priceEntry?.price ?? null;
   const isReal = priceEntry?.isReal ?? false;
 
-  // Only trigger alerts on real admin-entered prices, never on sample data
   const triggered = isReal && currentPrice !== null && (
     alert.direction === 'up' ? currentPrice >= alert.threshold : currentPrice <= alert.threshold
   );
+
+  // Build Urdu spoken text for this alert
+  const spokenText = [
+    `${alert.crop}`,
+    currentPrice !== null ? `ابھی کی قیمت: ${currentPrice} روپے فی من` : '',
+    `آپ کی حد: ${alert.threshold} روپے`,
+    triggered ? 'الرٹ متحرک ہو گیا ہے۔' : ''
+  ].filter(Boolean).join('۔ ');
 
   return (
     <div className="alert-item animate-fade-in-up" style={{
@@ -48,7 +56,7 @@ function AlertItem({ alert, onDelete, priceMap }) {
             }}>📊 نمونہ</span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '.8rem', color: alert.direction === 'up' ? 'var(--green-700)' : 'var(--danger)', fontWeight: 700 }}>
             {alert.direction === 'up' ? '↑ اوپر جائے' : '↓ نیچے آئے'}
           </span>
@@ -58,6 +66,12 @@ function AlertItem({ alert, onDelete, priceMap }) {
               ? `(ابھی: ₨${currentPrice.toLocaleString()}${!isReal ? ' · نمونہ' : ''})`
               : '(قیمت دستیاب نہیں)'}
           </span>
+          {/* Audio button for this alert */}
+          <AudioPlayer
+            text={spokenText}
+            langKey="ur"
+            compact={true}
+          />
         </div>
       </div>
       <button
