@@ -127,12 +127,16 @@ export function correctUrduAgriPhonetics(text) {
     t = t.replace(pattern, replacement);
   }
 
-  // Deduplicate repeated adjacent identical single words ("گندم گندم" -> "گندم")
-  t = t.replace(/\b([\u0600-\u06FF\w]+)\s+\1\b/gu, '$1');
-
-  // Deduplicate repeated multi-word phrases ("فصل کو پانی کب لگائیں فصل کو پانی کب لگائیں" -> once)
-  t = t.replace(/(\b[\u0600-\u06FF\w\s]{3,35}?\b)\s+\1\b/gu, '$1');
-  t = t.replace(/(\b[\u0600-\u06FF\w\s]{3,35}?\b)\s+\1\b/gu, '$1');
+  // Iterative phrase & word deduplication loop (runs until all repetitions are stripped)
+  let prev = '';
+  let iterations = 0;
+  while (t !== prev && iterations < 5) {
+    prev = t;
+    // Deduplicate single repeated words ("گندم گندم گندم" -> "گندم")
+    t = t.replace(/\b([\u0600-\u06FF\w]+)(?:\s+\1)+\b/gu, '$1');
+    // Deduplicate repeated multi-word phrases ("السلام علیکم السلام علیکم" -> "السلام علیکم")
+    t = t.replace(/(\b[\u0600-\u06FF\w\s]{2,50}?\b)(?:\s+\1)+\b/gu, '$1');
+  }
 
   return t.trim();
 }
@@ -463,22 +467,33 @@ export function createSpeechEngine({
       }
 
       // ── Rural / Continuous Mode ────────────────────────────────────────
-      // CRITICAL: Rebuild transcript from e.results indices on EVERY event.
-      // NEVER += onto transcriptRef — that causes the snowball duplication bug.
-      let fullFinalText   = '';
-      let currentInterim  = '';
+      // Rebuild transcript cleanly from e.results indices on EVERY event.
+      let finalChunks = [];
+      let interimChunks = [];
 
       for (let i = 0; i < e.results.length; i++) {
-        const chunk = e.results[i][0].transcript;
+        const text = e.results[i][0].transcript.trim();
+        if (!text) continue;
         if (e.results[i].isFinal) {
-          fullFinalText += chunk + ' ';
+          if (!finalChunks.includes(text) && !finalChunks.some(f => f.endsWith(text) || text.endsWith(f))) {
+            finalChunks.push(text);
+          } else if (finalChunks.length > 0 && text.length > finalChunks[finalChunks.length - 1].length) {
+            finalChunks[finalChunks.length - 1] = text;
+          }
         } else {
-          currentInterim += chunk + ' ';
+          interimChunks.push(text);
         }
       }
 
-      const cleanFinal   = correctUrduAgriPhonetics(fullFinalText.trim());
-      const cleanInterim = correctUrduAgriPhonetics(currentInterim.trim());
+      let combinedFinal = finalChunks.join(' ').trim();
+      let combinedInterim = interimChunks.join(' ').trim();
+
+      if (combinedInterim && combinedFinal && combinedInterim.startsWith(combinedFinal)) {
+        combinedFinal = '';
+      }
+
+      const cleanFinal   = correctUrduAgriPhonetics(combinedFinal);
+      const cleanInterim = correctUrduAgriPhonetics(combinedInterim);
 
       if (cleanFinal) {
         transcriptRef = cleanFinal; // REPLACE (never append)

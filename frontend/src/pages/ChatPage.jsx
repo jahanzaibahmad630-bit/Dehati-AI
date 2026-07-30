@@ -532,6 +532,10 @@ export default function ChatPage() {
   }, []);
 
   const sendVoiceMessage = useCallback(() => {
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    setTimeout(() => { isProcessingRef.current = false; }, 300);
+
     const rawText = finalSpeech.trim() || interimText.trim();
     const text = correctUrduAgriPhonetics(rawText);
     try { speechEngineRef.current?.stop(); } catch {}
