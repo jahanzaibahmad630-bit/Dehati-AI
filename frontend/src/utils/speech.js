@@ -113,8 +113,12 @@ export function correctUrduAgriPhonetics(text) {
     t = t.replace(pattern, replacement);
   }
 
-  // Deduplicate repeated adjacent identical words ("گندم گندم" -> "گندم")
+  // Deduplicate repeated adjacent identical single words ("گندم گندم" -> "گندم")
   t = t.replace(/\b([\u0600-\u06FF\w]+)\s+\1\b/gu, '$1');
+
+  // Deduplicate repeated multi-word phrases ("فصل کو پانی کب لگائیں فصل کو پانی کب لگائیں" -> "فصل کو پانی کب لگائیں")
+  t = t.replace(/(\b[\u0600-\u06FF\w\s]{3,35}?\b)\s+\1\b/gu, '$1');
+  t = t.replace(/(\b[\u0600-\u06FF\w\s]{3,35}?\b)\s+\1\b/gu, '$1');
 
   return t.trim();
 }

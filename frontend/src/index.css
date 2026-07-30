@@ -226,7 +226,7 @@ select.input {
 
 /* === Layout === */
 .page {
-  padding-bottom: calc(var(--nav-height) + 1rem);
+  padding-bottom: calc(var(--nav-height) + 3.5rem + env(safe-area-inset-bottom, 20px));
   padding-top: var(--header-height);
   min-height: 100dvh;
 }
