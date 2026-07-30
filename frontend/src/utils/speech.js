@@ -368,27 +368,28 @@ export function createSpeechEngine({
         return;
       }
 
-      // Continuous Mode: Process final & interim text cleanly without word duplication
-      let sessionFinal = '';
-      let interim = '';
+      // Continuous Mode: Process final & interim text cleanly without quadratic word duplication
+      let fullFinalText = '';
+      let currentInterimText = '';
 
       for (let i = 0; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) sessionFinal += t + ' ';
-        else interim += t;
-      }
-
-      if (sessionFinal.trim()) {
-        const correctedFinal = correctUrduAgriPhonetics(sessionFinal.trim());
-        // Deduplicate against already accumulated text
-        if (!accumulated.endsWith(correctedFinal)) {
-          accumulated = (accumulated + ' ' + correctedFinal).trim();
-          accumulated = correctUrduAgriPhonetics(accumulated);
-          onFinalWord?.(accumulated);
-          if (onResult) onResult(accumulated);
+        const transcriptChunk = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          fullFinalText += transcriptChunk + ' ';
+        } else {
+          currentInterimText += transcriptChunk + ' ';
         }
       }
-      onInterim?.(correctUrduAgriPhonetics(interim));
+
+      const cleanFinal = correctUrduAgriPhonetics(fullFinalText.trim());
+      const cleanInterim = correctUrduAgriPhonetics(currentInterimText.trim());
+
+      if (cleanFinal) {
+        accumulated = cleanFinal;
+        onFinalWord?.(accumulated);
+        if (onResult) onResult(accumulated);
+      }
+      if (onInterim) onInterim(cleanInterim);
       resetSilenceTimer(recognition);
     };
 

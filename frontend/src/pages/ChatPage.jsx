@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useOffline } from '../hooks/useOffline';
 import { useAuth } from '../context/AuthContext';
 import { getDir, getFont, getAlign } from '../utils/textDir';
-import { createSpeechEngine } from '../utils/speech';
+import { createSpeechEngine, correctUrduAgriPhonetics } from '../utils/speech';
 import { searchOffline, saveAIAnswer, queueQuestion, getOfflineQueue, removeFromQueue } from '../services/offlineDB';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import AudioPlayer from '../components/ui/AudioPlayer';
@@ -504,14 +504,13 @@ export default function ChatPage() {
   }, []);
 
   const sendVoiceMessage = useCallback(() => {
-    const text = (finalSpeech + ' ' + interimText).trim();
-    try { recognitionRef.current?._stopped?.(); } catch {}
-    try { recognitionRef.current?.stop(); } catch {}
+    const rawText = finalSpeech.trim() || interimText.trim();
+    const text = correctUrduAgriPhonetics(rawText);
+    try { speechEngineRef.current?.stop(); } catch {}
     setShowMicOverlay(false);
     setFinalSpeech('');
     setInterimText('');
     setIsListening(false);
-    // Bug fix: use ref so we always call the latest sendMessage (not a stale closure)
     if (text) sendMessageRef.current?.(text);
   }, [finalSpeech, interimText]);
 
