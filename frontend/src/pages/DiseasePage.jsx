@@ -19,6 +19,50 @@ const PHOTO_TIPS = [
 // Land sizes for dosage multiplier (ایکڑ)
 const LAND_SIZES = [1, 2, 5, 10];
 
+// Roman Urdu lookup for common 306-class disease names
+const ROMAN_URDU_MAP = {
+  'wheat yellow stripe rust':      'Gandam ki Peeli Zang',
+  'wheat brown rust':              'Gandam ki Bhoori Zang',
+  'wheat black stem rust':         'Gandam ki Kali Zang',
+  'wheat powdery mildew':          'Gandam ka Bhabhootiya',
+  'wheat loose smut':              'Gandam ka Aasar / Kanda',
+  'wheat karnal bunt':             'Gandam ka Karnal Bunt',
+  'wheat septoria leaf blotch':    'Gandam ka Patton ka Dhaba',
+  'cotton whitefly':               'Kapas ki Safaid Makkhi',
+  'cotton bollworm':               'Kapas ki Sundee / Bollworm',
+  'cotton pink bollworm':          'Kapas ki Gulaabi Sundee',
+  'cotton bacterial blight':       'Kapas ki Phoondki / Blight',
+  'cotton leaf curl virus':        'Kapas ka Patta Murjhanay ka Vairis',
+  'rice blast':                    'Chawal / Dhan ka Jhalsa',
+  'rice brown spot':               'Chawal ka Bhoora Dhaba',
+  'rice bacterial blight':         'Chawal ki Bacterial Blight',
+  'rice sheath blight':            'Chawal ki Patti Blight',
+  'potato late blight':            'Aloo ki Pichli Jhulsa Bimari',
+  'potato early blight':           'Aloo ki Ageti Jhulsa Bimari',
+  'tomato leaf curl':              'Tamatar ka Patta Morna',
+  'tomato bacterial wilt':         'Tamatar ki Bacterial Murjhahat',
+  'maize northern leaf blight':    'Makkai ka Patton ka Jhulsa',
+  'sugarcane red rot':             'Ganna ki Lal Sarak Bimari',
+  'sugarcane smut':                'Ganna ka Kala Kanda',
+  'mustard white rust':            'Sarson ki Safaid Zang',
+  'chickpea fusarium wilt':        'Chana ki Jari Murjhahat',
+};
+
+/**
+ * Derive Roman Urdu name from disease_en string.
+ * Falls back to romanized transliteration of disease_en.
+ */
+function getRomanUrdu(diseaseEn, diseaseUr) {
+  if (!diseaseEn) return diseaseUr ? 'Fasal Bimari' : 'Fasal Bimari';
+  const key = diseaseEn.toLowerCase().trim();
+  if (ROMAN_URDU_MAP[key]) return ROMAN_URDU_MAP[key];
+  // Partial match
+  const partial = Object.keys(ROMAN_URDU_MAP).find(k => key.includes(k) || k.includes(key));
+  if (partial) return ROMAN_URDU_MAP[partial];
+  // Fallback: title-case the English name as Roman Urdu approximation
+  return diseaseEn.replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export default function DiseasePage() {
   const [image, setImage]         = useState(null);
   const [imageUrl, setImageUrl]   = useState('');
@@ -434,17 +478,18 @@ export default function DiseasePage() {
               })()}
 
               {/* Trilingual Titles: Urdu + Roman Urdu + English */}
-              <div style={{ fontWeight: 900, fontSize: '1.3rem', color: 'var(--gold)', direction: 'rtl', marginBottom: '.2rem' }}>
+              {/* Line 1 — Primary Urdu (Deep Forest Green, high contrast) */}
+              <div style={{ fontWeight: 900, fontSize: '1.25rem', color: 'var(--green-900)', direction: 'rtl', marginBottom: '.15rem', lineHeight: 1.4 }}>
                 🔬 {result.disease_ur || result.disease}
               </div>
-              <div style={{ fontSize: '.88rem', color: '#e2e8f0', direction: 'rtl', fontWeight: 700 }}>
-                🌾 {result.disease_roman || 'فصل بیماری (Roman Urdu)'}
+              {/* Line 2 — Roman Urdu subtitle */}
+              <div style={{ fontSize: '.85rem', color: 'var(--text-secondary)', direction: 'ltr', fontWeight: 700, marginBottom: '.1rem', letterSpacing: '.01em' }}>
+                🌾 {result.disease_roman || getRomanUrdu(result.disease_en, result.disease_ur)}
               </div>
-              {result.disease_en && (
-                <div style={{ fontSize: '.8rem', color: '#94a3b8', direction: 'ltr', textAlign: 'right', fontStyle: 'italic' }}>
-                  {result.disease_en}
-                </div>
-              )}
+              {/* Line 3 — English subtitle (italic) */}
+              <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', direction: 'ltr', fontStyle: 'italic', fontWeight: 500 }}>
+                {result.disease_en || result.disease || '—'}
+              </div>
             </div>
 
             {/* SAFETY WARNING BADGE — Withholding Period (PHI days) */}
@@ -503,32 +548,38 @@ export default function DiseasePage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
                   {result.medicines.map((med, idx) => (
                     <div key={idx} style={{
-                      background: 'white',
+                      background: '#ffffff',
                       border: '2px solid var(--green-300)',
                       borderRadius: 14, padding: '1rem', direction: 'rtl',
                       boxShadow: 'var(--shadow-sm)'
                     }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
-                        <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--green-900)' }}>
+                      {/* Brand + Price row */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem', gap: '.5rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 900, fontSize: '1.05rem', color: 'var(--green-900)' }}>
                           🧪 {med.brand}
                         </span>
                         {med.estimated_price_pkr && (
                           <span style={{
-                            background: 'var(--green-800)', color: 'white',
+                            background: 'var(--green-800)', color: '#ffffff',
                             padding: '4px 10px', borderRadius: 12,
-                            fontWeight: 800, fontSize: '.8rem', boxShadow: '0 2px 6px rgba(46,90,39,0.2)'
+                            fontWeight: 800, fontSize: '.78rem',
+                            boxShadow: '0 2px 6px rgba(46,90,39,0.2)',
+                            whiteSpace: 'nowrap'
                           }}>
                             {med.estimated_price_pkr}
                           </span>
                         )}
                       </div>
 
+                      {/* Active ingredient */}
                       <div style={{ fontSize: '.88rem', color: 'var(--text-primary)', marginBottom: '.3rem', fontWeight: 600 }}>
                         <strong style={{ color: 'var(--green-800)' }}>فارمولیشن / ایکٹو: </strong>{med.active}
                       </div>
+                      {/* Dosage */}
                       <div style={{ fontSize: '.88rem', color: 'var(--text-primary)', marginBottom: '.3rem', fontWeight: 600 }}>
                         <strong style={{ color: 'var(--green-800)' }}>مقدار (1 ایکڑ): </strong>{med.dosage} ({med.method || 'سپرے'})
                       </div>
+                      {/* Land-size dosage multiplier */}
                       {landSize > 1 && (
                         <div style={{
                           background: 'var(--gold-100)', border: '1.5px solid var(--gold-600)',
@@ -543,15 +594,15 @@ export default function DiseasePage() {
                         </div>
                       )}
 
-                      {/* Supplier Badges */}
-                      {med.suppliers && (
-                        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '.4rem' }}>
-                          <span style={{ fontSize: '.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>سپلائر / کمپنی:</span>
+                      {/* Supplier / Company Badges */}
+                      {med.suppliers && med.suppliers.length > 0 && (
+                        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '.45rem' }}>
+                          <span style={{ fontSize: '.73rem', color: 'var(--text-muted)', fontWeight: 700 }}>سپلائر / کمپنی:</span>
                           {med.suppliers.map(sup => (
                             <span key={sup} style={{
                               background: 'var(--green-100)', color: 'var(--green-900)',
                               border: '1px solid var(--green-300)',
-                              padding: '2px 8px', borderRadius: 8,
+                              padding: '2px 9px', borderRadius: 8,
                               fontSize: '.72rem', fontWeight: 800
                             }}>
                               🏢 {sup}

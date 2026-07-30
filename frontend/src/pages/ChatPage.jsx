@@ -980,11 +980,11 @@ export default function ChatPage() {
         />
       )}
 
-      {/* ── Header ── */}
+      {/* ── Header (Android-Aware Header-Height Offset) ── */}
       <div style={{
         background: 'linear-gradient(135deg, #1a3a16, #2e5a27)',
         padding: '12px 16px 10px',
-        paddingTop: 'calc(12px + env(safe-area-inset-top))',
+        paddingTop: 'calc(var(--header-height, 60px) + 8px + env(safe-area-inset-top, 0px))',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         boxShadow: '0 2px 8px rgba(0,0,0,.2)', flexShrink: 0, zIndex: 10
       }}>
