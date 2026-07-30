@@ -275,6 +275,10 @@ export function selectUrduVoice(voices, langKey = 'ur') {
 
 /**
  * Request microphone stream with hardware noise-reduction constraints.
+ * Returns:
+ *   true     — permission granted & stream opened successfully
+ *   'denied' — user denied mic access (show Urdu guidance)
+ *   false    — other hardware error (constraint mismatch, etc.)
  */
 export async function requestHardwareMic() {
   try {
@@ -287,11 +291,33 @@ export async function requestHardwareMic() {
         channelCount: 1
       }
     });
+    // Release the test stream immediately — SpeechRecognition manages its own capture
     stream.getTracks().forEach(track => track.stop());
     return true;
   } catch (err) {
-    console.warn('Hardware mic constraint failed, falling back to default:', err.message);
-    return false;
+    if (
+      err.name === 'NotAllowedError' ||
+      err.name === 'PermissionDeniedError' ||
+      err.message?.toLowerCase().includes('permission')
+    ) {
+      console.warn('[DehatiAI] Microphone permission denied');
+      return 'denied';
+    }
+    // sampleRate constraint unsupported on some Android devices — retry without it
+    try {
+      const fallbackStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
+      fallbackStream.getTracks().forEach(track => track.stop());
+      return true;
+    } catch (fallbackErr) {
+      if (
+        fallbackErr.name === 'NotAllowedError' ||
+        fallbackErr.name === 'PermissionDeniedError'
+      ) return 'denied';
+      console.warn('[DehatiAI] Hardware mic constraint failed:', fallbackErr.message);
+      return false;
+    }
   }
 }
 
@@ -353,7 +379,7 @@ export function createSpeechEngine({
       if (!e.results || e.results.length === 0) return;
 
       if (singlePass) {
-        // Single-Pass Mode: Extract exact final sentence cleanly
+        // Single-Pass Mode: exact final sentence from results[0]
         const rawText = e.results[0][0].transcript.trim();
         const spokenText = correctUrduAgriPhonetics(rawText);
         if (spokenText) {
@@ -363,21 +389,21 @@ export function createSpeechEngine({
         }
         stopped = true;
         clearSilenceTimer();
-        try { recognition.stop(); } catch {}
+        try { recognition.abort(); } catch {}
         onStopped?.(spokenText);
         return;
       }
 
-      // Continuous Mode: Process final & interim text cleanly without quadratic word duplication
+      // Continuous Mode: Process final & interim text cleanly without word duplication
       let fullFinalText = '';
       let currentInterimText = '';
 
       for (let i = 0; i < e.results.length; i++) {
-        const transcriptChunk = e.results[i][0].transcript;
+        const chunk = e.results[i][0].transcript;
         if (e.results[i].isFinal) {
-          fullFinalText += transcriptChunk + ' ';
+          fullFinalText += chunk + ' ';
         } else {
-          currentInterimText += transcriptChunk + ' ';
+          currentInterimText += chunk + ' ';
         }
       }
 
@@ -395,14 +421,14 @@ export function createSpeechEngine({
 
     recognition.onerror = (e) => {
       clearSilenceTimer();
-      console.warn('Speech engine error:', e.error);
+      console.warn('[DehatiAI] Speech engine error:', e.error);
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         stopped = true;
         onError?.('permission_denied');
       } else if (e.error === 'network') {
         onError?.('network');
       } else if (e.error === 'aborted') {
-        // Ignore — intentional stop
+        // Ignore — intentional abort/stop
       } else {
         onError?.(e.error || 'unknown');
       }
@@ -423,8 +449,12 @@ export function createSpeechEngine({
             const next = createRecognition();
             recognitionInstance.current = next;
             next._stopped = () => { stopped = true; clearSilenceTimer(); };
+            // abort() before start() prevents InvalidStateError if previous session lingered
+            try { next.abort(); } catch {}
             next.start();
-          } catch {}
+          } catch (restartErr) {
+            console.warn('[DehatiAI] Restart error:', restartErr.message);
+          }
         }
       }, 150);
     };
@@ -436,15 +466,45 @@ export function createSpeechEngine({
 
   return {
     start: async () => {
-      await requestHardwareMic();
+      // Pre-warm hardware mic and check permissions before starting SpeechRecognition
+      const micResult = await requestHardwareMic();
+      if (micResult === 'denied') {
+        onError?.('permission_denied');
+        return;
+      }
+
       accumulated = '';
       stopped = false;
       gotSpeech = false;
       emptyEnds = 0;
+
+      // Abort any previous lingering recognition to prevent InvalidStateError
+      const existing = recognitionInstance.current;
+      if (existing) {
+        try { existing.abort(); } catch {}
+      }
+
       const rec = createRecognition();
       recognitionInstance.current = rec;
       rec._stopped = () => { stopped = true; clearSilenceTimer(); };
-      try { rec.start(); } catch (err) { console.error('Start error:', err); }
+
+      // Defensive start — catches InvalidStateError if the browser is still cleaning up
+      try {
+        rec.start();
+      } catch (err) {
+        if (err.name === 'InvalidStateError') {
+          // Brief cooldown then retry once
+          setTimeout(() => {
+            try { rec.start(); } catch (retryErr) {
+              console.error('[DehatiAI] Start retry failed:', retryErr.message);
+              onError?.('unknown');
+            }
+          }, 250);
+        } else {
+          console.error('[DehatiAI] Start error:', err.message);
+          onError?.('unknown');
+        }
+      }
     },
 
     stop: () => {

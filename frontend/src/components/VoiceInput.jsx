@@ -25,12 +25,19 @@ export default function VoiceInput({
 
   const startMic = async () => {
     setError('');
-    const hasMic = await requestHardwareMic();
-    if (!hasMic && !window.SpeechRecognition && !window.webkitSpeechRecognition) {
-      setError('مائیک کی اجازت یا سہولت درکار ہے');
+
+    // Pre-warm hardware mic and check permissions
+    const micResult = await requestHardwareMic();
+    if (micResult === 'denied') {
+      setError('مائیک کی اجازت دیں');
+      return;
+    }
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      setError('آواز کی سہولت دستیاب نہیں');
       return;
     }
 
+    // Abort any previous engine before starting new session — prevents InvalidStateError
     if (engineRef.current) {
       try { engineRef.current.stop(); } catch {}
     }
@@ -54,7 +61,13 @@ export default function VoiceInput({
       },
       onError: (err) => {
         setIsListening(false);
-        setError(err === 'permission_denied' ? 'مائیک اجازت درکار ہے' : 'دوبارہ کوشش کریں');
+        if (err === 'permission_denied') {
+          setError('مائیک کی اجازت دیں (Settings → Microphone → Allow)');
+        } else if (err === 'network') {
+          setError('انٹرنیٹ کنیکشن چیک کریں');
+        } else {
+          setError('دوبارہ کوشش کریں');
+        }
       }
     });
 
