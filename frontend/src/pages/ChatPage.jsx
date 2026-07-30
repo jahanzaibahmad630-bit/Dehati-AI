@@ -58,7 +58,7 @@ function Waveform() {
 }
 
 // ── WhatsApp-style full-screen mic overlay ─────────────────────────────────────
-function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCancel, iosError }) {
+function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCancel, onRetry, iosError }) {
   const hasText = (finalText + interimText).trim().length > 0;
   return (
     <div style={{
@@ -524,6 +524,17 @@ export default function ChatPage() {
     setInterimText('');
   }, []);
 
+  const retryMic = useCallback(() => {
+    setIsListening(false);
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    try { speechEngineRef.current?.stop(); } catch {}
+    setFinalSpeech('');
+    setInterimText('');
+    setTimeout(() => {
+      startListening();
+    }, 200);
+  }, [startListening]);
+
   // Legacy toggle for input-bar mic button
   const toggleSpeech = useCallback(() => {
     if (showMicOverlay) { cancelMic(); return; }
@@ -810,7 +821,7 @@ export default function ChatPage() {
           {/* Drawer */}
           <div style={{
             position: 'relative', width: 300, maxWidth: '85vw',
-            background: '#0f172a', height: '100%',
+            background: '#162410', height: '100%',
             display: 'flex', flexDirection: 'column',
             boxShadow: '4px 0 24px rgba(0,0,0,0.4)',
             animation: 'sidebarSlideIn 0.25s ease-out'
@@ -909,9 +920,9 @@ export default function ChatPage() {
             <div style={{
               padding: '12px 14px',
               paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
-              borderTop: '1px solid #1e293b'
+              borderTop: '1px solid #2e5a27'
             }}>
-              <div style={{ fontSize: '.7rem', color: '#334155', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
+              <div style={{ fontSize: '.7rem', color: '#a3e635', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
                 DehatiAI • زراعت ہیلپ لائن: 0800-17000
               </div>
             </div>

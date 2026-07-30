@@ -103,7 +103,7 @@ function ForecastDayCard({ day, isToday }) {
       {day.rainProb > 0 && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
-          fontSize: '.7rem', color: isToday ? '#93c5fd' : '#2563eb',
+          fontSize: '.7rem', color: isToday ? '#a3e635' : '#264D24',
           fontFamily: 'Inter, sans-serif', fontWeight: 700
         }}>
           🌧️ {day.rainProb}%
@@ -297,7 +297,7 @@ export default function WeatherPage() {
 
         {/* ── Hero Header ── */}
         <div style={{
-          background: 'linear-gradient(135deg, #0f2d5e 0%, #2563eb 100%)',
+          background: 'linear-gradient(135deg, #1E3A1E 0%, #264D24 100%)',
           borderRadius: 'var(--radius-xl)', padding: '1.25rem', color: 'white', textAlign: 'center'
         }}>
           <div style={{ fontSize: '2.5rem' }}>🌤️</div>

@@ -29,7 +29,7 @@ const GlobalStyles = () => (
       background: #F8FAFC;
     }
     .admin-container.dark {
-      background: #0F172A;
+      background: #162410;
       color: #F1F5F9;
     }
     
@@ -97,7 +97,7 @@ function ClearCacheModal({ entries, onConfirm, onCancel, dark }) {
       zIndex: 9999
     }}>
       <div style={{
-        background: dark ? '#1E293B' : 'white',
+        background: dark ? '#1E3A1E' : 'white',
         color: dark ? '#F1F5F9' : '#111827',
         padding: '2rem',
         borderRadius: 16,
@@ -133,9 +133,9 @@ function ClearCacheModal({ entries, onConfirm, onCancel, dark }) {
 
 // ── Stat Card (Glassmorphism) ──────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, color = '#10B981', ring = false, ringPct = 0, dark = false }) {
-  const bg = dark ? '#1E293B' : 'white';
+  const bg = dark ? '#1E3A1E' : 'white';
   const borderCol = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-  const textCol = dark ? '#F1F5F9' : '#0F172A';
+  const textCol = dark ? '#F1F5F9' : '#162410';
   const subCol = dark ? '#94A3B8' : '#64748B';
   
   return (
@@ -224,7 +224,7 @@ function AIUsageTab({ dark }) {
   useEffect(() => { load(); }, []);
   
   const card = (label, val, sub, color) => (
-    <div style={{ background: dark ? '#0F172A' : '#f8fafc', borderRadius: 12, padding: '1rem', border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}` }}>
+    <div style={{ background: dark ? '#162410' : '#f8fafc', borderRadius: 12, padding: '1rem', border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}` }}>
       <div style={{ fontSize: '.75rem', color: dark ? '#94A3B8' : '#6b7280', fontWeight: 600 }}>{label}</div>
       <div style={{ fontSize: '1.5rem', fontWeight: 800, color: color || (dark ? '#F1F5F9' : '#111827'), lineHeight: 1.2 }}>{val ?? '—'}</div>
       {sub && <div style={{ fontSize: '.72rem', color: dark ? '#64748B' : '#9ca3af', marginTop: 2 }}>{sub}</div>}
@@ -247,7 +247,7 @@ function AIUsageTab({ dark }) {
   if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: dark ? '#64748B' : '#9ca3af' }}>Loading AI usage data...</div>;
   
   if (!data?.today) return (
-    <div style={{ background: dark ? '#1E293B' : '#fffbeb', border: '1px solid #fbbf24', borderRadius: 12, padding: '1.5rem', color: '#92400e' }}>
+    <div style={{ background: dark ? '#1E3A1E' : '#fffbeb', border: '1px solid #fbbf24', borderRadius: 12, padding: '1.5rem', color: '#92400e' }}>
       <div style={{ fontWeight: 700 }}>⚠️ AI Usage tracking requires PostgreSQL</div>
       <div style={{ fontSize: '.875rem', marginTop: '.5rem' }}>Add a Railway PostgreSQL plugin to enable token and cost tracking.</div>
     </div>
@@ -265,10 +265,10 @@ function AIUsageTab({ dark }) {
       {data.recent?.length > 0 && (
         <div>
           <h3 style={{ fontWeight: 700, color: dark ? '#94A3B8' : '#374151', fontSize: '.875rem', marginBottom: '.75rem', textTransform: 'uppercase' }}>Recent API Calls</h3>
-          <div style={{ background: dark ? '#1E293B' : 'white', borderRadius: 12, overflow: 'hidden', border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>
+          <div style={{ background: dark ? '#1E3A1E' : 'white', borderRadius: 12, overflow: 'hidden', border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: dark ? '#0F172A' : '#f8fafc' }}>
+                <tr style={{ background: dark ? '#162410' : '#f8fafc' }}>
                   {['Endpoint','Tokens In','Tokens Out','Cache','Cost','Time'].map(h => <th key={h} style={{ padding: '.5rem .75rem', textAlign: 'left', fontSize: '.72rem', fontWeight: 700, color: dark ? '#64748B' : '#9ca3af', textTransform: 'uppercase' }}>{h}</th>)}
                 </tr>
               </thead>
@@ -332,14 +332,14 @@ function AuditLogTab({ dark }) {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2rem', color: dark ? '#64748B' : '#9ca3af' }}>Loading...</div>
       ) : logs.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: dark ? '#64748B' : '#9ca3af', background: dark ? '#1E293B' : 'white', borderRadius: 12, border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>
+        <div style={{ textAlign: 'center', padding: '3rem', color: dark ? '#64748B' : '#9ca3af', background: dark ? '#1E3A1E' : 'white', borderRadius: 12, border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>
           <div style={{ fontSize: '2rem', marginBottom: 8 }}>📋</div>
           <div>No audit logs yet. Actions will appear here as admins make changes.</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
           {logs.map(log => (
-            <div key={log.id} style={{ background: dark ? '#1E293B' : 'white', borderRadius: 10, padding: '.875rem 1rem', border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}`, display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <div key={log.id} style={{ background: dark ? '#1E3A1E' : 'white', borderRadius: 10, padding: '.875rem 1rem', border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}`, display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
               <span style={{ background: `${ACTION_COLORS[log.action_type] || '#6B7280'}18`, color: ACTION_COLORS[log.action_type] || '#6B7280', borderRadius: 6, padding: '2px 10px', fontSize: '.72rem', fontWeight: 700, whiteSpace: 'nowrap' }}>{log.action_type}</span>
               {log.target && <span style={{ fontSize: '.82rem', color: dark ? '#F1F5F9' : '#111827', fontWeight: 600 }}>{log.target}</span>}
               {log.ip_address && <span style={{ fontSize: '.75rem', color: dark ? '#475569' : '#9ca3af', fontFamily: 'monospace' }}>IP: {log.ip_address}</span>}
@@ -397,14 +397,14 @@ function EmergencyAlertsTab({ dark }) {
   const toggleDistrict = (d) => setForm(f => ({ ...f, targetDistricts: f.targetDistricts.includes(d) ? f.targetDistricts.filter(x => x !== d) : [...f.targetDistricts, d] }));
   
   const SEV_COLOR = { INFO: '#3B82F6', WARNING: '#F59E0B', CRITICAL: '#EF4444' };
-  const inp = { width: '100%', padding: '.6rem .875rem', borderRadius: 8, border: `1.5px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`, background: dark ? '#0F172A' : 'white', color: dark ? '#F1F5F9' : '#111827', fontSize: '.875rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', outline: 'none' };
+  const inp = { width: '100%', padding: '.6rem .875rem', borderRadius: 8, border: `1.5px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`, background: dark ? '#162410' : 'white', color: dark ? '#F1F5F9' : '#111827', fontSize: '.875rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', outline: 'none' };
   
   return (
     <div>
       {msg && <div style={{ background: msg.startsWith('✅') ? '#f0fdf4' : '#fef2f2', color: msg.startsWith('✅') ? '#16a34a' : '#dc2626', padding: '.75rem 1rem', borderRadius: 8, marginBottom: '1rem', fontWeight: 600, fontSize: '.875rem' }}>{msg}</div>}
       
       {/* Broadcast Form */}
-      <div style={{ background: dark ? '#1E293B' : 'white', borderRadius: 16, padding: '1.5rem', border: `1.5px solid ${dark ? 'rgba(239,68,68,0.3)' : '#fecaca'}`, marginBottom: '1.5rem' }}>
+      <div style={{ background: dark ? '#1E3A1E' : 'white', borderRadius: 16, padding: '1.5rem', border: `1.5px solid ${dark ? 'rgba(239,68,68,0.3)' : '#fecaca'}`, marginBottom: '1.5rem' }}>
         <h3 style={{ fontWeight: 700, color: '#EF4444', fontSize: '1rem', marginBottom: '1rem' }}>🚨 Broadcast Emergency Alert</h3>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '.75rem' }}>
@@ -446,9 +446,9 @@ function EmergencyAlertsTab({ dark }) {
       {/* Active Alerts List */}
       <h3 style={{ fontWeight: 700, color: dark ? '#F1F5F9' : '#111827', fontSize: '1rem', marginBottom: '.75rem' }}>Active Alerts ({alerts.length})</h3>
       {loading ? <div style={{ textAlign: 'center', padding: '2rem', color: dark ? '#64748B' : '#9ca3af' }}>Loading...</div> : alerts.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '2rem', color: dark ? '#64748B' : '#9ca3af', background: dark ? '#1E293B' : 'white', borderRadius: 12, border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>No active emergency alerts.</div>
+        <div style={{ textAlign: 'center', padding: '2rem', color: dark ? '#64748B' : '#9ca3af', background: dark ? '#1E3A1E' : 'white', borderRadius: 12, border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>No active emergency alerts.</div>
       ) : alerts.map(a => (
-        <div key={a.id} style={{ background: dark ? '#1E293B' : 'white', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '.75rem', border: `1.5px solid ${SEV_COLOR[a.severity]}44` }}>
+        <div key={a.id} style={{ background: dark ? '#1E3A1E' : 'white', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '.75rem', border: `1.5px solid ${SEV_COLOR[a.severity]}44` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.4rem' }}>
@@ -501,7 +501,7 @@ function ExportTab({ dark }) {
     setPurging(false);
   };
   
-  const cardStyle = { background: dark ? '#1E293B' : 'white', borderRadius: 16, padding: '1.5rem', border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}`, marginBottom: '1rem' };
+  const cardStyle = { background: dark ? '#1E3A1E' : 'white', borderRadius: 16, padding: '1.5rem', border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}`, marginBottom: '1rem' };
   
   return (
     <div>
@@ -619,7 +619,7 @@ export default function AdminPanel({ onLogout }) {
 
   const textPrimary = dark ? '#F1F5F9' : '#111827';
   const textSecondary = dark ? '#94A3B8' : '#6B7280';
-  const cardBg = dark ? '#1E293B' : 'white';
+  const cardBg = dark ? '#1E3A1E' : 'white';
   const borderColor = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
 
   return (
@@ -689,7 +689,7 @@ export default function AdminPanel({ onLogout }) {
       <div style={{ 
         padding: '1rem 1.5rem', display: 'flex', gap: '0.5rem', overflowX: 'auto',
         borderBottom: `1px solid ${borderColor}`,
-        background: dark ? '#0F172A' : 'white'
+        background: dark ? '#162410' : 'white'
       }}>
         {TABS.map(t => (
           <button
@@ -1362,7 +1362,7 @@ function SchemesTab() {
                 <div style={{ fontSize: '.78rem', color: '#6b7280', direction: 'rtl' }}>{s.tagline} — {s.amount}</div>
               </div>
               <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0 }}>
-                <button onClick={() => openEdit(s)} style={{ ...btnStyle('#2563eb'), padding: '.3rem .65rem', fontSize: '.75rem' }}>Edit</button>
+                <button onClick={() => openEdit(s)} style={{ ...btnStyle('#2e5a27'), padding: '.3rem .65rem', fontSize: '.75rem' }}>Edit</button>
                 <button onClick={() => handleToggle(s.id)} style={{ ...btnStyle(s.active !== false ? '#6b7280' : '#16a34a'), padding: '.3rem .65rem', fontSize: '.75rem' }}>
                   {s.active !== false ? 'Hide' : 'Show'}
                 </button>

@@ -48,7 +48,7 @@
   --danger-light: #fee2e2;
   --warning: #d97706;
   --warning-light: #fef3c7;
-  --info: #2563eb;
+  --info: #264D24;
   --text-primary: #1a2f0e;
   --text-secondary: #3a7232;
   --text-muted: #7a5c30;
@@ -259,8 +259,8 @@ select.input {
 .bottom-nav {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 430px; z-index: 100;
-  background: #0f172a;
-  border-top: 1px solid rgba(255,255,255,.08);
+  background: #162410;
+  border-top: 1px solid rgba(255,255,255,.12);
   box-shadow: 0 -4px 24px rgba(0,0,0,.4);
   display: flex;
   /* 60px bar = plenty of room for 48px touch target inside */
@@ -427,7 +427,7 @@ select.input {
 
 /* === Weather === */
 .weather-main {
-  background: linear-gradient(145deg, #0f2d5e 0%, #1e4080 50%, #2563eb 100%);
+  background: linear-gradient(145deg, #162410 0%, #1E3A1E 40%, #264D24 80%, #3a7232 100%);
   border-radius: var(--radius-xl); padding: 1.5rem; color: white; text-align: center;
 }
 .weather-temp { font-family: 'Inter', sans-serif; font-size: 4rem; font-weight: 700; direction: ltr; line-height: 1; }

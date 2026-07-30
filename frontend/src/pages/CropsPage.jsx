@@ -449,15 +449,15 @@ export default function CropsPage() {
         {/* Leaf Scanner Banner */}
         <a href="/disease" style={{ textDecoration: 'none' }}>
           <div style={{
-            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-            border: '2px solid #10b981', borderRadius: 'var(--radius-lg)',
+            background: 'linear-gradient(135deg, #162410 0%, #264D24 100%)',
+            border: '2px solid #D4A373', borderRadius: 'var(--radius-lg)',
             padding: '1rem 1.25rem', color: 'white', display: 'flex',
             alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.8rem' }}>
               <span style={{ fontSize: '2.2rem' }}>🔬</span>
               <div>
-                <div style={{ fontWeight: 800, fontSize: '.95rem', color: '#10b981' }}>
+                <div style={{ fontWeight: 800, fontSize: '.95rem', color: '#E9C46A' }}>
                   پتے کا اسکینر و 306 بیماریوں کی ڈائریکٹری
                 </div>
                 <div style={{ fontSize: '.78rem', color: '#94a3b8', marginTop: 2 }}>
@@ -465,7 +465,7 @@ export default function CropsPage() {
                 </div>
               </div>
             </div>
-            <span style={{ background: '#10b981', color: '#000', padding: '4px 12px', borderRadius: 20, fontWeight: 800, fontSize: '.75rem' }}>
+            <span style={{ background: '#D4A373', color: '#1a2f0e', padding: '4px 12px', borderRadius: 20, fontWeight: 800, fontSize: '.75rem' }}>
               اسکین کریں ←
             </span>
           </div>

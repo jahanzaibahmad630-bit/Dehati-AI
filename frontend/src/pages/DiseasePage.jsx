@@ -152,9 +152,9 @@ export default function DiseasePage() {
 
         {/* Header */}
         <div style={{
-          background: 'linear-gradient(135deg, #0b1320 0%, #1e293b 100%)',
+          background: 'linear-gradient(135deg, #162410 0%, #264D24 100%)',
           borderRadius: 'var(--radius-xl)', padding: '1.25rem',
-          color: 'white', textAlign: 'center', border: '1px solid #334155'
+          color: 'white', textAlign: 'center', border: '1px solid #3a7232'
         }}>
           <div style={{ fontSize: '2.5rem' }}>🔬</div>
           <h2 style={{ color: 'white', fontSize: '1.25rem', margin: '.3rem 0', fontWeight: 800 }}>فصل کی بیماری کا لیف اسکینر</h2>
@@ -164,16 +164,16 @@ export default function DiseasePage() {
         </div>
 
         {/* Manual 306 Disease Search Filter Bar */}
-        <div className="card" style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 14 }}>
+        <div className="card" style={{ background: '#1E3A1E', border: '1px solid #3a7232', borderRadius: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.6rem' }}>
-            <span style={{ fontWeight: 700, fontSize: '.9rem', color: '#f59e0b' }}>
+            <span style={{ fontWeight: 700, fontSize: '.9rem', color: '#E9C46A' }}>
               🔍 306 بیماریوں کی فوری تلاش (بغیر تصویر)
             </span>
             <button
               onClick={() => setShowCatalog(!showCatalog)}
               style={{
-                background: 'rgba(245,158,11,0.15)', border: '1px solid #f59e0b',
-                color: '#f59e0b', borderRadius: 20, padding: '3px 10px',
+                background: 'rgba(233,196,106,0.15)', border: '1px solid #E9C46A',
+                color: '#E9C46A', borderRadius: 20, padding: '3px 10px',
                 fontSize: '.75rem', fontWeight: 700, cursor: 'pointer'
               }}>
               {showCatalog ? 'چھپائیں ✕' : `ڈائریکٹری (${catalog.length})`}
@@ -187,7 +187,7 @@ export default function DiseasePage() {
             onChange={e => { setSearchQuery(e.target.value); setShowCatalog(true); }}
             placeholder="بیماری یا فصل کا نام تلاش کریں (مثلاً: wheat rust, آلو, late blight)..."
             style={{
-              background: '#0f172a', color: 'white', border: '1px solid #334155',
+              background: '#162410', color: 'white', border: '1px solid #3a7232',
               fontSize: '.85rem', direction: 'rtl'
             }}
           />
@@ -195,12 +195,12 @@ export default function DiseasePage() {
           {showCatalog && (
             <div style={{
               maxHeight: 220, overflowY: 'auto', marginTop: 8,
-              borderTop: '1px solid #334155', paddingTop: 8
+              borderTop: '1px solid #3a7232', paddingTop: 8
             }}>
               {catalogLoading ? (
-                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '1rem' }}>ڈائریکٹری لوڈ ہو رہی ہے...</div>
+                <div style={{ textAlign: 'center', color: '#a08050', padding: '1rem' }}>ڈائریکٹری لوڈ ہو رہی ہے...</div>
               ) : filteredCatalog.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '1rem' }}>کوئی بیماری نہیں ملی</div>
+                <div style={{ textAlign: 'center', color: '#a08050', padding: '1rem' }}>کوئی بیماری نہیں ملی</div>
               ) : (
                 filteredCatalog.slice(0, 30).map(item => (
                   <div
@@ -209,7 +209,7 @@ export default function DiseasePage() {
                     style={{
                       padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      background: '#0f172a', marginBottom: 4, border: '1px solid #334155'
+                      background: '#162410', marginBottom: 4, border: '1px solid #3a7232'
                     }}
                   >
                     <div>
@@ -239,7 +239,7 @@ export default function DiseasePage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
               {PHOTO_TIPS.map((t, i) => (
                 <div key={i} style={{
-                  background: '#1e293b', borderRadius: 8, padding: '6px 10px',
+                  background: '#162410', borderRadius: 8, padding: '6px 10px',
                   fontSize: '.72rem', direction: 'rtl', display: 'flex',
                   alignItems: 'center', gap: 6, color: '#cbd5e1', border: '1px solid #334155'
                 }}>
@@ -255,10 +255,9 @@ export default function DiseasePage() {
         <div
           className="card"
           style={{
-            cursor: 'pointer',
-            border: imageUrl ? '2px solid #10b981' : '2px dashed #334155',
-            textAlign: 'center', padding: imageUrl ? '0' : '1.5rem',
-            overflow: 'hidden', position: 'relative', background: '#1e293b'
+            border: imageUrl ? '2px solid #a3e635' : '2px dashed #3a7232',
+            borderRadius: 'var(--radius-lg)', padding: '1.25rem', textAlign: 'center',
+            overflow: 'hidden', position: 'relative', background: '#1E3A1E'
           }}
           onClick={() => !imageUrl && fileRef.current?.click()}
           id="disease-upload-area"
@@ -309,10 +308,10 @@ export default function DiseasePage() {
           </label>
           <select
             id="disease-crop-select"
-            className="input"
+            className="btn btn-primary btn-full"
             value={crop}
             onChange={e => setCrop(e.target.value)}
-            style={{ background: '#1e293b', color: 'white', border: '1px solid #334155' }}
+            style={{ background: 'linear-gradient(135deg, #2e5a27, #4a7c40)', color: 'white', border: 'none' }}
           >
             <option value="">فصل منتخب کریں</option>
             {CROPS.map(c => <option key={c} value={c}>{c}</option>)}
@@ -345,7 +344,7 @@ export default function DiseasePage() {
 
         {/* Loading animation */}
         {loading && (
-          <div className="loading-container" style={{ padding: '1.5rem', background: '#1e293b', borderRadius: 14 }}>
+          <div className="loading-container" style={{ padding: '1.5rem', background: '#1E3A1E', borderRadius: 14 }}>
             <div className="spinner" />
             <p style={{ marginTop: '.75rem', color: '#10b981', fontWeight: 600 }}>
               {compressing ? 'تصویر تیار ہو رہی ہے...' : 'Claude 3.5 Sonnet Vision + Pakistani Agronomy Engine...'}
@@ -359,8 +358,8 @@ export default function DiseasePage() {
 
             {/* Header + Audio + Tier Badge */}
             <div style={{
-              background: '#1e293b', border: '1px solid #334155',
-              borderRadius: 14, padding: '1rem'
+              background: '#1E3A1E', border: '1px solid #3a7232',
+              borderRadius: 14, padding: '1rem', marginTop: '1rem'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.6rem', flexWrap: 'wrap', gap: 6 }}>
                 <span style={{
@@ -397,7 +396,7 @@ export default function DiseasePage() {
             </div>
 
             {/* Treatment Summary & Cause */}
-            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 14, padding: '1rem', direction: 'rtl' }}>
+            <div style={{ background: '#1E3A1E', border: '1px solid #3a7232', borderRadius: 14, padding: '1rem', direction: 'rtl' }}>
               <div style={{ fontWeight: 700, fontSize: '.85rem', color: '#06b6d4', marginBottom: '.4rem' }}>
                 ⚡ بیماری کی وجہ اور علاج کا خلاصہ
               </div>
@@ -422,7 +421,7 @@ export default function DiseasePage() {
                     value={landSize}
                     onChange={e => setLandSize(Number(e.target.value))}
                     style={{
-                      background: '#0f172a', color: '#f59e0b', border: '1.5px solid #f59e0b',
+                      background: '#162410', color: '#f59e0b', border: '1.5px solid #f59e0b',
                       borderRadius: 8, padding: '3px 8px', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer'
                     }}
                     id="disease-land-size-select"
@@ -497,7 +496,7 @@ export default function DiseasePage() {
                   ))}
                 </div>
               ) : (
-                <div style={{ background: '#1e293b', padding: '1rem', borderRadius: 12, color: '#94a3b8', fontSize: '.85rem', direction: 'rtl' }}>
+                <div style={{ background: '#1E3A1E', padding: '1rem', borderRadius: 12, color: '#a08050', fontSize: '.85rem', direction: 'rtl' }}>
                   مقامی زرعی افسر کی ہدایت کے مطابق مناسب پھپھوندی کش دوائی استعمال کریں۔
                 </div>
               )}
@@ -521,7 +520,7 @@ export default function DiseasePage() {
 
             {/* Prevention */}
             {result.prevention && (
-              <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 14, padding: '1rem', direction: 'rtl' }}>
+              <div style={{ background: '#1E3A1E', border: '1px solid #3a7232', borderRadius: 14, padding: '1rem', direction: 'rtl' }}>
                 <div style={{ fontWeight: 700, fontSize: '.85rem', color: '#94a3b8', marginBottom: '.3rem' }}>
                   🛡️ آئندہ کے لیے احتیاطی تدابیر
                 </div>
