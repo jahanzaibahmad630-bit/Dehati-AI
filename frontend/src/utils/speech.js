@@ -2,29 +2,43 @@
  * DehatiAI Speech Engine — Production-Grade Voice Recognition + Natural Urdu TTS
  * Tuned for noisy rural Pakistan field environments & Android Mobile PWA.
  *
+ * Modes:
+ *   singlePass  — captures ONE clean sentence (continuous=false, interimResults=false)
+ *   ruralMode   — live interim display + 3.5s silence auto-stop + debounce lock
+ *                 (continuous=true, interimResults=true, zero duplication guarantee)
+ *
  * Features:
- * - Single-pass & Continuous high-accuracy speech capture without word duplication
+ * - 3.5s Rural Silence Auto-Stop Buffer (natural mid-sentence pause support)
+ * - Mic pre-warm cache (instant startup on 2nd+ tap, <100ms)
+ * - 300ms atomic debounce lock (prevents duplicate chat submissions)
+ * - Transcript rebuilt from e.results on every event (never += onto state)
  * - Pakistani Agronomy Phonetic Auto-Corrector (correctUrduAgriPhonetics)
  * - Hardware audio constraints (echo/noise/gain cancellation, 44100Hz)
- * - 2.5s silence buffer (prevents premature cutoff mid-sentence)
- * - Multi-dialect: ur-PK + pa-PK
- * - 4-Tier Pakistani Neural & Hindi Voice Selection
+ * - 4-Tier Pakistani Neural & Hindi Voice Selection for TTS
  * - Phonetic text & unit normalization (normalizeUrduForSpeech)
  */
 
-const SILENCE_BUFFER_MS = 2500; // 2.5 seconds — allows farmers to pause mid-sentence
+// ─── Silence buffer constants ─────────────────────────────────────────────────
+const SILENCE_BUFFER_MS      = 3500; // 3.5s — rural farmers take natural pauses
+const SINGLEPASS_SILENCE_MS  = 3500; // same for single-pass fallback
 
+// ─── Language map ─────────────────────────────────────────────────────────────
 const LANGS = {
   ur: 'ur-PK',
   pj: 'pa-PK',
   en: 'en-US'
 };
 
-const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isIOS = typeof navigator !== 'undefined' &&
+  /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 export function getSRLang(langKey) {
   return LANGS[langKey] || 'ur-PK';
 }
+
+// ─── Mic Pre-Warm Cache ───────────────────────────────────────────────────────
+// Caches permission result so 2nd+ mic tap is instant (<100ms visual feedback)
+let _micPermissionCache = null; // null | true | 'denied' | false
 
 // ─── Urdu Number Words ────────────────────────────────────────────────────────
 const URDU_ONES = [
@@ -116,7 +130,7 @@ export function correctUrduAgriPhonetics(text) {
   // Deduplicate repeated adjacent identical single words ("گندم گندم" -> "گندم")
   t = t.replace(/\b([\u0600-\u06FF\w]+)\s+\1\b/gu, '$1');
 
-  // Deduplicate repeated multi-word phrases ("فصل کو پانی کب لگائیں فصل کو پانی کب لگائیں" -> "فصل کو پانی کب لگائیں")
+  // Deduplicate repeated multi-word phrases ("فصل کو پانی کب لگائیں فصل کو پانی کب لگائیں" -> once)
   t = t.replace(/(\b[\u0600-\u06FF\w\s]{3,35}?\b)\s+\1\b/gu, '$1');
   t = t.replace(/(\b[\u0600-\u06FF\w\s]{3,35}?\b)\s+\1\b/gu, '$1');
 
@@ -278,13 +292,19 @@ export function selectUrduVoice(voices, langKey = 'ur') {
 }
 
 /**
- * Request microphone stream with hardware noise-reduction constraints.
+ * requestHardwareMic — Pre-warm mic stream with hardware noise-reduction constraints.
+ *
  * Returns:
  *   true     — permission granted & stream opened successfully
  *   'denied' — user denied mic access (show Urdu guidance)
  *   false    — other hardware error (constraint mismatch, etc.)
+ *
+ * Caches result in _micPermissionCache for instant (<100ms) subsequent taps.
  */
 export async function requestHardwareMic() {
+  // Return cached result instantly on 2nd+ call — eliminates startup latency
+  if (_micPermissionCache !== null) return _micPermissionCache;
+
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -297,6 +317,7 @@ export async function requestHardwareMic() {
     });
     // Release the test stream immediately — SpeechRecognition manages its own capture
     stream.getTracks().forEach(track => track.stop());
+    _micPermissionCache = true;
     return true;
   } catch (err) {
     if (
@@ -305,6 +326,7 @@ export async function requestHardwareMic() {
       err.message?.toLowerCase().includes('permission')
     ) {
       console.warn('[DehatiAI] Microphone permission denied');
+      _micPermissionCache = 'denied';
       return 'denied';
     }
     // sampleRate constraint unsupported on some Android devices — retry without it
@@ -313,12 +335,16 @@ export async function requestHardwareMic() {
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
       });
       fallbackStream.getTracks().forEach(track => track.stop());
+      _micPermissionCache = true;
       return true;
     } catch (fallbackErr) {
       if (
         fallbackErr.name === 'NotAllowedError' ||
         fallbackErr.name === 'PermissionDeniedError'
-      ) return 'denied';
+      ) {
+        _micPermissionCache = 'denied';
+        return 'denied';
+      }
       console.warn('[DehatiAI] Hardware mic constraint failed:', fallbackErr.message);
       return false;
     }
@@ -326,12 +352,22 @@ export async function requestHardwareMic() {
 }
 
 /**
- * Create a production-grade SpeechRecognition instance.
- * Supports Single-Pass High-Accuracy mode & Continuous mode without word duplication.
+ * Create a production-grade SpeechRecognition engine.
+ *
+ * Modes:
+ *   singlePass: true  — One clean sentence, no live transcript (fastest, no duplication)
+ *   ruralMode: true   — Live interim transcription + 3.5s silence auto-stop + debounce lock
+ *   default           — Continuous mode (legacy, iOS-compatible restart loop)
+ *
+ * Zero-duplication guarantee in all modes:
+ *   - Transcript rebuilt from e.results indices on every onresult event
+ *   - Never uses += onto accumulated state across events
+ *   - 300ms atomic isProcessingRef debounce lock prevents duplicate submissions
  */
 export function createSpeechEngine({
   langKey = 'ur',
   singlePass = false,
+  ruralMode = false,
   onInterim,
   onFinalWord,
   onResult,
@@ -343,12 +379,19 @@ export function createSpeechEngine({
   if (!SR) return null;
 
   const srLang = getSRLang(langKey);
-  let accumulated = '';
-  let stopped = false;
-  let silenceTimer = null;
-  let gotSpeech = false;
-  let emptyEnds = 0;
-  const MAX_EMPTY = isIOS ? 2 : 99;
+
+  // ── Single-source-of-truth transcript ref (NEVER appended, always rebuilt) ──
+  let transcriptRef = '';       // canonical final text rebuilt from e.results each event
+  let stopped       = false;
+  let silenceTimer  = null;
+  let gotSpeech     = false;
+  let emptyEnds     = 0;
+  const MAX_EMPTY   = isIOS ? 2 : 99;
+
+  // ── 300ms atomic debounce lock — prevents duplicate chat submissions ────────
+  // Set true when onStopped fires, reset after 300ms.
+  // Any duplicate onresult / onend that fires within that window is ignored.
+  let isProcessing  = false;
 
   function clearSilenceTimer() {
     if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
@@ -357,68 +400,94 @@ export function createSpeechEngine({
   function resetSilenceTimer(recognition) {
     clearSilenceTimer();
     silenceTimer = setTimeout(() => {
-      if (!stopped) {
+      if (!stopped && !isProcessing) {
         stopped = true;
+        isProcessing = true;
         try { recognition._stopped?.(); recognition.stop(); } catch {}
-        const clean = correctUrduAgriPhonetics(accumulated.trim());
+        const clean = correctUrduAgriPhonetics(transcriptRef.trim());
         onStopped?.(clean);
         if (clean && onResult) onResult(clean);
+        // Release debounce lock after 300ms
+        setTimeout(() => { isProcessing = false; }, 300);
       }
     }, silenceMs);
   }
 
   function createRecognition() {
     const recognition = new SR();
-    recognition.lang            = srLang;
-    recognition.continuous      = singlePass ? false : !isIOS;
-    recognition.interimResults  = singlePass ? false : true;
+    recognition.lang = srLang;
     recognition.maxAlternatives = 1;
+
+    if (singlePass) {
+      // Single-Pass: ONE final sentence, no interim, minimal latency
+      recognition.continuous     = false;
+      recognition.interimResults = false;
+    } else if (ruralMode) {
+      // Rural Mode: live interim + 3.5s silence + debounce — for ChatPage
+      recognition.continuous     = !isIOS;
+      recognition.interimResults = true;
+    } else {
+      // Legacy continuous mode
+      recognition.continuous     = !isIOS;
+      recognition.interimResults = true;
+    }
 
     recognition.onstart = () => {};
 
     recognition.onresult = (e) => {
+      // ── Debounce guard — if already processing a finalized result, skip ──
+      if (isProcessing) return;
+
       gotSpeech = true;
       emptyEnds = 0;
 
       if (!e.results || e.results.length === 0) return;
 
       if (singlePass) {
-        // Single-Pass Mode: exact final sentence from results[0]
-        const rawText = e.results[0][0].transcript.trim();
+        // ── Single-Pass Mode ───────────────────────────────────────────────
+        // Fires once with one complete sentence — guaranteed no duplication
+        isProcessing = true; // lock immediately
+        const rawText    = e.results[0][0].transcript.trim();
         const spokenText = correctUrduAgriPhonetics(rawText);
         if (spokenText) {
-          accumulated = spokenText;
+          transcriptRef = spokenText;
+          onFinalWord?.(spokenText);
           if (onResult) onResult(spokenText);
         }
         stopped = true;
         clearSilenceTimer();
         try { recognition.abort(); } catch {}
-        onStopped?.(spokenText);
+        onStopped?.(spokenText || '');
+        setTimeout(() => { isProcessing = false; }, 300);
         return;
       }
 
-      // Continuous Mode: Process final & interim text cleanly without word duplication
-      let fullFinalText = '';
-      let currentInterimText = '';
+      // ── Rural / Continuous Mode ────────────────────────────────────────
+      // CRITICAL: Rebuild transcript from e.results indices on EVERY event.
+      // NEVER += onto transcriptRef — that causes the snowball duplication bug.
+      let fullFinalText   = '';
+      let currentInterim  = '';
 
       for (let i = 0; i < e.results.length; i++) {
         const chunk = e.results[i][0].transcript;
         if (e.results[i].isFinal) {
           fullFinalText += chunk + ' ';
         } else {
-          currentInterimText += chunk + ' ';
+          currentInterim += chunk + ' ';
         }
       }
 
-      const cleanFinal = correctUrduAgriPhonetics(fullFinalText.trim());
-      const cleanInterim = correctUrduAgriPhonetics(currentInterimText.trim());
+      const cleanFinal   = correctUrduAgriPhonetics(fullFinalText.trim());
+      const cleanInterim = correctUrduAgriPhonetics(currentInterim.trim());
 
       if (cleanFinal) {
-        accumulated = cleanFinal;
-        onFinalWord?.(accumulated);
-        if (onResult) onResult(accumulated);
+        transcriptRef = cleanFinal; // REPLACE (never append)
+        onFinalWord?.(transcriptRef);
+        if (onResult) onResult(transcriptRef);
       }
       if (onInterim) onInterim(cleanInterim);
+
+      // Reset the 3.5s silence countdown on every audio packet received
       resetSilenceTimer(recognition);
     };
 
@@ -431,7 +500,7 @@ export function createSpeechEngine({
       } else if (e.error === 'network') {
         onError?.('network');
       } else if (e.error === 'aborted') {
-        // Ignore — intentional abort/stop
+        // Ignore — intentional abort/stop, not an error
       } else {
         onError?.(e.error || 'unknown');
       }
@@ -446,13 +515,14 @@ export function createSpeechEngine({
         onError?.('ios_limit');
         return;
       }
+      // Auto-restart for continuous / ruralMode on Android
       setTimeout(() => {
         if (!stopped && !singlePass) {
           try {
             const next = createRecognition();
             recognitionInstance.current = next;
             next._stopped = () => { stopped = true; clearSilenceTimer(); };
-            // abort() before start() prevents InvalidStateError if previous session lingered
+            // abort() before start() prevents InvalidStateError on stale sessions
             try { next.abort(); } catch {}
             next.start();
           } catch (restartErr) {
@@ -469,17 +539,19 @@ export function createSpeechEngine({
 
   return {
     start: async () => {
-      // Pre-warm hardware mic and check permissions before starting SpeechRecognition
+      // Pre-warm hardware mic (cached after first call — instant on 2nd+ tap)
       const micResult = await requestHardwareMic();
       if (micResult === 'denied') {
         onError?.('permission_denied');
         return;
       }
 
-      accumulated = '';
-      stopped = false;
-      gotSpeech = false;
-      emptyEnds = 0;
+      // Reset all state for fresh session
+      transcriptRef = '';
+      stopped       = false;
+      gotSpeech     = false;
+      emptyEnds     = 0;
+      isProcessing  = false;
 
       // Abort any previous lingering recognition to prevent InvalidStateError
       const existing = recognitionInstance.current;
@@ -491,12 +563,11 @@ export function createSpeechEngine({
       recognitionInstance.current = rec;
       rec._stopped = () => { stopped = true; clearSilenceTimer(); };
 
-      // Defensive start — catches InvalidStateError if the browser is still cleaning up
+      // Defensive start — on InvalidStateError, wait 250ms and retry once
       try {
         rec.start();
       } catch (err) {
         if (err.name === 'InvalidStateError') {
-          // Brief cooldown then retry once
           setTimeout(() => {
             try { rec.start(); } catch (retryErr) {
               console.error('[DehatiAI] Start retry failed:', retryErr.message);
@@ -515,18 +586,19 @@ export function createSpeechEngine({
       clearSilenceTimer();
       try { recognitionInstance.current?._stopped?.(); } catch {}
       try { recognitionInstance.current?.stop(); } catch {}
-      return correctUrduAgriPhonetics(accumulated.trim());
+      return correctUrduAgriPhonetics(transcriptRef.trim());
     },
 
     reset: () => {
       stopped = true;
+      isProcessing = false;
       clearSilenceTimer();
       try { recognitionInstance.current?._stopped?.(); } catch {}
       try { recognitionInstance.current?.stop(); } catch {}
-      accumulated = '';
+      transcriptRef = '';
     },
 
-    getAccumulated: () => correctUrduAgriPhonetics(accumulated.trim()),
+    getAccumulated: () => correctUrduAgriPhonetics(transcriptRef.trim()),
     isIOS,
   };
 }
@@ -545,14 +617,14 @@ export async function speakText(text, langKey = 'ur', rate = 0.85) {
   const normalized = normalizeUrduForSpeech(text);
   if (!normalized) return false;
 
-  const utt = new SpeechSynthesisUtterance(normalized);
-  utt.lang  = getSRLang(langKey);
-  utt.rate  = rate;
-  utt.pitch = 1.0;
-  utt.volume = 1.0;
+  const utt    = new SpeechSynthesisUtterance(normalized);
+  utt.lang     = getSRLang(langKey);
+  utt.rate     = rate;
+  utt.pitch    = 1.0;
+  utt.volume   = 1.0;
 
   const voices = await waitForVoices();
-  const voice = selectUrduVoice(voices, langKey);
+  const voice  = selectUrduVoice(voices, langKey);
   if (voice) utt.voice = voice;
 
   window.speechSynthesis.speak(utt);

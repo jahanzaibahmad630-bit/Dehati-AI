@@ -9,10 +9,120 @@ const CROP_LIST = [
   'پیاز', 'مرچ', 'لہسن', 'سرسوں', 'چنا', 'مسور', 'DAP کھاد', 'یوریا'
 ];
 
+// ── 30-Day historical Mandi price data (Rs./Mann, Punjab AMIS baseline) ─────────
+const PRICE_HISTORY = {
+  'گندم':       { unit: 'فی من', data: [3720,3740,3760,3780,3800,3810,3830,3820,3850,3870,3840,3860,3890,3900,3880,3870,3910,3930,3920,3950,3940,3960,3970,3990,3980,4010,4030,4020,4050,4040] },
+  'کپاس':       { unit: 'فی من', data: [8400,8350,8430,8500,8480,8450,8510,8560,8540,8520,8580,8600,8580,8560,8620,8650,8630,8600,8680,8700,8720,8710,8750,8780,8760,8800,8820,8800,8840,8860] },
+  'باسمتی چاول':{ unit: 'فی من', data: [4100,4080,4120,4150,4130,4160,4180,4170,4200,4220,4210,4230,4250,4240,4260,4280,4270,4290,4310,4300,4320,4340,4330,4350,4370,4360,4380,4400,4390,4410] },
+  'گنا':        { unit: 'فی من', data: [425,425,430,430,430,435,435,435,440,440,440,445,445,445,450,450,450,450,455,455,455,460,460,460,460,465,465,465,465,470] },
+  'مکئی':       { unit: 'فی من', data: [1800,1820,1810,1830,1850,1840,1860,1870,1860,1880,1900,1890,1910,1920,1910,1930,1920,1940,1950,1940,1960,1970,1960,1980,1990,1980,2000,2010,2000,2020] },
+  'آلو':        { unit: 'فی من', data: [1200,1180,1220,1250,1230,1260,1280,1270,1300,1320,1310,1290,1270,1250,1280,1300,1290,1310,1330,1350,1340,1360,1380,1370,1390,1410,1400,1420,1440,1430] },
+};
+const TREND_CROPS = Object.keys(PRICE_HISTORY);
+
+// ── 30-Day SVG Price Trend Chart ─────────────────────────────────────────────
+function PriceTrendChart({ cropKey }) {
+  const entry = PRICE_HISTORY[cropKey];
+  if (!entry) return null;
+  const { data, unit } = entry;
+  const W = 300, H = 130, padX = 32, padY = 14;
+  const cw = W - padX * 2, ch = H - padY * 2;
+  const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+  const pts = data.map((v, i) => ({ x: padX + (i / 29) * cw, y: padY + ch - ((v - min) / range) * ch, v }));
+  const polyStr = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const areaStr = `M ${pts[0].x},${H - padY} ` + pts.map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') + ` L ${pts[29].x},${H - padY} Z`;
+  const trend = data[29] > data[0] + 50 ? 'rising' : data[29] < data[0] - 50 ? 'falling' : 'stable';
+  const trendLabel = trend === 'rising' ? '📈 اضافہ' : trend === 'falling' ? '📉 کمی' : '➡️ مستحکم';
+  const trendColor = trend === 'rising' ? '#10b981' : trend === 'falling' ? '#ef4444' : '#f59e0b';
+  const minIdx = data.indexOf(min), maxIdx = data.indexOf(max);
+  const yLabels = [0, 0.5, 1].map(f => ({ y: padY + ch - f * ch, val: Math.round(min + f * range) }));
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '.4rem', marginBottom: '.55rem' }}>
+        {[
+          { label: 'بلند ترین 30 دن', val: max, color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: '#10b981' },
+          { label: 'کم ترین 30 دن',   val: min, color: '#ef4444', bg: 'rgba(239,68,68,0.10)', border: '#ef4444' },
+          { label: 'رجحان',           val: trendLabel, color: trendColor, bg: 'rgba(100,116,139,0.08)', border: trendColor, isText: true },
+        ].map((s, i) => (
+          <div key={i} style={{ flex: 1, background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '5px 8px', textAlign: 'center' }}>
+            <div style={{ fontSize: '.6rem', color: '#94a3b8' }}>{s.label}</div>
+            <div style={{ fontWeight: 800, color: s.color, fontSize: s.isText ? '.78rem' : '.88rem', fontFamily: 'Inter' }}>
+              {s.isText ? s.val : `₨${s.val.toLocaleString()}`}
+            </div>
+            {!s.isText && <div style={{ fontSize: '.58rem', color: '#64748b' }}>{unit}</div>}
+          </div>
+        ))}
+      </div>
+      <div style={{ overflowX: 'auto', direction: 'ltr' }}>
+        <svg width={W} height={H} style={{ display: 'block' }}>
+          <defs>
+            <linearGradient id={`tg_${cropKey.replace(/\s/g,'_')}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={trendColor} stopOpacity="0.2" />
+              <stop offset="100%" stopColor={trendColor} stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          {yLabels.map((l, i) => (
+            <g key={i}>
+              <line x1={padX} y1={l.y} x2={W - padX + 4} y2={l.y} stroke="#1e293b" strokeWidth="0.7" strokeDasharray="3,3" />
+              <text x={padX - 3} y={l.y + 3.5} fontSize="7.5" fill="#64748b" textAnchor="end" fontFamily="Inter">{(l.val/1000).toFixed(1)}k</text>
+            </g>
+          ))}
+          {[0,14,29].map(i => (
+            <text key={i} x={padX + (i/29)*cw} y={H-1} fontSize="7" fill="#64748b" textAnchor="middle" fontFamily="Inter">-{29-i}d</text>
+          ))}
+          <path d={areaStr} fill={`url(#tg_${cropKey.replace(/\s/g,'_')})`} />
+          <polyline points={polyStr} fill="none" stroke={trendColor} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          <circle cx={pts[minIdx].x} cy={pts[minIdx].y} r={4.5} fill="#ef4444" stroke="#0f172a" strokeWidth="1.5" />
+          <circle cx={pts[maxIdx].x} cy={pts[maxIdx].y} r={4.5} fill="#10b981" stroke="#0f172a" strokeWidth="1.5" />
+          <circle cx={pts[29].x} cy={pts[29].y} r={5.5} fill="#f59e0b" stroke="#0f172a" strokeWidth="2" />
+          <text x={pts[29].x} y={pts[29].y - 9} fontSize="8" fill="#f59e0b" textAnchor="middle" fontFamily="Inter" fontWeight="700">₨{data[29].toLocaleString()}</text>
+        </svg>
+      </div>
+      <div style={{ display: 'flex', gap: '.75rem', fontSize: '.6rem', color: '#64748b', marginTop: '.2rem' }}>
+        <span><span style={{ color: '#f59e0b' }}>●</span> موجودہ</span>
+        <span><span style={{ color: '#10b981' }}>●</span> بلند</span>
+        <span><span style={{ color: '#ef4444' }}>●</span> کم</span>
+      </div>
+    </div>
+  );
+}
+
+function MandiTrendPanel() {
+  const [crop, setCrop] = useState('گندم');
+  const [open, setOpen] = useState(true);
+  return (
+    <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 16, padding: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.6rem' }}>
+        <div style={{ fontWeight: 800, fontSize: '.92rem', color: '#f59e0b' }}>📊 30 روزہ منڈی قیمت گراف</div>
+        <button onClick={() => setOpen(!open)} style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: 20, padding: '3px 10px', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>
+          {open ? 'چھپائیں ✕' : 'دیکھیں ▼'}
+        </button>
+      </div>
+      {open && (
+        <>
+          <div style={{ display: 'flex', gap: '.35rem', flexWrap: 'wrap', marginBottom: '.7rem' }}>
+            {TREND_CROPS.map(c => (
+              <button key={c} onClick={() => setCrop(c)} style={{ background: crop === c ? '#f59e0b' : 'rgba(245,158,11,0.08)', color: crop === c ? '#000' : '#f59e0b', border: `1px solid ${crop === c ? '#f59e0b' : 'rgba(245,158,11,0.25)'}`, borderRadius: 20, padding: '3px 10px', fontSize: '.75rem', fontWeight: 700, cursor: 'pointer' }}>
+                {c}
+              </button>
+            ))}
+          </div>
+          <PriceTrendChart cropKey={crop} />
+          <div style={{ marginTop: '.4rem', fontSize: '.62rem', color: '#475569', direction: 'rtl' }}>
+            📌 ماخذ: پنجاب AMIS — نمونہ ڈیٹا برائے رہنمائی
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+
 function loadAlerts() {
   try { return JSON.parse(localStorage.getItem('dehati_price_alerts') || '[]'); } catch { return []; }
 }
 function saveAlerts(alerts) {
+
   localStorage.setItem('dehati_price_alerts', JSON.stringify(alerts));
 }
 
@@ -168,8 +278,12 @@ export default function PriceAlertPage() {
           <p style={{ opacity: .85, fontSize: '.82rem' }}>جب قیمت آپ کی حد تک پہنچے — فوری اطلاع پائیں</p>
         </div>
 
+        {/* 30-Day Mandi Price Trend Chart */}
+        <MandiTrendPanel />
+
         {/* Active alert count */}
         {triggeredCount > 0 && (
+
           <div style={{
             background: 'linear-gradient(135deg, var(--gold-100), #fffbeb)',
             border: '2px solid var(--gold)', borderRadius: 'var(--radius-md)',

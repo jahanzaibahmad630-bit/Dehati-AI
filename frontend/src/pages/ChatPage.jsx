@@ -400,9 +400,10 @@ export default function ChatPage() {
   const bottomRef       = useRef(null);
   const inputRef        = useRef(null);
   const abortRef        = useRef(null);
-  const speechEngineRef = useRef(null); // Upgraded speech engine
-  const { isOffline }   = useOffline();
-  const [searchParams]  = useSearchParams();
+  const speechEngineRef  = useRef(null);  // Speech engine instance
+  const isProcessingRef  = useRef(false);  // 300ms debounce lock — prevents duplicate submissions
+  const { isOffline }    = useOffline();
+  const [searchParams]   = useSearchParams();
 
   // Bug fix: keep a ref to always have latest messages so sendMessage
   // doesn't need 'messages' in its dep array (prevents stale closures)
@@ -433,6 +434,14 @@ export default function ChatPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Pre-warm mic on mount — caches permission so first tap is instant (<100ms)
+  useEffect(() => {
+    const warmUp = async () => {
+      try { await import('../utils/speech').then(m => m.requestHardwareMic()); } catch {}
+    };
+    warmUp();
+  }, []);
+
   // Cleanup on unmount — Stop speech engine before unmounting
   useEffect(() => {
     return () => {
@@ -441,7 +450,7 @@ export default function ChatPage() {
     };
   }, []);
 
-  // ── Voice input (Single-Pass High-Accuracy Engine — zero word duplication) ──────
+  // ── Voice input (Rural Mode: 3.5s silence + live transcription + zero duplication) ──
   const startListening = useCallback(async () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -449,10 +458,14 @@ export default function ChatPage() {
       return;
     }
 
-    // Pre-warm hardware mic & check permissions before opening overlay
+    // Set isListening=true IMMEDIATELY for 0ms visual feedback on touch
+    setIsListening(true);
+
+    // Pre-warm hardware mic (cached after first call — instant on 2nd+ tap)
     const { requestHardwareMic } = await import('../utils/speech');
     const micResult = await requestHardwareMic();
     if (micResult === 'denied') {
+      setIsListening(false);
       alert('مائیک کی اجازت دیں (Allow Microphone Access in Settings)');
       return;
     }
@@ -461,36 +474,49 @@ export default function ChatPage() {
     setIosError(false);
     setFinalSpeech('');
     setInterimText('');
+    isProcessingRef.current = false;
 
-    // Abort (not just stop) any previous engine — prevents InvalidStateError
+    // Stop any previous engine cleanly before starting new session
     try { speechEngineRef.current?.stop(); } catch {}
 
     const engine = createSpeechEngine({
       langKey: language,
-      singlePass: true, // ← KEY FIX: single-pass mode captures ONE clean sentence
-                        //   continuous=false, interimResults=false — eliminates
-                        //   quadratic word duplication ("فصل فصل فصل...")
+      ruralMode: true,       // Live interim + 3.5s silence auto-stop
+      silenceMs: 3500,       // 3.5s — rural farmers take natural pauses mid-sentence
 
-      onResult: (text) => {
-        const clean = correctUrduAgriPhonetics(text);
-        if (clean) {
-          setFinalSpeech(clean);
-          setInterimText('');
+      onInterim: (text) => {
+        // Live transcription: stream what the farmer is speaking into UI in real-time
+        if (!isProcessingRef.current) {
+          setInterimText(text);
+          setIsListening(true);
         }
-        setIsListening(false);
+      },
+
+      onFinalWord: (text) => {
+        // Called each time a final result arrives — REPLACE state, never append
+        if (!isProcessingRef.current) {
+          setFinalSpeech(text);
+          setInterimText('');
+          setIsListening(true);
+        }
       },
 
       onStopped: (finalText) => {
+        // 3.5s silence expired — finalize the transcript
+        if (isProcessingRef.current) return; // debounce: ignore duplicate fires
+        isProcessingRef.current = true;
         setIsListening(false);
+        setInterimText('');
         if (finalText) {
-          const clean = correctUrduAgriPhonetics(finalText);
-          setFinalSpeech(clean);
-          setInterimText('');
+          setFinalSpeech(finalText);
         }
+        // Release debounce lock after 300ms
+        setTimeout(() => { isProcessingRef.current = false; }, 300);
       },
 
       onError: (errType) => {
         setIsListening(false);
+        isProcessingRef.current = false;
         if (errType === 'permission_denied') {
           setShowMicOverlay(false);
           alert('مائیک کی اجازت دیں (Settings → Microphone → Allow)');

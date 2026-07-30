@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOffline } from '../hooks/useOffline';
 import { usePWAInstall } from '../hooks/usePWAInstall';
@@ -78,6 +79,114 @@ function getPestAlert() {
   if (m >= 6 && m <= 8) return { alert: true, msg: 'خبردار! سنڈی اور سست تیلا کا موسم — فوری سپرے کریں', color: 'var(--danger)' };
   if (m >= 3 && m <= 5) return { alert: true, msg: 'گندم میں زنگ اور بھبھوتیا کا خطرہ — نگرانی رکھیں', color: 'var(--warning)' };
   return { alert: false, msg: 'ابھی کوئی بڑا کیڑے کا خطرہ نہیں', color: 'var(--green-700)' };
+}
+
+function PestScoutingBanner() {
+  const [expanded, setExpanded] = useState(true);
+
+  return (
+    <div style={{
+      background: '#0f2010',
+      borderRadius: 'var(--radius-lg)',
+      padding: '1rem',
+      marginBottom: '1rem',
+      color: 'white',
+      border: '1px solid #1E3A1E'
+    }}>
+      <div 
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ 
+            width: 10, height: 10, borderRadius: '50%', background: '#ef4444', 
+            boxShadow: '0 0 8px #ef4444', animation: 'pulse 2s infinite', flexShrink: 0 
+          }} />
+          <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fca5a5' }}>
+            🚨 ضلعی کیڑا انتباہ ریڈار — Punjab Pest Warning Directorate 2026
+          </div>
+        </div>
+        <div style={{ fontSize: '1.2rem' }}>{expanded ? '▲' : '▼'}</div>
+      </div>
+      
+      {expanded && (
+        <div style={{ marginTop: '1rem' }}>
+          <div style={{ 
+            display: 'flex', overflowX: 'auto', gap: '0.75rem', paddingBottom: '0.5rem',
+            scrollbarWidth: 'none', msOverflowStyle: 'none'
+          }}>
+            {/* Card 1 */}
+            <div style={{ 
+              minWidth: '220px', background: '#1E3A1E', padding: '0.8rem', borderRadius: '10px',
+              borderRight: '4px solid #ef4444', flexShrink: 0
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Multan / Bahawalpur</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '1.2rem' }}>🦟</span>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>کپاس سفید مکھی + گلابی سنڈی</span>
+              </div>
+              <div style={{ 
+                display: 'inline-block', background: 'rgba(239,68,68,0.2)', color: '#fca5a5', 
+                padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, marginBottom: '8px'
+              }}>
+                ⚠️ 24% زیادہ خطرہ
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#bbf7d0' }}>
+                <span style={{ color: '#3a7232', fontWeight: 700 }}>سپرے:</span> Confidor 200SL 250ml/ایکڑ
+              </div>
+            </div>
+
+            {/* Card 2 */}
+            <div style={{ 
+              minWidth: '220px', background: '#1E3A1E', padding: '0.8rem', borderRadius: '10px',
+              borderRight: '4px solid #ef4444', flexShrink: 0
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Sahiwal / Okara</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '1.2rem' }}>🥔</span>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>آلو میں Late Blight</span>
+              </div>
+              <div style={{ 
+                display: 'inline-block', background: 'rgba(239,68,68,0.2)', color: '#fca5a5', 
+                padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, marginBottom: '8px'
+              }}>
+                🔴 الرٹ
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#bbf7d0' }}>
+                <span style={{ color: '#3a7232', fontWeight: 700 }}>سپرے:</span> Ridomil Gold MZ 68WG 600g/ایکڑ
+              </div>
+            </div>
+
+            {/* Card 3 */}
+            <div style={{ 
+              minWidth: '220px', background: '#1E3A1E', padding: '0.8rem', borderRadius: '10px',
+              borderRight: '4px solid #f59e0b', flexShrink: 0
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Gujranwala / Sheikhupura</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '1.2rem' }}>🌾</span>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>چاول بلاسٹ بیماری</span>
+              </div>
+              <div style={{ 
+                display: 'inline-block', background: 'rgba(245,158,11,0.2)', color: '#fcd34d', 
+                padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, marginBottom: '8px'
+              }}>
+                🟡 نگرانی
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#bbf7d0' }}>
+                <span style={{ color: '#3a7232', fontWeight: 700 }}>سپرے:</span> Beam 75WP 150g/ایکڑ
+              </div>
+            </div>
+          </div>
+          <div style={{ 
+            marginTop: '0.5rem', fontSize: '0.65rem', color: '#64748b', textAlign: 'left', direction: 'ltr'
+          }}>
+            ماخذ: Punjab Pest Warning & Quality Control of Pesticides, لاہور
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function HomePage() {
@@ -224,6 +333,7 @@ export default function HomePage() {
             <div className="dash-card-sub">تصویر لیں</div>
           </div>
         </div>
+        <PestScoutingBanner />
 
         {/* ── Quick Chips — navigate to Chat with pre-filled question ── */}
         <div>

@@ -388,54 +388,85 @@ router.get('/disease-catalog', (req, res) => {
   }
 });
 
-// ——— POST /api/ai/disease — 3-Tier ResNet50 Failover Leaf Disease Analyzer ——————
+// ——— POST /api/ai/disease — 3-Tier Confidence-Gated Leaf Scanner Pipeline ────────
 router.post('/disease', aiLimiter, optionalAuth, async (req, res) => {
   try {
     const { imageBase64, cropName, diseaseKey, mimeType = 'image/jpeg' } = req.body;
 
-    // TIER 1: ResNet50 PyTorch Model & Exact Agronomy DB Match
-    if (diseaseKey || (!imageBase64 && cropName)) {
-      const pred = modelInference.predictDisease(null, cropName, diseaseKey);
+    // ── Step 1: Run ResNet50 local inference against 306-class index ─────────
+    const tier1 = modelInference.predictDisease(imageBase64, cropName, diseaseKey);
+
+    console.log(
+      `[Scanner] ResNet50 → "${tier1.disease_en}" | ` +
+      `Confidence: ${tier1.match_score} | ` +
+      `Gate: ${tier1.meetsThreshold ? '✅ HIGH (≥85%)' : '⚠️  LOW (<85%)'} | ` +
+      `Local DB: ${tier1.hasLocalRecord ? '✓ Match' : '✗ Unknown'}`
+    );
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // TIER 1: HIGH CONFIDENCE + LOCAL MATCH
+    // Confidence >= 85%  AND  agronomyDatabase.json has a verified prescription.
+    // Return instantly. Zero Cloud API call. Zero latency. Zero cost.
+    // ══════════════════════════════════════════════════════════════════════════
+    if (tier1.meetsThreshold && tier1.hasLocalRecord) {
+      console.log(`[Tier-1 ✅ HIGH CONFIDENCE] ${tier1.localKey} → ${tier1.disease_en} (${tier1.match_score})`);
       return res.json({
-        tier: 1,
-        source: 'ResNet50 PyTorch Model • Agronomy DB',
-        model_attribution: `${pred.model_name} • ${pred.match_score}`,
-        model_weights: pred.model_weights,
-        match_score: pred.match_score,
-        disease_ur: pred.disease_ur,
-        disease_en: pred.disease_en,
-        disease: pred.disease,
-        cause: pred.cause,
-        treatment: pred.treatment,
-        prevention: pred.prevention,
-        withholding_period_days: pred.withholding_period_days,
-        organic_alternative: pred.organic_alternative,
-        medicines: pred.medicines
+        tier:                    1,
+        source:                  'local_high_confidence',
+        source_label:            `✓ Verified ResNet50 Local Model • High Confidence Match (${tier1.match_score})`,
+        confidence:              tier1.confidenceRaw,
+        model_attribution:       tier1.model_attribution,
+        model_weights:           tier1.model_weights,
+        match_score:             tier1.match_score,
+        disease_ur:              tier1.disease_ur,
+        disease_en:              tier1.disease_en,
+        disease:                 tier1.disease,
+        cause:                   tier1.cause,
+        treatment:               tier1.treatment,
+        prevention:              tier1.prevention,
+        withholding_period_days: tier1.withholding_period_days,
+        organic_alternative:     tier1.organic_alternative,
+        medicines:               tier1.medicines
       });
     }
 
-    // TIER 2: Hybrid Vision AI (Claude 3.5 Sonnet + ResNet50 Feature Validation)
+    // ══════════════════════════════════════════════════════════════════════════
+    // TIER 2: LOW CONFIDENCE OR UNKNOWN DISEASE → CLOUD VISION AI
+    // Fires when: confidence < 85%  OR  disease not in agronomyDatabase.json.
+    // Check if device is online (claude client available) before calling Cloud.
+    // Active Learning: saves AI result → agronomyDatabase.json for future hits.
+    // ══════════════════════════════════════════════════════════════════════════
     if (imageBase64 && claude) {
-      // Run local ResNet50 inference for baseline matching
-      const localPred = modelInference.predictDisease(imageBase64, cropName);
+      console.log(
+        `[Tier-2 🤖 CLOUD VISION] Confidence ${tier1.match_score} < 85% or unknown — ` +
+        `delegating to Claude Vision AI for high-accuracy analysis`
+      );
 
       const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-      const safeMime = ALLOWED_MIME.includes(mimeType) ? mimeType : 'image/jpeg';
-      const month  = new Date().getMonth() + 1;
-      const season = (month >= 5 && month <= 10) ? 'خریف (Kharif)' : 'ربیع (Rabi)';
-      const cropText = cropName ? `Crop specified by farmer: ${cropName}\n` : 'Crop: unspecified — identify crop from leaf visual\n';
+      const safeMime     = ALLOWED_MIME.includes(mimeType) ? mimeType : 'image/jpeg';
+      const month        = new Date().getMonth() + 1;
+      const season       = (month >= 5 && month <= 10) ? 'خریف (Kharif)' : 'ربیع (Rabi)';
+      const cropText     = cropName
+        ? `Crop specified by farmer: ${cropName}\n`
+        : 'Crop: unspecified — identify crop from leaf visual\n';
 
-      const samplePakistaniMeds = "Tilt 250EC, Nativo 75WG, Amistar Top, Ridomil Gold MZ 68WG, Confidor 200SL, Bavistin, Indofil M-45, Cuprocaffaro, Folicur 250EW, Score 250EC, Daconil, Antracol 70WP, Kumulus DF, Beam 75WP, Acrobat MZ, Curzate M8";
+      const samplePakistaniMeds =
+        'Tilt 250EC, Nativo 75WG, Amistar Top, Ridomil Gold MZ 68WG, ' +
+        'Confidor 200SL, Bavistin, Indofil M-45, Cuprocaffaro, ' +
+        'Folicur 250EW, Score 250EC, Daconil, Antracol 70WP, ' +
+        'Kumulus DF, Beam 75WP, Acrobat MZ, Curzate M8';
 
-      const systemPrompt = `You are Dr. Zara — senior plant pathologist with 20+ years of experience in Punjab & Sindh Pakistan crops.
+      const systemPrompt =
+`You are Dr. Zara — senior plant pathologist with 20+ years in Punjab & Sindh Pakistan.
 Diagnose the crop disease from the leaf image and prescribe localized Pakistani remedies.
 
-ResNet50 Baseline Prediction: ${localPred.disease_en} (${localPred.match_score}).
+ResNet50 Low-Confidence Baseline: ${tier1.disease_en} (${tier1.match_score} — below 85% threshold).
 
-CRITICAL PRODUCT DATABASE CONTEXT:
-Always prioritize Pakistani registered brands: ${samplePakistaniMeds}.
+CRITICAL PRODUCT DATABASE:
+Always use Pakistani registered brands: ${samplePakistaniMeds}.
+Include PKR price estimates (Rs.) and withholding/pre-harvest interval (PHI) days.
 
-Respond strictly in valid JSON format:
+Respond strictly in valid JSON:
 {
   "disease_ur": "بیان کردہ بیماری کا اردو نام",
   "disease_en": "English Disease Name",
@@ -446,23 +477,23 @@ Respond strictly in valid JSON format:
   "organic_alternative": "دیسی علاج: نیم کا تیل 5 ملی لیٹر فی لیٹر پانی يا لکڑی کی راکھ",
   "medicines": [
     {
-      "brand": "Ridomil Gold MZ 68WG",
-      "active": "Metalaxyl-M 4% + Mancozeb 64%",
-      "dosage": "600g fi acre",
+      "brand": "Nativo 75WG",
+      "active": "Tebuconazole 50% + Trifloxystrobin 25%",
+      "dosage": "80 گرام فی ایکڑ",
       "method": "سپرے",
-      "withholding_period_days": 14,
-      "suppliers": ["Syngenta"],
-      "estimated_price_pkr": "Rs. 1,650 - 2,100"
+      "withholding_period_days": 30,
+      "suppliers": ["Bayer"],
+      "estimated_price_pkr": "Rs. 1,800 - 2,300"
     }
   ]
 }`;
 
-      const promptText = `Season: ${season}\n${cropText}\nAnalyze this crop image and output the requested JSON response with Pakistan agronomy remedies.`;
+      const promptText = `Season: ${season}\n${cropText}\nAnalyze this leaf image. ResNet50 was uncertain (${tier1.match_score}). Provide precise diagnosis and Pakistani agronomy prescription in the JSON format above.`;
 
       try {
         const response = await claude.messages.create({
-          model: CLAUDE_MODEL_VIS,
-          max_tokens: 800,
+          model:      CLAUDE_MODEL_VIS,
+          max_tokens: 900,
           system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
           messages: [{
             role: 'user',
@@ -474,60 +505,82 @@ Respond strictly in valid JSON format:
         });
 
         const rawText = response.content?.[0]?.text ?? '';
-        let parsed = null;
+        let parsed    = null;
         try {
-          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
-        } catch (e) {}
+          const m = rawText.match(/\{[\s\S]*\}/);
+          if (m) parsed = JSON.parse(m[0]);
+        } catch (_) {}
 
         if (parsed && parsed.disease_ur) {
+          // ── Active Learning Auto-Cache ──────────────────────────────────────
+          // Save AI result to agronomyDatabase.json — next time same disease
+          // appears it will be served from Tier-1 with zero Cloud cost.
+          const aiKey = (parsed.disease_en || tier1.disease_en || '')
+            .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+          modelInference.saveToAgronomyDb(aiKey, parsed);
+
+          console.log(`[Tier-2 ✅ CLOUD SUCCESS] "${parsed.disease_en}" — cached to agronomyDatabase.json`);
           return res.json({
-            tier: 2,
-            source: 'ResNet50 PyTorch + Vision AI',
-            model_attribution: `ResNet50 PyTorch Model • ${localPred.match_score}`,
-            model_weights: 'ResNet50-Plant-model-80.pth',
-            match_score: localPred.match_score,
-            disease: `${parsed.disease_ur} (${parsed.disease_en || ''})`,
-            disease_ur: parsed.disease_ur,
-            disease_en: parsed.disease_en || '',
-            cause: parsed.cause || 'پھپھوندی / پاتھوجن',
-            treatment: parsed.treatment || 'مناسب پھپھوندی کش دوائی کا سپرے کریں۔',
-            prevention: parsed.prevention || 'کھیت صاف رکھیں اور متوازن کھاد دیں۔',
+            tier:                    2,
+            source:                  'ai_vision',
+            source_label:            `🤖 AI Vision Analysis (ResNet50 ${tier1.match_score} — Low Confidence → Cloud Verified)`,
+            confidence:              tier1.confidenceRaw,
+            model_attribution:       `ResNet50 + Claude Vision • ${tier1.match_score} Baseline → AI Verified`,
+            model_weights:           'ResNet50-Plant-model-80.pth',
+            match_score:             tier1.match_score,
+            disease:                 `${parsed.disease_ur} (${parsed.disease_en || ''})`,
+            disease_ur:              parsed.disease_ur,
+            disease_en:              parsed.disease_en || '',
+            cause:                   parsed.cause                || 'پھپھوندی / پاتھوجن',
+            treatment:               parsed.treatment            || 'مناسب پھپھوندی کش دوائی کا سپرے کریں۔',
+            prevention:              parsed.prevention           || 'کھیت صاف رکھیں اور متوازن کھاد دیں۔',
             withholding_period_days: parsed.withholding_period_days || 14,
-            organic_alternative: parsed.organic_alternative || 'دیسی علاج: نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر احتیاطی سپرے کریں۔',
-            medicines: parsed.medicines || []
+            organic_alternative:     parsed.organic_alternative  || 'دیسی علاج: نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر احتیاطی سپرے کریں۔',
+            medicines:               parsed.medicines             || []
           });
         }
       } catch (aiErr) {
-        console.warn('Tier 2 Vision AI error, falling back to Tier 3:', aiErr.message);
+        console.warn('[Tier-2] Claude Vision error — falling to Tier-3 offline:', aiErr.message);
       }
     }
 
-    // TIER 3: Robust Local Fallback (Guaranteed non-failing ResNet50 local prediction)
-    const fallbackPred = modelInference.predictDisease(imageBase64, cropName);
+    // ══════════════════════════════════════════════════════════════════════════
+    // TIER 3: OFFLINE FALLBACK
+    // Device is offline  OR  Claude unavailable  OR  Cloud call failed.
+    // Serve best local ResNet50 estimate with prominent offline warning badge.
+    // ══════════════════════════════════════════════════════════════════════════
+    const offlineReason = !imageBase64
+      ? 'No image provided'
+      : !claude
+        ? 'Cloud AI not configured'
+        : 'Cloud AI unreachable';
 
+    console.log(`[Tier-3 📱 OFFLINE] "${tier1.disease_en}" — ${offlineReason} | Confidence: ${tier1.match_score}`);
     res.json({
-      tier: 3,
-      source: 'ResNet50 PyTorch Model (Offline Fallback)',
-      model_attribution: `${fallbackPred.model_name} • ${fallbackPred.match_score}`,
-      model_weights: fallbackPred.model_weights,
-      match_score: fallbackPred.match_score,
-      disease: fallbackPred.disease,
-      disease_ur: fallbackPred.disease_ur,
-      disease_en: fallbackPred.disease_en,
-      cause: fallbackPred.cause,
-      treatment: fallbackPred.treatment,
-      prevention: fallbackPred.prevention,
-      withholding_period_days: fallbackPred.withholding_period_days,
-      organic_alternative: fallbackPred.organic_alternative,
-      medicines: fallbackPred.medicines
+      tier:                    3,
+      source:                  'offline_fallback',
+      source_label:            `📱 آف لائن موڈ: اندازاً تجویز — ${tier1.match_score} اعتماد (تصدیق کریں)`,
+      confidence:              tier1.confidenceRaw,
+      model_attribution:       `${tier1.model_name} • ${tier1.match_score} (Offline / Low Confidence)`,
+      model_weights:           tier1.model_weights,
+      match_score:             tier1.match_score,
+      disease:                 tier1.disease,
+      disease_ur:              tier1.disease_ur,
+      disease_en:              tier1.disease_en,
+      cause:                   tier1.cause,
+      treatment:               tier1.treatment,
+      prevention:              tier1.prevention,
+      withholding_period_days: tier1.withholding_period_days,
+      organic_alternative:     tier1.organic_alternative,
+      medicines:               tier1.medicines
     });
 
   } catch (err) {
-    console.error('Disease endpoint critical error:', err.message);
+    console.error('[Disease endpoint] Critical error:', err.message);
     res.status(500).json({ error: 'تجزیہ ناکام — دوبارہ کوشش کریں' });
   }
 });
+
 
 // ——— POST /api/ai/fertilizer ————————————————————————————————————————————————
 router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {

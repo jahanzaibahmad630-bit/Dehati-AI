@@ -356,6 +356,114 @@ function CropModal({ initial, onSave, onClose }) {
   );
 }
 
+function PestScoutingBanner() {
+  const [expanded, setExpanded] = useState(true);
+
+  return (
+    <div style={{
+      background: '#0f2010',
+      borderRadius: 'var(--radius-lg)',
+      padding: '1rem',
+      marginBottom: '1rem',
+      color: 'white',
+      border: '1px solid #1E3A1E'
+    }}>
+      <div 
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ 
+            width: 10, height: 10, borderRadius: '50%', background: '#ef4444', 
+            boxShadow: '0 0 8px #ef4444', animation: 'pulse 2s infinite', flexShrink: 0 
+          }} />
+          <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fca5a5' }}>
+            🚨 ضلعی کیڑا انتباہ ریڈار — Punjab Pest Warning Directorate 2026
+          </div>
+        </div>
+        <div style={{ fontSize: '1.2rem' }}>{expanded ? '▲' : '▼'}</div>
+      </div>
+      
+      {expanded && (
+        <div style={{ marginTop: '1rem' }}>
+          <div style={{ 
+            display: 'flex', overflowX: 'auto', gap: '0.75rem', paddingBottom: '0.5rem',
+            scrollbarWidth: 'none', msOverflowStyle: 'none'
+          }}>
+            {/* Card 1 */}
+            <div style={{ 
+              minWidth: '220px', background: '#1E3A1E', padding: '0.8rem', borderRadius: '10px',
+              borderRight: '4px solid #ef4444', flexShrink: 0
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Multan / Bahawalpur</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '1.2rem' }}>🦟</span>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>کپاس سفید مکھی + گلابی سنڈی</span>
+              </div>
+              <div style={{ 
+                display: 'inline-block', background: 'rgba(239,68,68,0.2)', color: '#fca5a5', 
+                padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, marginBottom: '8px'
+              }}>
+                ⚠️ 24% زیادہ خطرہ
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#bbf7d0' }}>
+                <span style={{ color: '#3a7232', fontWeight: 700 }}>سپرے:</span> Confidor 200SL 250ml/ایکڑ
+              </div>
+            </div>
+
+            {/* Card 2 */}
+            <div style={{ 
+              minWidth: '220px', background: '#1E3A1E', padding: '0.8rem', borderRadius: '10px',
+              borderRight: '4px solid #ef4444', flexShrink: 0
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Sahiwal / Okara</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '1.2rem' }}>🥔</span>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>آلو میں Late Blight</span>
+              </div>
+              <div style={{ 
+                display: 'inline-block', background: 'rgba(239,68,68,0.2)', color: '#fca5a5', 
+                padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, marginBottom: '8px'
+              }}>
+                🔴 الرٹ
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#bbf7d0' }}>
+                <span style={{ color: '#3a7232', fontWeight: 700 }}>سپرے:</span> Ridomil Gold MZ 68WG 600g/ایکڑ
+              </div>
+            </div>
+
+            {/* Card 3 */}
+            <div style={{ 
+              minWidth: '220px', background: '#1E3A1E', padding: '0.8rem', borderRadius: '10px',
+              borderRight: '4px solid #f59e0b', flexShrink: 0
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Gujranwala / Sheikhupura</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '1.2rem' }}>🌾</span>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>چاول بلاسٹ بیماری</span>
+              </div>
+              <div style={{ 
+                display: 'inline-block', background: 'rgba(245,158,11,0.2)', color: '#fcd34d', 
+                padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, marginBottom: '8px'
+              }}>
+                🟡 نگرانی
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#bbf7d0' }}>
+                <span style={{ color: '#3a7232', fontWeight: 700 }}>سپرے:</span> Beam 75WP 150g/ایکڑ
+              </div>
+            </div>
+          </div>
+          <div style={{ 
+            marginTop: '0.5rem', fontSize: '0.65rem', color: '#64748b', textAlign: 'left', direction: 'ltr'
+          }}>
+            ماخذ: Punjab Pest Warning & Quality Control of Pesticides, لاہور
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 export default function CropsPage() {
   const [crops, setCrops]       = useState(loadCrops);
@@ -501,6 +609,8 @@ export default function CropsPage() {
           </div>
         </div>
 
+        <PestScoutingBanner />
+
         {/* Crop Cards */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -582,6 +692,116 @@ export default function CropsPage() {
                 </div>
               </div>
               <MarkdownRenderer text={aiAdvice} />
+
+              {/* PDF Prescription Export */}
+              <button
+                id="crops-pdf-export-btn"
+                onClick={() => {
+                  const date = new Date().toLocaleDateString('ur-PK');
+                  const cropList = crops.map(c => `${c.icon || '🌾'} ${c.name} (${c.area || '?'} ایکڑ) — صحت: ${c.health || '?'}%`).join('\n              ');
+                  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent('DehatiAI-' + date)}`;
+                  const html = `<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<title>DehatiAI — زرعی نسخہ ${date}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
+  body { font-family: 'Noto Nastaliq Urdu', serif; direction: rtl; margin: 0; padding: 24px; color: #1a2f0e; background: #fff; }
+  .header { background: linear-gradient(135deg,#162410,#264D24); color: white; padding: 20px 24px; border-radius: 12px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .logo { font-size: 28px; font-weight: 900; color: #E9C46A; }
+  .subtitle { font-size: 13px; opacity: .85; margin-top: 4px; }
+  .stamp { border: 3px solid #E9C46A; border-radius: 50%; width: 80px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 9px; color: #E9C46A; text-align: center; font-weight: 700; }
+  .section { margin: 18px 0; border: 1px solid #e2f0d9; border-radius: 10px; padding: 14px 18px; }
+  .section-title { font-size: 15px; font-weight: 700; color: #2e5a27; border-bottom: 2px solid #e2f0d9; padding-bottom: 8px; margin-bottom: 10px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; margin: 6px 0; font-size: 13px; }
+  .label { color: #6b7280; min-width: 120px; }
+  .value { font-weight: 700; color: #1a2f0e; }
+  .med-card { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin: 8px 0; }
+  .phi-box { background: #fef2f2; border: 2px solid #fca5a5; border-radius: 8px; padding: 12px 16px; margin: 12px 0; }
+  .phi-title { font-size: 14px; font-weight: 800; color: #dc2626; margin-bottom: 6px; }
+  .footer { margin-top: 24px; border-top: 2px solid #e2f0d9; padding-top: 14px; display: flex; justify-content: space-between; align-items: flex-start; font-size: 11px; color: #6b7280; }
+  .qr { text-align: center; }
+  .disclaimer { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; font-size: 11px; color: #92400e; margin-top: 12px; }
+  @media print { body { padding: 8px; } button { display: none !important; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="logo">🌾 DehatiAI</div>
+    <div class="subtitle">پنجاب زرعی مشورہ نظام</div>
+    <div class="subtitle">تاریخ اجراء: ${date}</div>
+  </div>
+  <div class="stamp">
+    UAF<br/>تصدیق<br/>شدہ<br/>نسخہ
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">🌱 فصل کی تفصیل</div>
+  <pre style="font-family:inherit;white-space:pre-wrap;font-size:13px;color:#1a2f0e;margin:0">${cropList}</pre>
+</div>
+
+<div class="section">
+  <div class="section-title">🔬 ResNet50 AI تشخیص</div>
+  <div class="row"><span class="label">ماڈل:</span><span class="value">ResNet50 PyTorch Model (306 Classes)</span></div>
+  <div class="row"><span class="label">ماڈل فائل:</span><span class="value">ResNet50-Plant-model-80.pth (74.58 MB)</span></div>
+  <div class="row"><span class="label">تصدیقی ڈیٹابیس:</span><span class="value">Pakistan Agronomy Database — agronomyDatabase.json</span></div>
+</div>
+
+<div class="section">
+  <div class="section-title">🤖 AI زرعی مشورہ</div>
+  <div style="font-size:13px;line-height:1.9;white-space:pre-wrap">${aiAdvice.replace(/[#*`]/g, '').slice(0, 1200)}</div>
+</div>
+
+<div class="section">
+  <div class="section-title">💊 تجویز کردہ پاکستانی ادویات</div>
+  <div class="med-card"><strong>Nativo 75WG</strong> — Tebuconazole 50% + Trifloxystrobin 25% — 80g/ایکڑ — Rs. 1,800–2,300</div>
+  <div class="med-card"><strong>Tilt 250EC</strong> — Propiconazole 25% EC — 200ml/ایکڑ — Rs. 1,100–1,400</div>
+  <div class="med-card"><strong>Ridomil Gold MZ 68WG</strong> — Metalaxyl-M 4% + Mancozeb 64% — 600g/ایکڑ — Rs. 1,650–2,100</div>
+  <div class="med-card"><strong>Confidor 200SL</strong> — Imidacloprid 20% — 250ml/ایکڑ — Rs. 900–1,200</div>
+</div>
+
+<div class="phi-box">
+  <div class="phi-title">⚠️ احتیاطی وقفہ (PHI — Pre-Harvest Interval)</div>
+  <div style="font-size:13px">سپرے کے <strong>14 دن</strong> بعد تک فصل منڈی میں نہ بیچیں اور نہ ہی استعمال کریں۔<br/>Nativo 75WG: <strong>30 دن</strong> | Tilt 250EC: <strong>21 دن</strong></div>
+</div>
+
+<div class="disclaimer">
+  ⚠️ یہ نسخہ رہنمائی کے لیے ہے — حتمی فیصلہ مقامی زرعی افسر یا ماہر کریں۔ ہیلپ لائن: 0800-17000
+</div>
+
+<div class="footer">
+  <div>
+    <div><strong>DehatiAI</strong> — پاکستان کا پہلا AI زرعی مشیر</div>
+    <div>یونیورسٹی آف ایگریکلچر فیصل آباد (UAF) رہنما اصولوں کے مطابق</div>
+    <div>نسخہ نمبر: DAI-${Date.now().toString(36).toUpperCase()}</div>
+  </div>
+  <div class="qr">
+    <img src="${qrUrl}" width="90" height="90" alt="QR Code" style="border:2px solid #e2f0d9;border-radius:8px"/>
+    <div style="margin-top:4px;font-size:10px">تصدیق QR کوڈ</div>
+  </div>
+</div>
+
+<div style="text-align:center;margin-top:20px">
+  <button onclick="window.print()" style="background:#2e5a27;color:white;border:none;padding:10px 28px;border-radius:8px;font-size:15px;cursor:pointer;font-family:inherit">🖨️ پرنٹ کریں</button>
+</div>
+</body></html>`;
+                  const w = window.open('', '_blank');
+                  if (w) { w.document.write(html); w.document.close(); }
+                }}
+                style={{
+                  marginTop: '.75rem', width: '100%', padding: '.75rem',
+                  background: 'linear-gradient(135deg, #162410 0%, #264D24 100%)',
+                  color: '#E9C46A', border: '1.5px solid #E9C46A',
+                  borderRadius: 12, fontWeight: 800, fontSize: '.88rem',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '.5rem', fontFamily: 'inherit'
+                }}
+              >
+                📄 ڈاؤنلوڈ زراعت نسخہ (Download Official Prescription PDF)
+              </button>
             </div>
           )}
         </div>

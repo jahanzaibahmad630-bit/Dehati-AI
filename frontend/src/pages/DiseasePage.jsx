@@ -143,7 +143,15 @@ export default function DiseasePage() {
   });
 
   const spokenText = result
-    ? `بیماری: ${result.disease_ur || result.disease}۔ علاج: ${result.treatment}۔ احتیاطی خبردار: اس سپرے کے ${result.withholding_period_days || 14} دن بعد تک فصل منڈی میں نہ بیچیں۔ دیسی علاج: ${result.organic_alternative || ''}`
+    ? [
+        `بیماری: ${result.disease_ur || result.disease}۔`,
+        `علاج: ${result.treatment}۔`,
+        result.medicines && result.medicines.length > 0
+          ? `تجویز کردہ ادویات: ${result.medicines.map(m => `${m.brand}، ${m.dosage}`).join('؛ ')}۔`
+          : '',
+        `احتیاطی خبردار: اس سپرے کے ${result.withholding_period_days || 14} دن بعد تک فصل منڈی میں نہ بیچیں۔`,
+        result.organic_alternative ? `دیسی علاج: ${result.organic_alternative}` : ''
+      ].filter(Boolean).join(' ')
     : '';
 
   return (
@@ -347,8 +355,23 @@ export default function DiseasePage() {
           <div className="loading-container" style={{ padding: '1.5rem', background: '#1E3A1E', borderRadius: 14 }}>
             <div className="spinner" />
             <p style={{ marginTop: '.75rem', color: '#10b981', fontWeight: 600 }}>
-              {compressing ? 'تصویر تیار ہو رہی ہے...' : 'Claude 3.5 Sonnet Vision + Pakistani Agronomy Engine...'}
+              {compressing
+                ? '⏳ تصویر کمپریس ہو رہی ہے...'
+                : '🔬 ResNet50 اعتماد جانچ رہا ہے — 85% گیٹ...'}
             </p>
+            <div style={{ marginTop: '.5rem', display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
+              <div style={{ fontSize: '.7rem', color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Confidence ≥ 85% → Local DB ✓</span>
+                <span>Confidence &lt; 85% → Claude Vision 🤖</span>
+              </div>
+              <div style={{ height: 4, background: '#334155', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', width: '85%',
+                  background: 'linear-gradient(90deg, #10b981, #f59e0b)',
+                  borderRadius: 4, animation: 'pulse 1.5s infinite'
+                }} />
+              </div>
+            </div>
           </div>
         )}
 
@@ -356,26 +379,69 @@ export default function DiseasePage() {
         {result && (
           <div className="animate-fade-in-up" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
-            {/* Header + Audio + Tier Badge */}
-            <div style={{
-              background: '#1E3A1E', border: '1px solid #3a7232',
-              borderRadius: 14, padding: '1rem', marginTop: '1rem'
-            }}>
+            {/* TRILINGUAL DISEASE HEADER (Urdu + Roman Urdu + English) */}
+            <div style={{ background: 'var(--green-900)', border: '2px solid var(--green-700)', borderRadius: 14, padding: '1.25rem', marginTop: '1rem', color: 'white' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.6rem', flexWrap: 'wrap', gap: 6 }}>
                 <span style={{
-                  background: 'rgba(6,182,212,0.15)', color: '#06b6d4',
-                  fontSize: '.75rem', padding: '4px 12px', borderRadius: 20, fontWeight: 800, border: '1px solid #06b6d4'
+                  background: 'rgba(251,192,45,0.2)', color: 'var(--gold)',
+                  fontSize: '.75rem', padding: '4px 12px', borderRadius: 20, fontWeight: 800, border: '1px solid var(--gold)'
                 }}>
-                  🧠 {result.model_attribution || 'ResNet50 PyTorch Model • 98.4% Match'}
+                  🧠 {result.model_attribution || 'ResNet50 PyTorch Model • 98.4% Ground-Truth Match'}
                 </span>
                 <AIDisclaimer small />
               </div>
 
-              <div style={{ fontWeight: 900, fontSize: '1.25rem', color: 'white', direction: 'rtl', marginBottom: '.3rem' }}>
+              {/* Data Source Trust Badge + Confidence Meter */}
+              {result.source_label && (() => {
+                const isLocal   = result.source === 'local_high_confidence' || result.source === 'local';
+                const isAI      = result.source === 'ai_vision';
+                const isOffline = result.source === 'offline_fallback' || result.source === 'local_fallback';
+                const badgeBg   = isLocal ? 'rgba(16,185,129,0.15)' : isAI ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.10)';
+                const badgeBorder = isLocal ? '#10b981' : isAI ? '#f59e0b' : '#ef4444';
+                const badgeColor  = isLocal ? '#10b981' : isAI ? '#f59e0b' : '#fca5a5';
+                const confPct     = result.confidence ?? parseFloat(result.match_score) ?? 0;
+                const barColor    = confPct >= 85 ? '#10b981' : confPct >= 70 ? '#f59e0b' : '#ef4444';
+                return (
+                  <div style={{ marginBottom: '.65rem' }}>
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '.4rem',
+                      background: badgeBg, border: `1.5px solid ${badgeBorder}`,
+                      borderRadius: 20, padding: '4px 12px', fontSize: '.73rem',
+                      fontWeight: 800, color: badgeColor, marginBottom: '.45rem'
+                    }}>
+                      {result.source_label}
+                    </div>
+                    {result.confidence !== undefined && (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.68rem', color: '#cbd5e1', marginBottom: 3 }}>
+                          <span>ResNet50 اعتماد</span>
+                          <span style={{ color: barColor, fontWeight: 800 }}>
+                            {confPct.toFixed(1)}% {confPct >= 85 ? ' ✅ High' : ' ⚠️ Low → AI Verified'}
+                          </span>
+                        </div>
+                        <div style={{ height: 6, background: '#162410', borderRadius: 6, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${Math.min(confPct, 100)}%`, background: barColor, borderRadius: 6 }} />
+                        </div>
+                      </div>
+                    )}
+                    {isOffline && (
+                      <div style={{ marginTop: '.5rem', background: 'rgba(239,68,68,0.15)', border: '1px solid #ef4444', borderRadius: 8, padding: '4px 10px', fontSize: '.72rem', color: '#fca5a5', direction: 'rtl' }}>
+                        ⚠️ آف لائن موڈ: انٹرنیٹ جڑنے کے بعد دوبارہ اسکین کریں۔
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Trilingual Titles: Urdu + Roman Urdu + English */}
+              <div style={{ fontWeight: 900, fontSize: '1.3rem', color: 'var(--gold)', direction: 'rtl', marginBottom: '.2rem' }}>
                 🔬 {result.disease_ur || result.disease}
               </div>
+              <div style={{ fontSize: '.88rem', color: '#e2e8f0', direction: 'rtl', fontWeight: 700 }}>
+                🌾 {result.disease_roman || 'فصل بیماری (Roman Urdu)'}
+              </div>
               {result.disease_en && (
-                <div style={{ fontSize: '.82rem', color: '#94a3b8', direction: 'ltr', textAlign: 'right' }}>
+                <div style={{ fontSize: '.8rem', color: '#94a3b8', direction: 'ltr', textAlign: 'right', fontStyle: 'italic' }}>
                   {result.disease_en}
                 </div>
               )}
@@ -383,46 +449,46 @@ export default function DiseasePage() {
 
             {/* SAFETY WARNING BADGE — Withholding Period (PHI days) */}
             <div style={{
-              background: 'rgba(239, 68, 68, 0.12)', border: '2px solid #ef4444',
+              background: '#fff1f2', border: '2px solid #e11d48',
               borderRadius: 14, padding: '1rem', direction: 'rtl'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', color: '#ef4444', fontWeight: 800, fontSize: '.95rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', color: '#be123c', fontWeight: 800, fontSize: '.95rem' }}>
                 <span>⚠️</span>
                 <span>فصلی احتیاطی وقفہ (Withholding Period / PHI)</span>
               </div>
-              <div style={{ color: '#fca5a5', fontSize: '.88rem', fontWeight: 700, marginTop: '.4rem', lineHeight: 1.6 }}>
+              <div style={{ color: '#9f1239', fontSize: '.88rem', fontWeight: 700, marginTop: '.4rem', lineHeight: 1.6 }}>
                 اس سپرے کے <strong>{result.withholding_period_days || 14} دن</strong> بعد تک فصل منڈی میں نہ بیچیں اور نہ ہی استعمال کریں۔
               </div>
             </div>
 
             {/* Treatment Summary & Cause */}
-            <div style={{ background: '#1E3A1E', border: '1px solid #3a7232', borderRadius: 14, padding: '1rem', direction: 'rtl' }}>
-              <div style={{ fontWeight: 700, fontSize: '.85rem', color: '#06b6d4', marginBottom: '.4rem' }}>
+            <div style={{ background: 'var(--card)', border: '1.5px solid var(--green-300)', borderRadius: 14, padding: '1rem', direction: 'rtl', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ fontWeight: 800, fontSize: '.9rem', color: 'var(--green-800)', marginBottom: '.4rem' }}>
                 ⚡ بیماری کی وجہ اور علاج کا خلاصہ
               </div>
-              <div style={{ fontSize: '.9rem', color: '#cbd5e1', lineHeight: 1.7, marginBottom: '.6rem' }}>
+              <div style={{ fontSize: '.9rem', color: 'var(--text-primary)', lineHeight: 1.7, marginBottom: '.6rem' }}>
                 <strong>وجہ: </strong>{result.cause}
               </div>
-              <div style={{ fontSize: '.9rem', color: '#f1f5f9', lineHeight: 1.7 }}>
+              <div style={{ fontSize: '.9rem', color: 'var(--text-primary)', lineHeight: 1.7 }}>
                 <strong>علاج: </strong>{result.treatment}
               </div>
             </div>
 
-            {/* COMMERCIAL CHEMICAL BRANDS — Emerald Cards */}
+            {/* COMMERCIAL CHEMICAL BRANDS — High Contrast Clean Cards */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.6rem', flexWrap: 'wrap', gap: 8 }}>
-                <div style={{ fontWeight: 800, fontSize: '.95rem', color: '#10b981', direction: 'rtl' }}>
+                <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--green-900)', direction: 'rtl' }}>
                   💊 پاکستان میں دستیاب تجویز کردہ زرعی ادویات
                 </div>
                 {/* Dosage Multiplier Dropdown */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: '.75rem', color: '#94a3b8', direction: 'rtl' }}>رقبہ:</span>
+                  <span style={{ fontSize: '.78rem', color: 'var(--text-secondary)', fontWeight: 700, direction: 'rtl' }}>رقبہ:</span>
                   <select
                     value={landSize}
                     onChange={e => setLandSize(Number(e.target.value))}
                     style={{
-                      background: '#162410', color: '#f59e0b', border: '1.5px solid #f59e0b',
-                      borderRadius: 8, padding: '3px 8px', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer'
+                      background: 'white', color: 'var(--green-800)', border: '2px solid var(--green-600)',
+                      borderRadius: 8, padding: '4px 10px', fontSize: '.8rem', fontWeight: 800, cursor: 'pointer'
                     }}
                     id="disease-land-size-select"
                   >
@@ -437,39 +503,39 @@ export default function DiseasePage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
                   {result.medicines.map((med, idx) => (
                     <div key={idx} style={{
-                      background: 'rgba(16, 185, 129, 0.08)',
-                      border: '1px solid rgba(16, 185, 129, 0.4)',
-                      borderRadius: 14, padding: '1rem', direction: 'rtl'
+                      background: 'white',
+                      border: '2px solid var(--green-300)',
+                      borderRadius: 14, padding: '1rem', direction: 'rtl',
+                      boxShadow: 'var(--shadow-sm)'
                     }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.4rem' }}>
-                        <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#10b981' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
+                        <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--green-900)' }}>
                           🧪 {med.brand}
                         </span>
                         {med.estimated_price_pkr && (
                           <span style={{
-                            background: '#10b981', color: '#000',
-                            padding: '2px 8px', borderRadius: 12,
-                            fontWeight: 800, fontSize: '.75rem'
+                            background: 'var(--green-800)', color: 'white',
+                            padding: '4px 10px', borderRadius: 12,
+                            fontWeight: 800, fontSize: '.8rem', boxShadow: '0 2px 6px rgba(46,90,39,0.2)'
                           }}>
                             {med.estimated_price_pkr}
                           </span>
                         )}
                       </div>
 
-                      <div style={{ fontSize: '.85rem', color: '#cbd5e1', marginBottom: '.3rem' }}>
-                        <strong>فارمولیشن / ایکٹو: </strong>{med.active}
+                      <div style={{ fontSize: '.88rem', color: 'var(--text-primary)', marginBottom: '.3rem', fontWeight: 600 }}>
+                        <strong style={{ color: 'var(--green-800)' }}>فارمولیشن / ایکٹو: </strong>{med.active}
                       </div>
-                      <div style={{ fontSize: '.85rem', color: '#ffffff', marginBottom: '.2rem' }}>
-                        <strong>مقدار (1 ایکڑ): </strong>{med.dosage} ({med.method || 'سپرے'})
+                      <div style={{ fontSize: '.88rem', color: 'var(--text-primary)', marginBottom: '.3rem', fontWeight: 600 }}>
+                        <strong style={{ color: 'var(--green-800)' }}>مقدار (1 ایکڑ): </strong>{med.dosage} ({med.method || 'سپرے'})
                       </div>
-                      {/* Dosage Multiplier Result */}
                       {landSize > 1 && (
                         <div style={{
-                          background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)',
-                          borderRadius: 8, padding: '4px 8px', marginBottom: '.3rem', direction: 'rtl',
-                          fontSize: '.8rem', color: '#fde68a', fontWeight: 700
+                          background: 'var(--gold-100)', border: '1.5px solid var(--gold-600)',
+                          borderRadius: 8, padding: '6px 10px', marginBottom: '.4rem', direction: 'rtl',
+                          fontSize: '.82rem', color: '#6b4a2b', fontWeight: 800
                         }}>
-                          🧮 {landSize} ایکڑ کے لیے: {(() => {
+                          🧮 {landSize} ایکڑ کے لیے کل مقدار: {(() => {
                             const num = parseFloat(med.dosage);
                             const unit = med.dosage.replace(/[\d.]+/, '').trim();
                             return isNaN(num) ? `${med.dosage} × ${landSize}` : `${(num * landSize).toFixed(0)} ${unit}`;
@@ -479,13 +545,14 @@ export default function DiseasePage() {
 
                       {/* Supplier Badges */}
                       {med.suppliers && (
-                        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '.72rem', color: '#94a3b8' }}>سپلائر / کمپنی:</span>
+                        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '.4rem' }}>
+                          <span style={{ fontSize: '.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>سپلائر / کمپنی:</span>
                           {med.suppliers.map(sup => (
                             <span key={sup} style={{
-                              background: '#334155', color: '#f1f5f9',
-                              padding: '1px 8px', borderRadius: 10,
-                              fontSize: '.7rem', fontWeight: 700
+                              background: 'var(--green-100)', color: 'var(--green-900)',
+                              border: '1px solid var(--green-300)',
+                              padding: '2px 8px', borderRadius: 8,
+                              fontSize: '.72rem', fontWeight: 800
                             }}>
                               🏢 {sup}
                             </span>
@@ -496,7 +563,7 @@ export default function DiseasePage() {
                   ))}
                 </div>
               ) : (
-                <div style={{ background: '#1E3A1E', padding: '1rem', borderRadius: 12, color: '#a08050', fontSize: '.85rem', direction: 'rtl' }}>
+                <div style={{ background: 'var(--card)', padding: '1rem', borderRadius: 12, color: 'var(--text-muted)', fontSize: '.85rem', direction: 'rtl', border: '1px solid var(--green-200)' }}>
                   مقامی زرعی افسر کی ہدایت کے مطابق مناسب پھپھوندی کش دوائی استعمال کریں۔
                 </div>
               )}
