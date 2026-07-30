@@ -113,43 +113,84 @@ export function normalizeUrduForSpeech(text) {
 }
 
 /**
- * selectUrduVoice — Find the best Pakistani/Urdu neural voice available.
- * Priority: Microsoft Asad Natural > Google اردو > any ur-PK > default
+ * waitForVoices — resolves with the full voice list once speechSynthesis has loaded.
+ * On Android Chrome, voices load asynchronously AFTER page paint.
+ * Resolves immediately if already loaded, otherwise waits for voiceschanged.
+ * Timeout: 2s — then resolves with whatever is available.
  */
-export function selectUrduVoice(langKey = 'ur') {
-  if (!window.speechSynthesis) return null;
+export function waitForVoices() {
+  return new Promise((resolve) => {
+    if (!window.speechSynthesis) return resolve([]);
 
-  const targetLang = getSRLang(langKey).toLowerCase();
-  const voices = window.speechSynthesis.getVoices();
+    const voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length > 0) return resolve(voices);
 
+    let resolved = false;
+    const timeout = setTimeout(() => {
+      if (!resolved) { resolved = true; resolve(window.speechSynthesis.getVoices() || []); }
+    }, 2000);
+
+    window.speechSynthesis.addEventListener('voiceschanged', function handler() {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        window.speechSynthesis.removeEventListener('voiceschanged', handler);
+        resolve(window.speechSynthesis.getVoices() || []);
+      }
+    });
+  });
+}
+
+/**
+ * selectUrduVoice — Android-Aware Pakistani Urdu Voice Selector.
+ *
+ * Android Chrome loads voices asynchronously. This function receives the
+ * already-loaded voice list (from waitForVoices) and picks the best match.
+ *
+ * Priority order:
+ *   1. Microsoft Asad Online Natural (Windows Edge/Desktop)
+ *   2. Google Urdu / ur-PK (Android Chrome — most common)
+ *   3. Any voice with lang == 'ur-PK' or 'ur_PK'
+ *   4. Any voice whose name includes 'Urdu' or 'urdu'
+ *   5. Any voice whose lang starts with 'ur' or 'pa'
+ *   6. First available voice (absolute fallback)
+ */
+export function selectUrduVoice(voices, langKey = 'ur') {
   if (!voices || voices.length === 0) return null;
 
-  // Priority 1: Microsoft Pakistani Neural voices (Windows Edge/Chrome)
-  const microsoftPak = voices.find(v =>
+  // Priority 1: Microsoft Asad Natural (Windows Desktop/Edge)
+  const asad = voices.find(v =>
     v.name.includes('Asad') ||
-    v.name.toLowerCase().includes('urdu (pakistan)') ||
-    v.name.toLowerCase().includes('urdu pakistan') ||
-    v.name.toLowerCase().includes('ur-pk')
+    v.name.toLowerCase().includes('urdu (pakistan)')
   );
-  if (microsoftPak) return microsoftPak;
+  if (asad) return asad;
 
-  // Priority 2: Google Urdu voice (Android Chrome)
+  // Priority 2: Google Urdu — specifically targets Android Chrome's built-in
   const googleUrdu = voices.find(v =>
-    v.name.toLowerCase().includes('google') &&
-    v.lang.toLowerCase().startsWith('ur')
+    (v.name.includes('Google') || v.name.includes('google')) &&
+    (v.lang === 'ur-PK' || v.lang === 'ur_PK' || v.lang.startsWith('ur'))
   );
   if (googleUrdu) return googleUrdu;
 
-  // Priority 3: Any ur-PK or pa-PK voice
-  const nativePak = voices.find(v =>
-    v.lang.toLowerCase() === targetLang ||
+  // Priority 3: Exact ur-PK / ur_PK locale match (covers Samsung TTS, other OEMs)
+  const urPK = voices.find(v => v.lang === 'ur-PK' || v.lang === 'ur_PK');
+  if (urPK) return urPK;
+
+  // Priority 4: Name contains 'Urdu' (e.g. Samsung's "Urdu (Pakistan) Female")
+  const namedUrdu = voices.find(v =>
+    v.name.toLowerCase().includes('urdu')
+  );
+  if (namedUrdu) return namedUrdu;
+
+  // Priority 5: Any ur-* or pa-* language
+  const anyUrdu = voices.find(v =>
     v.lang.toLowerCase().startsWith('ur') ||
     v.lang.toLowerCase().startsWith('pa')
   );
-  if (nativePak) return nativePak;
+  if (anyUrdu) return anyUrdu;
 
-  // Fallback: first available voice
-  return voices[0] || null;
+  // Fallback: first available
+  return voices[0];
 }
 
 /**
@@ -317,10 +358,15 @@ export function createSpeechEngine({
 }
 
 /**
- * speakText — Natural Urdu TTS with Pakistani neural voice selection.
- * Normalizes text before speaking (strips Markdown, converts numbers to Urdu words).
+ * speakText — Natural Urdu TTS with Android-aware Pakistani voice selection.
+ * MUST be called inside a user-gesture handler (onClick/onTouchStart) to comply
+ * with Android Chrome autoplay policies.
+ *
+ * @param {string} text  — Raw text (will be normalized: strips Markdown, numbers→Urdu words)
+ * @param {string} langKey — 'ur' | 'pj' | 'en'
+ * @param {number} rate  — Playback rate (0.85 = Android-optimized clear rural pace)
  */
-export function speakText(text, langKey = 'ur', rate = 0.82) {
+export async function speakText(text, langKey = 'ur', rate = 0.85) {
   if (!window.speechSynthesis || !text) return false;
 
   if (window.speechSynthesis.speaking) {
@@ -333,35 +379,14 @@ export function speakText(text, langKey = 'ur', rate = 0.82) {
 
   const utt = new SpeechSynthesisUtterance(normalized);
   utt.lang  = getSRLang(langKey);
-  utt.rate  = rate;       // 0.82 = slower, clear rural pace
-  utt.pitch = 1.0;        // Natural warm pitch
+  utt.rate  = rate;   // 0.85 = Android-optimized, slower clear rural pace
+  utt.pitch = 1.0;    // Natural warm pitch
 
-  // Attempt to assign best Pakistani neural voice
-  // Voices may not be loaded yet — wait for voiceschanged then retry
-  const trySetVoice = () => {
-    const voice = selectUrduVoice(langKey);
-    if (voice) utt.voice = voice;
-  };
+  // Wait for Android voiceschanged to fire before selecting voice
+  const voices = await waitForVoices();
+  const voice = selectUrduVoice(voices, langKey);
+  if (voice) utt.voice = voice;
 
-  trySetVoice();
-  if (!utt.voice) {
-    // Voices not loaded yet — listen for event then speak
-    const handleVoicesChanged = () => {
-      window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
-      trySetVoice();
-      window.speechSynthesis.speak(utt);
-    };
-    window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
-    // Fallback: also speak immediately with whatever voice is available
-    setTimeout(() => {
-      if (!window.speechSynthesis.speaking) {
-        window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
-        window.speechSynthesis.speak(utt);
-      }
-    }, 300);
-  } else {
-    window.speechSynthesis.speak(utt);
-  }
-
-  return true; // Started playing
+  window.speechSynthesis.speak(utt);
+  return true;
 }

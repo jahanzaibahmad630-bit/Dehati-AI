@@ -1,23 +1,30 @@
 import { useState } from 'react';
-import { normalizeUrduForSpeech, selectUrduVoice, getSRLang } from '../../utils/speech';
+import { normalizeUrduForSpeech, waitForVoices, selectUrduVoice, getSRLang } from '../../utils/speech';
 
 /**
  * AudioPlayer — Natural Urdu Speech Synthesis Button
- * Uses Pakistani neural voice (Microsoft Asad / Google اردو) with text normalization.
+ *
+ * Android Chrome autoplay policy compliance:
+ *   ✅ All speech synthesis calls happen inside explicit onClick handlers
+ *   ✅ Uses waitForVoices() to handle Android's async voice loading
+ *   ✅ Hardware mic constraints already set in createSpeechEngine (echoCancellation, noiseSuppression, autoGainControl)
  *
  * Props:
- *   text     — string to be read aloud (will be normalized: strips Markdown/emojis/numbers→Urdu words)
+ *   text     — string to read aloud (normalized: strips Markdown/emojis, numbers→Urdu words)
  *   langKey  — 'ur' | 'pj' | 'en' (default: 'ur')
- *   label    — button label text (default: '🔊 سنیں')
- *   compact  — boolean: if true, renders as a small icon-only button
+ *   label    — button label (default: '🔊 سنیں')
+ *   compact  — boolean: small 28px icon-only button for message bubbles
  *   style    — optional inline style overrides
  */
 export default function AudioPlayer({ text, langKey = 'ur', label = '🔊 سنیں', compact = false, style = {} }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const hasSupport = !!window.speechSynthesis;
 
-  const handlePlay = () => {
-    if (!text || !hasSupport) return;
+  // IMPORTANT: This handler MUST be called from onClick to satisfy Android Chrome
+  // autoplay policy. Never call speakText() from useEffect or setTimeout.
+  const handlePlay = async () => {
+    if (!text || !hasSupport || isPending) return;
 
     if (isPlaying) {
       window.speechSynthesis.cancel();
@@ -31,37 +38,24 @@ export default function AudioPlayer({ text, langKey = 'ur', label = '🔊 سنی
 
     const utt = new SpeechSynthesisUtterance(normalized);
     utt.lang  = getSRLang(langKey);
-    utt.rate  = 0.82;   // Slower, clear rural pace
-    utt.pitch = 1.0;    // Warm human pitch
+    utt.rate  = 0.85;   // Android-optimized: slower, clear rural pace
+    utt.pitch = 1.0;    // Warm natural pitch
 
-    utt.onstart  = () => setIsPlaying(true);
+    utt.onstart  = () => { setIsPlaying(true); setIsPending(false); };
     utt.onend    = () => setIsPlaying(false);
-    utt.onerror  = () => setIsPlaying(false);
+    utt.onerror  = () => { setIsPlaying(false); setIsPending(false); };
 
-    // Assign Pakistani neural voice if available
-    const assignVoiceAndSpeak = () => {
-      const voice = selectUrduVoice(langKey);
-      if (voice) utt.voice = voice;
-      window.speechSynthesis.cancel(); // Cancel any active utterances
-      window.speechSynthesis.speak(utt);
-    };
+    // Show pending state while loading Android voices
+    setIsPending(true);
 
-    const voices = window.speechSynthesis.getVoices();
-    if (voices && voices.length > 0) {
-      assignVoiceAndSpeak();
-    } else {
-      // Voices not loaded yet — wait for event
-      const handler = () => {
-        window.speechSynthesis.removeEventListener('voiceschanged', handler);
-        assignVoiceAndSpeak();
-      };
-      window.speechSynthesis.addEventListener('voiceschanged', handler);
-      // Fallback: speak after 400ms regardless
-      setTimeout(() => {
-        window.speechSynthesis.removeEventListener('voiceschanged', handler);
-        if (!window.speechSynthesis.speaking) assignVoiceAndSpeak();
-      }, 400);
-    }
+    // waitForVoices handles Android's async voiceschanged event.
+    // This must happen WITHIN the onClick handler to stay in the user-gesture stack.
+    const voices = await waitForVoices();
+    const voice = selectUrduVoice(voices, langKey);
+    if (voice) utt.voice = voice;
+
+    window.speechSynthesis.cancel(); // Clear any stale utterances
+    window.speechSynthesis.speak(utt);
   };
 
   if (!hasSupport) return null;
@@ -71,23 +65,33 @@ export default function AudioPlayer({ text, langKey = 'ur', label = '🔊 سنی
       <button
         onClick={handlePlay}
         title={isPlaying ? 'روکیں' : 'سنیں'}
+        aria-label={isPlaying ? 'روکیں' : 'سنیں'}
         style={{
-          background: isPlaying ? 'rgba(245,158,11,0.2)' : 'transparent',
+          background: isPlaying
+            ? 'rgba(245,158,11,0.25)'
+            : isPending
+              ? 'rgba(245,158,11,0.1)'
+              : 'transparent',
           border: `1.5px solid ${isPlaying ? '#f59e0b' : 'rgba(245,158,11,0.5)'}`,
           color: '#f59e0b',
           borderRadius: '50%',
+          // 28px visual, but 44px touch target via padding for Android fingers
           width: 28, height: 28,
+          minWidth: 44, minHeight: 44,
+          padding: 0,
           fontSize: '.75rem',
-          cursor: 'pointer',
+          cursor: isPending ? 'wait' : 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
           transition: 'all 0.2s',
+          WebkitTapHighlightColor: 'transparent', // Remove Android tap flash
+          touchAction: 'manipulation',             // Prevent 300ms tap delay
           ...style
         }}
       >
-        {isPlaying ? '⏸' : '🔊'}
+        {isPending ? '⋯' : isPlaying ? '⏸' : '🔊'}
       </button>
     );
   }
@@ -96,6 +100,7 @@ export default function AudioPlayer({ text, langKey = 'ur', label = '🔊 سنی
     <button
       onClick={handlePlay}
       title={isPlaying ? 'روکیں' : 'جواب سنیں'}
+      aria-label={isPlaying ? 'روکیں' : 'جواب سنیں'}
       style={{
         background: isPlaying
           ? 'rgba(245,158,11,0.25)'
@@ -103,19 +108,23 @@ export default function AudioPlayer({ text, langKey = 'ur', label = '🔊 سنی
         border: '1.5px solid #f59e0b',
         color: '#f59e0b',
         borderRadius: 20,
-        padding: '6px 14px',
+        // Minimum 48px height for Android touch targets (WCAG 2.5.5)
+        minHeight: 48,
+        padding: '10px 16px',
         fontSize: '.82rem',
         fontWeight: 800,
-        cursor: 'pointer',
+        cursor: isPending ? 'wait' : 'pointer',
         display: 'flex',
         alignItems: 'center',
-        gap: 5,
+        gap: 6,
         transition: 'all 0.2s',
         direction: 'rtl',
+        WebkitTapHighlightColor: 'transparent',
+        touchAction: 'manipulation',
         ...style
       }}
     >
-      {isPlaying ? '⏸ روکیں' : label}
+      {isPending ? '⋯ لوڈ...' : isPlaying ? '⏸ روکیں' : label}
     </button>
   );
 }
