@@ -92,12 +92,7 @@ function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCan
             color: 'white', fontSize: '1rem', lineHeight: 1.8,
             fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl'
           }}>
-            <span style={{ color: '#fff' }}>{finalText}</span>
-            {interimText && (
-              <span style={{ color: 'rgba(255,255,255,0.55)', fontStyle: 'italic' }}>
-                {finalText ? ' ' : ''}{interimText}
-              </span>
-            )}
+            {(finalText || interimText).trim()}
           </div>
         ) : (
           <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '.85rem' }}>
