@@ -1,13 +1,15 @@
 /**
  * DehatiAI Speech Engine — Production-Grade Voice Recognition + Natural Urdu TTS
- * Tuned for noisy rural Pakistan field environments.
+ * Tuned for noisy rural Pakistan field environments & Android Mobile PWA.
  *
  * Features:
+ * - Single-pass & Continuous high-accuracy speech capture without word duplication
+ * - Pakistani Agronomy Phonetic Auto-Corrector (correctUrduAgriPhonetics)
  * - Hardware audio constraints (echo/noise/gain cancellation, 44100Hz)
  * - 2.5s silence buffer (prevents premature cutoff mid-sentence)
  * - Multi-dialect: ur-PK + pa-PK
- * - Pakistani neural voice selection (Microsoft Asad Natural, Google اردو)
- * - Phonetic text normalization (strip Markdown, numbers→Urdu words)
+ * - 4-Tier Pakistani Neural & Hindi Voice Selection
+ * - Phonetic text & unit normalization (normalizeUrduForSpeech)
  */
 
 const SILENCE_BUFFER_MS = 2500; // 2.5 seconds — allows farmers to pause mid-sentence
@@ -18,7 +20,7 @@ const LANGS = {
   en: 'en-US'
 };
 
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 export function getSRLang(langKey) {
   return LANGS[langKey] || 'ur-PK';
@@ -55,7 +57,66 @@ function numberToUrduWords(num) {
     const t = `${URDU_ONES[thousands] || thousands} ہزار`;
     return rem === 0 ? t : `${t} ${numberToUrduWords(rem)}`;
   }
-  return String(n); // Fallback for very large numbers
+  return String(n);
+}
+
+/**
+ * correctUrduAgriPhonetics — Auto-corrects common Urdu/Punjabi phonetic ASR mishearings
+ * for Pakistani agronomy, farming terminology, and eliminates duplicate words.
+ */
+export function correctUrduAgriPhonetics(text) {
+  if (!text) return '';
+
+  let t = text;
+
+  // Dictionary of phonetic mishearings -> correct Urdu/Pakistani agronomy terms
+  const corrections = [
+    // Crop names
+    [/\bگندوم\b/g, 'گندم'],
+    [/\bگندام\b/g, 'گندم'],
+    [/\bکپاص\b/g, 'کپاس'],
+    [/\bمکئیی\b/g, 'مکئی'],
+    [/\bچاولوں\b/g, 'چاول'],
+    [/\bکماد\b/g, 'گنا'],
+
+    // Fertilizer & Chemical terms
+    [/\bسپراے\b/g, 'سپرے'],
+    [/\bاسپرے\b/g, 'سپرے'],
+    [/\bاسپرےی\b/g, 'سپرے'],
+    [/\bکھادھ\b/g, 'کھاد'],
+    [/\bیو ریا\b/g, 'یوریا'],
+    [/\bڈی اے پی\b/g, 'DAP'],
+    [/\bڈی اےپی\b/g, 'DAP'],
+    [/\bنتایو\b/g, 'Nativo'],
+    [/\bنیٹیوو\b/g, 'Nativo'],
+    [/\bٹلٹ\b/g, 'Tilt'],
+    [/\bکونفیڈور\b/g, 'Confidor'],
+    [/\bریڈومل\b/g, 'Ridomil'],
+
+    // Measurement & Land terms
+    [/\bیکڑ\b/g, 'ایکڑ'],
+    [/\bاکیڑ\b/g, 'ایکڑ'],
+    [/\bمرلہ\b/g, 'مرلہ'],
+    [/\bکنال\b/g, 'کنال'],
+
+    // Disease & Health terms
+    [/\bبماری\b/g, 'بیماری'],
+    [/\bبیماریاں\b/g, 'بیماری'],
+    [/\bسنڈی\b/g, 'سنڈی'],
+    [/\bسفید مکھی\b/g, 'سفید مکھی'],
+    [/\bسندھی\b/g, 'سنڈی'],
+    [/\bکیڑا\b/g, 'کیڑا'],
+    [/\bکیڑے\b/g, 'کیڑے'],
+  ];
+
+  for (const [pattern, replacement] of corrections) {
+    t = t.replace(pattern, replacement);
+  }
+
+  // Deduplicate repeated adjacent identical words ("گندم گندم" -> "گندم")
+  t = t.replace(/\b([\u0600-\u06FF\w]+)\s+\1\b/gu, '$1');
+
+  return t.trim();
 }
 
 /**
@@ -94,40 +155,29 @@ export function normalizeUrduForSpeech(text) {
   t = t.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F000}-\u{1FFFF}]/gu, '');
 
   // ── Agricultural & Technical Unit Mapping ─────────────────────────────────
-  // Must run BEFORE digit conversion so "200 ml" → "دو سو ملی لیٹر" (not "دو سو ml")
-  // Order: longest / most specific first to prevent partial matches
   const unitMap = [
-    // Spray concentration units
     [/\bml\/L\b/gi,    'ملی لیٹر فی لیٹر'],
     [/\bml\/acre\b/gi, 'ملی لیٹر فی ایکڑ'],
     [/\bg\/acre\b/gi,  'گرام فی ایکڑ'],
     [/\bkg\/acre\b/gi, 'کلوگرام فی ایکڑ'],
-    // Volume
     [/\blitre[s]?\b/gi,  'لیٹر'],
     [/\bliter[s]?\b/gi,  'لیٹر'],
     [/\bml\b/gi,          'ملی لیٹر'],
-    // Weight
     [/\bkg\b/gi,   'کلوگرام'],
     [/\bgm\b/gi,   'گرام'],
-    [/\bg\b(?=\s*[\d\u0600-\u06FF])/gi, 'گرام'], // 'g' only when followed by digit or Urdu char
-    // Area
+    [/\bg\b(?=\s*[\d\u0600-\u06FF])/gi, 'گرام'],
     [/\bacre[s]?\b/gi, 'ایکڑ'],
     [/\bhectare[s]?\b/gi, 'ہیکٹر'],
-    // Agronomy terms
     [/\bPHI\b/g,  'احتیاطی دن'],
     [/\bWHP\b/g,  'احتیاطی دن'],
     [/\bEC\b/g,   'برقی چالکتا'],
     [/\bppm\b/gi, 'حصہ فی ملین'],
-    // Currency
     [/Rs\.\/?(\s)?/g, 'روپے '],
     [/PKR\s?/g,       'روپے '],
     [/₨/g,            'روپے '],
-    // Percent
     [/%/g, 'فیصد'],
-    // Degree
     [/°C/g, 'ڈگری سینٹی گریڈ'],
     [/°/g,  'ڈگری'],
-    // km/h
     [/km\/h/gi, 'کلومیٹر فی گھنٹہ'],
   ];
 
@@ -136,17 +186,6 @@ export function normalizeUrduForSpeech(text) {
   }
 
   // ── Number → Urdu Words ────────────────────────────────────────────────────
-  // Common agricultural numbers get direct mapping for accuracy
-  const directNumbers = [
-    ['200', 'دو سو'], ['600', 'چھ سو'], ['100', 'سو'],
-    ['500', 'پانچ سو'], ['400', 'چار سو'], ['300', 'تین سو'],
-    ['1000', 'ایک ہزار'], ['2000', 'دو ہزار'],
-    ['30', 'تیس'], ['21', 'اکیس'], ['14', 'چودہ'], ['10', 'دس'],
-    ['7', 'سات'], ['5', 'پانچ'], ['4', 'چار'],
-    ['3', 'تین'], ['2', 'دو'], ['1', 'ایک'],
-  ];
-
-  // Apply remaining digit→word conversion via recursive function
   t = t.replace(/(\d+(?:\.\d+)?)/g, (match, num) => {
     if (num.includes('.')) {
       const [intPart, decPart] = num.split('.');
@@ -165,9 +204,6 @@ export function normalizeUrduForSpeech(text) {
 
 /**
  * waitForVoices — resolves with the full voice list once speechSynthesis has loaded.
- * On Android Chrome, voices load asynchronously AFTER page paint.
- * Resolves immediately if already loaded, otherwise waits for voiceschanged.
- * Timeout: 2s — then resolves with whatever is available.
  */
 export function waitForVoices() {
   return new Promise((resolve) => {
@@ -194,19 +230,11 @@ export function waitForVoices() {
 
 /**
  * selectUrduVoice — 4-Tier Android-Aware Pakistani Urdu Voice Selector.
- *
- * Android Chrome loads voices asynchronously. Pass the voice list from waitForVoices().
- *
- * Priority 1: Microsoft Asad/Uzma Online Natural — Urdu (Pakistan) — Windows Edge/Desktop
- * Priority 2: Android Google Urdu Voice (ur-PK / ur_PK) — Android Chrome
- * Priority 3: Any ur-PK / ur-IN voice (Samsung, Xiaomi, other OEMs)
- * Priority 4: Hindi (hi-IN) Neural Voice — phonetically compatible with Urdu,
- *             available on virtually all Android devices without Urdu TTS
  */
 export function selectUrduVoice(voices, langKey = 'ur') {
   if (!voices || voices.length === 0) return null;
 
-  // ── Tier 1: Microsoft Pakistani Neural Voices (Windows Edge/Desktop) ────────
+  // Tier 1: Microsoft Pakistani Neural Voices (Windows Edge/Desktop)
   const msNeural = voices.find(v =>
     v.name.includes('Asad') ||
     v.name.includes('Uzma') ||
@@ -215,14 +243,14 @@ export function selectUrduVoice(voices, langKey = 'ur') {
   );
   if (msNeural) return msNeural;
 
-  // ── Tier 2: Google Urdu — Android Chrome built-in ───────────────────────────
+  // Tier 2: Google Urdu — Android Chrome built-in
   const googleUrdu = voices.find(v =>
     (v.name.includes('Google') || v.name.includes('google')) &&
     (v.lang === 'ur-PK' || v.lang === 'ur_PK' || v.lang.startsWith('ur'))
   );
   if (googleUrdu) return googleUrdu;
 
-  // ── Tier 3: Any Urdu voice (ur-PK, ur_PK, ur-IN) ────────────────────────────
+  // Tier 3: Any Urdu voice (ur-PK, ur_PK, ur-IN)
   const anyUrdu = voices.find(v =>
     v.lang === 'ur-PK' || v.lang === 'ur_PK' || v.lang === 'ur-IN' ||
     v.lang.toLowerCase().startsWith('ur') ||
@@ -230,9 +258,7 @@ export function selectUrduVoice(voices, langKey = 'ur') {
   );
   if (anyUrdu) return anyUrdu;
 
-  // ── Tier 4: Hindi hi-IN Phonetic Fallback ────────────────────────────────────
-  // Hindi is phonetically compatible with Urdu and available on virtually all
-  // Android devices. Farmers will understand it even without an Urdu TTS pack.
+  // Tier 4: Hindi hi-IN Phonetic Fallback
   const hindiNeural = voices.find(v =>
     v.lang === 'hi-IN' || v.lang === 'hi_IN' ||
     v.lang.toLowerCase().startsWith('hi') ||
@@ -240,7 +266,7 @@ export function selectUrduVoice(voices, langKey = 'ur') {
   );
   if (hindiNeural) return hindiNeural;
 
-  // ── Absolute Fallback: any Punjabi, then first available ─────────────────────
+  // Fallback: any Punjabi, then first available
   const punjabi = voices.find(v => v.lang.toLowerCase().startsWith('pa'));
   if (punjabi) return punjabi;
 
@@ -249,17 +275,16 @@ export function selectUrduVoice(voices, langKey = 'ur') {
 
 /**
  * Request microphone stream with hardware noise-reduction constraints.
- * This dramatically improves accuracy in open-field environments.
  */
 export async function requestHardwareMic() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
-        echoCancellation: true,      // Removes echo from field environment
-        noiseSuppression: true,      // Reduces wind/machinery noise
-        autoGainControl: true,       // Auto-adjusts for quiet/loud voices
-        sampleRate: 44100,           // CD-quality audio for better ASR accuracy
-        channelCount: 1              // Mono — sufficient for speech, lower bandwidth
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: 44100,
+        channelCount: 1
       }
     });
     stream.getTracks().forEach(track => track.stop());
@@ -272,11 +297,14 @@ export async function requestHardwareMic() {
 
 /**
  * Create a production-grade SpeechRecognition instance.
+ * Supports Single-Pass High-Accuracy mode & Continuous mode without word duplication.
  */
 export function createSpeechEngine({
   langKey = 'ur',
+  singlePass = false,
   onInterim,
   onFinalWord,
+  onResult,
   onStopped,
   onError,
   silenceMs = SILENCE_BUFFER_MS
@@ -302,7 +330,9 @@ export function createSpeechEngine({
       if (!stopped) {
         stopped = true;
         try { recognition._stopped?.(); recognition.stop(); } catch {}
-        onStopped?.(accumulated.trim());
+        const clean = correctUrduAgriPhonetics(accumulated.trim());
+        onStopped?.(clean);
+        if (clean && onResult) onResult(clean);
       }
     }, silenceMs);
   }
@@ -310,8 +340,8 @@ export function createSpeechEngine({
   function createRecognition() {
     const recognition = new SR();
     recognition.lang            = srLang;
-    recognition.continuous      = !isIOS;
-    recognition.interimResults  = true;
+    recognition.continuous      = singlePass ? false : !isIOS;
+    recognition.interimResults  = singlePass ? false : true;
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {};
@@ -319,6 +349,26 @@ export function createSpeechEngine({
     recognition.onresult = (e) => {
       gotSpeech = true;
       emptyEnds = 0;
+
+      if (!e.results || e.results.length === 0) return;
+
+      if (singlePass) {
+        // Single-Pass Mode: Extract exact final sentence cleanly
+        const rawText = e.results[0][0].transcript.trim();
+        const spokenText = correctUrduAgriPhonetics(rawText);
+        if (spokenText) {
+          accumulated = spokenText;
+          if (onResult) onResult(spokenText);
+          if (onFinalWord) onFinalWord(spokenText);
+        }
+        stopped = true;
+        clearSilenceTimer();
+        try { recognition.stop(); } catch {}
+        onStopped?.(spokenText);
+        return;
+      }
+
+      // Continuous Mode: Process final & interim text cleanly without word duplication
       let sessionFinal = '';
       let interim = '';
 
@@ -329,10 +379,16 @@ export function createSpeechEngine({
       }
 
       if (sessionFinal.trim()) {
-        accumulated += sessionFinal;
-        onFinalWord?.(accumulated.trim());
+        const correctedFinal = correctUrduAgriPhonetics(sessionFinal.trim());
+        // Deduplicate against already accumulated text
+        if (!accumulated.endsWith(correctedFinal)) {
+          accumulated = (accumulated + ' ' + correctedFinal).trim();
+          accumulated = correctUrduAgriPhonetics(accumulated);
+          onFinalWord?.(accumulated);
+          if (onResult) onResult(accumulated);
+        }
       }
-      onInterim?.(interim);
+      onInterim?.(correctUrduAgriPhonetics(interim));
       resetSilenceTimer(recognition);
     };
 
@@ -352,7 +408,7 @@ export function createSpeechEngine({
     };
 
     recognition.onend = () => {
-      if (stopped) { clearSilenceTimer(); return; }
+      if (stopped || singlePass) { clearSilenceTimer(); return; }
       if (!gotSpeech) emptyEnds++;
       if (emptyEnds >= MAX_EMPTY) {
         stopped = true;
@@ -361,7 +417,7 @@ export function createSpeechEngine({
         return;
       }
       setTimeout(() => {
-        if (!stopped) {
+        if (!stopped && !singlePass) {
           try {
             const next = createRecognition();
             recognitionInstance.current = next;
@@ -395,7 +451,7 @@ export function createSpeechEngine({
       clearSilenceTimer();
       try { recognitionInstance.current?._stopped?.(); } catch {}
       try { recognitionInstance.current?.stop(); } catch {}
-      return accumulated.trim();
+      return correctUrduAgriPhonetics(accumulated.trim());
     },
 
     reset: () => {
@@ -406,26 +462,20 @@ export function createSpeechEngine({
       accumulated = '';
     },
 
-    getAccumulated: () => accumulated.trim(),
+    getAccumulated: () => correctUrduAgriPhonetics(accumulated.trim()),
     isIOS,
   };
 }
 
 /**
  * speakText — Natural Urdu TTS with Android-aware Pakistani voice selection.
- * MUST be called inside a user-gesture handler (onClick/onTouchStart) to comply
- * with Android Chrome autoplay policies.
- *
- * @param {string} text  — Raw text (will be normalized: strips Markdown, numbers→Urdu words)
- * @param {string} langKey — 'ur' | 'pj' | 'en'
- * @param {number} rate  — Playback rate (0.85 = Android-optimized clear rural pace)
  */
 export async function speakText(text, langKey = 'ur', rate = 0.85) {
   if (!window.speechSynthesis || !text) return false;
 
   if (window.speechSynthesis.speaking) {
     window.speechSynthesis.cancel();
-    return false; // Was playing → now stopped
+    return false;
   }
 
   const normalized = normalizeUrduForSpeech(text);
@@ -433,10 +483,10 @@ export async function speakText(text, langKey = 'ur', rate = 0.85) {
 
   const utt = new SpeechSynthesisUtterance(normalized);
   utt.lang  = getSRLang(langKey);
-  utt.rate  = rate;   // 0.85 = Android-optimized, slower clear rural pace
-  utt.pitch = 1.0;    // Natural warm pitch
+  utt.rate  = rate;
+  utt.pitch = 1.0;
+  utt.volume = 1.0;
 
-  // Wait for Android voiceschanged to fire before selecting voice
   const voices = await waitForVoices();
   const voice = selectUrduVoice(voices, langKey);
   if (voice) utt.voice = voice;
