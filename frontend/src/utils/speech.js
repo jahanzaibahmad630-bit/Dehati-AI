@@ -389,7 +389,6 @@ export function createSpeechEngine({
         if (spokenText) {
           accumulated = spokenText;
           if (onResult) onResult(spokenText);
-          if (onFinalWord) onFinalWord(spokenText);
         }
         stopped = true;
         clearSilenceTimer();

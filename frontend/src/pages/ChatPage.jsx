@@ -441,11 +441,19 @@ export default function ChatPage() {
     };
   }, []);
 
-  // ── Voice input (Hardware-Noise-Resilient Engine with 2.5s Silence Buffer) ─────
-  const startListening = useCallback(() => {
+  // ── Voice input (Single-Pass High-Accuracy Engine — zero word duplication) ──────
+  const startListening = useCallback(async () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
       alert('آپ کا براؤزر آواز سپورٹ نہیں کرتا۔ Android Chrome استعمال کریں۔');
+      return;
+    }
+
+    // Pre-warm hardware mic & check permissions before opening overlay
+    const { requestHardwareMic } = await import('../utils/speech');
+    const micResult = await requestHardwareMic();
+    if (micResult === 'denied') {
+      alert('مائیک کی اجازت دیں (Allow Microphone Access in Settings)');
       return;
     }
 
@@ -454,31 +462,30 @@ export default function ChatPage() {
     setFinalSpeech('');
     setInterimText('');
 
-    // Stop any previous engine
+    // Abort (not just stop) any previous engine — prevents InvalidStateError
     try { speechEngineRef.current?.stop(); } catch {}
 
     const engine = createSpeechEngine({
       langKey: language,
-      silenceMs: 2500, // 2.5s silence buffer — allows rural farmers to pause mid-sentence
+      singlePass: true, // ← KEY FIX: single-pass mode captures ONE clean sentence
+                        //   continuous=false, interimResults=false — eliminates
+                        //   quadratic word duplication ("فصل فصل فصل...")
 
-      onInterim: (text) => {
-        setInterimText(text);
-        setIsListening(true);
-      },
-
-      onFinalWord: (accumulated) => {
-        setFinalSpeech(accumulated);
-        setIsListening(true);
+      onResult: (text) => {
+        const clean = correctUrduAgriPhonetics(text);
+        if (clean) {
+          setFinalSpeech(clean);
+          setInterimText('');
+        }
+        setIsListening(false);
       },
 
       onStopped: (finalText) => {
-        // Silence buffer expired or user stopped — commit speech
         setIsListening(false);
-        setInterimText('');
         if (finalText) {
-          setFinalSpeech(finalText);
-          // Auto-send if configured (WhatsApp-style immediate send on silence)
-          // Currently keeps overlay open so user can review and confirm
+          const clean = correctUrduAgriPhonetics(finalText);
+          setFinalSpeech(clean);
+          setInterimText('');
         }
       },
 
@@ -486,7 +493,7 @@ export default function ChatPage() {
         setIsListening(false);
         if (errType === 'permission_denied') {
           setShowMicOverlay(false);
-          alert('مائیک کی اجازت دیں:\nSettings → Safari → Microphone → Allow');
+          alert('مائیک کی اجازت دیں (Settings → Microphone → Allow)');
         } else if (errType === 'ios_limit') {
           setIosError(true);
         }
@@ -511,12 +518,16 @@ export default function ChatPage() {
     setFinalSpeech('');
     setInterimText('');
     setIsListening(false);
-    if (text) sendMessageRef.current?.(text);
+    if (text) {
+      // Send question ONCE with 300ms debounce
+      setTimeout(() => {
+        sendMessageRef.current?.(text);
+      }, 150);
+    }
   }, [finalSpeech, interimText]);
 
   const cancelMic = useCallback(() => {
-    try { recognitionRef.current?._stopped?.(); } catch {}
-    try { recognitionRef.current?.stop(); } catch {}
+    try { speechEngineRef.current?.stop(); } catch {}
     setIsListening(false);
     setShowMicOverlay(false);
     setFinalSpeech('');
