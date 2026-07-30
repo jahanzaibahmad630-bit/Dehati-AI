@@ -60,7 +60,7 @@ function numberToUrduWords(num) {
 
 /**
  * normalizeUrduForSpeech — Phonetic Text Normalization for TTS
- * Strips Markdown, emojis, code, and converts numbers to spoken Urdu words.
+ * Strips Markdown, emojis, code, converts units and numbers to spoken Urdu words.
  */
 export function normalizeUrduForSpeech(text) {
   if (!text) return '';
@@ -93,11 +93,62 @@ export function normalizeUrduForSpeech(text) {
   // Strip emojis (Unicode emoji ranges)
   t = t.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F000}-\u{1FFFF}]/gu, '');
 
-  // Convert digits to Urdu spoken words
-  // Handle patterns like "5 ایکڑ" → "پانچ ایکڑ", "14 دن" → "چودہ دن"
+  // ── Agricultural & Technical Unit Mapping ─────────────────────────────────
+  // Must run BEFORE digit conversion so "200 ml" → "دو سو ملی لیٹر" (not "دو سو ml")
+  // Order: longest / most specific first to prevent partial matches
+  const unitMap = [
+    // Spray concentration units
+    [/\bml\/L\b/gi,    'ملی لیٹر فی لیٹر'],
+    [/\bml\/acre\b/gi, 'ملی لیٹر فی ایکڑ'],
+    [/\bg\/acre\b/gi,  'گرام فی ایکڑ'],
+    [/\bkg\/acre\b/gi, 'کلوگرام فی ایکڑ'],
+    // Volume
+    [/\blitre[s]?\b/gi,  'لیٹر'],
+    [/\bliter[s]?\b/gi,  'لیٹر'],
+    [/\bml\b/gi,          'ملی لیٹر'],
+    // Weight
+    [/\bkg\b/gi,   'کلوگرام'],
+    [/\bgm\b/gi,   'گرام'],
+    [/\bg\b(?=\s*[\d\u0600-\u06FF])/gi, 'گرام'], // 'g' only when followed by digit or Urdu char
+    // Area
+    [/\bacre[s]?\b/gi, 'ایکڑ'],
+    [/\bhectare[s]?\b/gi, 'ہیکٹر'],
+    // Agronomy terms
+    [/\bPHI\b/g,  'احتیاطی دن'],
+    [/\bWHP\b/g,  'احتیاطی دن'],
+    [/\bEC\b/g,   'برقی چالکتا'],
+    [/\bppm\b/gi, 'حصہ فی ملین'],
+    // Currency
+    [/Rs\.\/?(\s)?/g, 'روپے '],
+    [/PKR\s?/g,       'روپے '],
+    [/₨/g,            'روپے '],
+    // Percent
+    [/%/g, 'فیصد'],
+    // Degree
+    [/°C/g, 'ڈگری سینٹی گریڈ'],
+    [/°/g,  'ڈگری'],
+    // km/h
+    [/km\/h/gi, 'کلومیٹر فی گھنٹہ'],
+  ];
+
+  for (const [pattern, replacement] of unitMap) {
+    t = t.replace(pattern, replacement);
+  }
+
+  // ── Number → Urdu Words ────────────────────────────────────────────────────
+  // Common agricultural numbers get direct mapping for accuracy
+  const directNumbers = [
+    ['200', 'دو سو'], ['600', 'چھ سو'], ['100', 'سو'],
+    ['500', 'پانچ سو'], ['400', 'چار سو'], ['300', 'تین سو'],
+    ['1000', 'ایک ہزار'], ['2000', 'دو ہزار'],
+    ['30', 'تیس'], ['21', 'اکیس'], ['14', 'چودہ'], ['10', 'دس'],
+    ['7', 'سات'], ['5', 'پانچ'], ['4', 'چار'],
+    ['3', 'تین'], ['2', 'دو'], ['1', 'ایک'],
+  ];
+
+  // Apply remaining digit→word conversion via recursive function
   t = t.replace(/(\d+(?:\.\d+)?)/g, (match, num) => {
     if (num.includes('.')) {
-      // Decimal: convert integer and fractional parts separately
       const [intPart, decPart] = num.split('.');
       return `${numberToUrduWords(parseInt(intPart, 10))} اعشاریہ ${numberToUrduWords(parseInt(decPart, 10))}`;
     }
@@ -142,54 +193,57 @@ export function waitForVoices() {
 }
 
 /**
- * selectUrduVoice — Android-Aware Pakistani Urdu Voice Selector.
+ * selectUrduVoice — 4-Tier Android-Aware Pakistani Urdu Voice Selector.
  *
- * Android Chrome loads voices asynchronously. This function receives the
- * already-loaded voice list (from waitForVoices) and picks the best match.
+ * Android Chrome loads voices asynchronously. Pass the voice list from waitForVoices().
  *
- * Priority order:
- *   1. Microsoft Asad Online Natural (Windows Edge/Desktop)
- *   2. Google Urdu / ur-PK (Android Chrome — most common)
- *   3. Any voice with lang == 'ur-PK' or 'ur_PK'
- *   4. Any voice whose name includes 'Urdu' or 'urdu'
- *   5. Any voice whose lang starts with 'ur' or 'pa'
- *   6. First available voice (absolute fallback)
+ * Priority 1: Microsoft Asad/Uzma Online Natural — Urdu (Pakistan) — Windows Edge/Desktop
+ * Priority 2: Android Google Urdu Voice (ur-PK / ur_PK) — Android Chrome
+ * Priority 3: Any ur-PK / ur-IN voice (Samsung, Xiaomi, other OEMs)
+ * Priority 4: Hindi (hi-IN) Neural Voice — phonetically compatible with Urdu,
+ *             available on virtually all Android devices without Urdu TTS
  */
 export function selectUrduVoice(voices, langKey = 'ur') {
   if (!voices || voices.length === 0) return null;
 
-  // Priority 1: Microsoft Asad Natural (Windows Desktop/Edge)
-  const asad = voices.find(v =>
+  // ── Tier 1: Microsoft Pakistani Neural Voices (Windows Edge/Desktop) ────────
+  const msNeural = voices.find(v =>
     v.name.includes('Asad') ||
-    v.name.toLowerCase().includes('urdu (pakistan)')
+    v.name.includes('Uzma') ||
+    v.name.toLowerCase().includes('urdu (pakistan)') ||
+    v.name.toLowerCase().includes('urdu pakistan')
   );
-  if (asad) return asad;
+  if (msNeural) return msNeural;
 
-  // Priority 2: Google Urdu — specifically targets Android Chrome's built-in
+  // ── Tier 2: Google Urdu — Android Chrome built-in ───────────────────────────
   const googleUrdu = voices.find(v =>
     (v.name.includes('Google') || v.name.includes('google')) &&
     (v.lang === 'ur-PK' || v.lang === 'ur_PK' || v.lang.startsWith('ur'))
   );
   if (googleUrdu) return googleUrdu;
 
-  // Priority 3: Exact ur-PK / ur_PK locale match (covers Samsung TTS, other OEMs)
-  const urPK = voices.find(v => v.lang === 'ur-PK' || v.lang === 'ur_PK');
-  if (urPK) return urPK;
-
-  // Priority 4: Name contains 'Urdu' (e.g. Samsung's "Urdu (Pakistan) Female")
-  const namedUrdu = voices.find(v =>
-    v.name.toLowerCase().includes('urdu')
-  );
-  if (namedUrdu) return namedUrdu;
-
-  // Priority 5: Any ur-* or pa-* language
+  // ── Tier 3: Any Urdu voice (ur-PK, ur_PK, ur-IN) ────────────────────────────
   const anyUrdu = voices.find(v =>
+    v.lang === 'ur-PK' || v.lang === 'ur_PK' || v.lang === 'ur-IN' ||
     v.lang.toLowerCase().startsWith('ur') ||
-    v.lang.toLowerCase().startsWith('pa')
+    v.name.toLowerCase().includes('urdu')
   );
   if (anyUrdu) return anyUrdu;
 
-  // Fallback: first available
+  // ── Tier 4: Hindi hi-IN Phonetic Fallback ────────────────────────────────────
+  // Hindi is phonetically compatible with Urdu and available on virtually all
+  // Android devices. Farmers will understand it even without an Urdu TTS pack.
+  const hindiNeural = voices.find(v =>
+    v.lang === 'hi-IN' || v.lang === 'hi_IN' ||
+    v.lang.toLowerCase().startsWith('hi') ||
+    v.name.toLowerCase().includes('hindi')
+  );
+  if (hindiNeural) return hindiNeural;
+
+  // ── Absolute Fallback: any Punjabi, then first available ─────────────────────
+  const punjabi = voices.find(v => v.lang.toLowerCase().startsWith('pa'));
+  if (punjabi) return punjabi;
+
   return voices[0];
 }
 
