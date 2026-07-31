@@ -406,6 +406,28 @@ async function getChatLogs({ page = 1, limit = 20, search = '' } = {}) {
   return { logs: rows, total: parseInt(countRows[0]?.c || 0, 10) };
 }
 
+/**
+ * Get recent chat history for a logged-in user.
+ */
+async function getUserChatHistory(userId, limit = 30) {
+  if (!userId) return [];
+  if (!pool) return getMemChatLogs({ page: 1, limit, search: '' }).logs.filter(l => l.user_id === userId);
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, question, answer, language, created_at
+       FROM chat_logs
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [userId, limit]
+    );
+    return rows;
+  } catch (err) {
+    console.warn('getUserChatHistory error:', err.message);
+    return [];
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Persistent AI Cache (PostgreSQL-backed, survives restarts)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -646,11 +668,11 @@ async function purgeChatLogs(days = 90) {
 module.exports = {
   pool, initDB, testConnection,
   findUserByPhone, createUser, getAllUsers,
-  getTotalUserCount, getNewTodayCount, getRecentUsers,
   deleteUser, isUsingPersistentDB,
   setPriceDB, getPricesDB, deletePriceDB,
-  saveChatLog, getChatLogs,
-  getCacheFromDB, setCacheInDB, flushCacheDB, getCacheStats,
-  ensureAuditTables, logAuditAction, getAuditLogs, logAIUsage, getAIUsage,
-  createEmergencyAlert, getEmergencyAlerts, deleteEmergencyAlert, exportAllData, purgeChatLogs
+  saveChatLog, getChatLogs, getUserChatHistory,
+  getCacheFromDB, setCacheInDB,
+  logAIUsage, getAIUsageStats,
+  createEmergencyAlert, getEmergencyAlerts, updateEmergencyAlertStatus, deleteEmergencyAlert,
+  exportAllData, purgeChatLogs
 };

@@ -223,33 +223,41 @@ function buildChatSystem(language) {
   const season = (month >= 5 && month <= 10) ? 'خریف' : 'ربیع';
   const year   = now.getFullYear();
 
-  const agriOnlyRule = language === 'en'
-    ? 'CRITICAL: You ONLY answer agriculture, farming, crops, livestock, soil, weather and rural Pakistan related questions. For ANY other topic, respond: "Sorry, I can only help with agriculture and farming topics. Please ask about crops, fertilizers, diseases, irrigation, livestock, or government schemes."'
-    : `⚠️ اہم: آپ صرف زراعت، فصلوں، جانوروں، مٹی، موسم اور دیہی پاکستان سے متعلق سوالات کا جواب دیں گے۔ کوئی بھی غیر زرعی سوال آنے پر صرف کہیں: "معذرت، میں صرف زرعی موضوعات پر بات کر سکتا ہوں۔ فصل، کھاد، بیماری، آبپاشی، جانور یا اسکیموں سے متعلق پوچھیں۔"`;
-
   if (language === 'en') {
-    return `You are DehatiAI, a friendly expert farming assistant for Punjab, Pakistan farmers.
+    return `You are DehatiAI, an expert agricultural assistant for farmers in Punjab, Pakistan.
 Current season: ${season} | Year: ${year}
-${agriOnlyRule}
-Style: Talk like a knowledgeable farming friend on WhatsApp — short, practical, warm.
-Keep responses under 5 sentences. Recommend Pakistani-available products only.
+CRITICAL: You ONLY answer agriculture, farming, crops, livestock, soil, weather and rural Pakistan related questions. For ANY non-agricultural question, respond ONLY: "Sorry, I can only help with agriculture and farming topics. Please ask about crops, fertilizers, diseases, irrigation, livestock, or government schemes."
+
+Style: Helpful, professional, clear English for Pakistani farmers.
+Formatting rules:
+- Use ## for headers (do NOT put ## at the end of a header)
+- Use - for bullet points (do NOT put - at the end of a line)
+- Use **bold** for key names and dosages
 Helpline: 0800-15000 (free)`;
   }
 
-  const base = `آپ DehatiAI ہیں — پنجاب کے کسانوں کا دوستانہ AI ساتھی۔
+  if (language === 'pa' || language === 'pj') {
+    return `تسی DehatiAI او — پنجاب دے کسناں دے ماہر زرعی مددگار۔
 موجودہ موسم: ${season} | سال: ${year}
-${agriOnlyRule}
+⚠️ اہم: تسی صرف زراعت، فصلاں، ڈنگراں، کھاد، بیماریاں، آبپاشی، تے منڈی ریٹاں توں متعلق سوالاں دا جواب دیو گے۔ کسے بھی غیر زرعی سوال لئی صرف آکھو: "معذرت، میں صرف زرعی سوالاں دا جواب دے سکدا واں۔"
+
+زبان و انداز:
+- تمام جواب خالص شاہ مکھی پنجابی (Shahmukhi Punjabi) وچ دیو۔
+- سادہ، دوستانہ، تے مختصر جواب (3-5 جملے۔ مثال: کی حال اے کسان ویر، کیہڑا مسئلہ اے؟)
+- عنوان لئی شروع وچ ## تے اہم لفظاں نوں **bold** کرو
+زراعت ہیلپ لائن: 0800-15000 (مفت)`;
+  }
+
+  return `آپ DehatiAI ہیں — پنجاب کے کسانوں کا دوستانہ AI ساتھی۔
+موجودہ موسم: ${season} | سال: ${year}
+⚠️ اہم: آپ صرف زراعت، فصلوں، جانوروں، مٹی، موسم اور دیہی پاکستان سے متعلق سوالات کا جواب دیں گے۔ کوئی بھی غیر زرعی سوال آنے پر صرف کہیں: "معذرت، میں صرف زرعی موضوعات پر بات کر سکتا ہوں۔ فصل، کھاد، بیماری، آبپاشی، جانور یا اسکیموں سے متعلق پوچھیں۔"
 
 انداز: بالکل WhatsApp پر کسی قریبی دوست کی طرح — سادہ، دوستانہ، مختصر (3-5 جملے)
-- کسان جس زبان میں لکھے اسی میں جواب دیں
+- جواب آسان، عام فہم اردو میں دیں
 - 1-2 مختصر بلٹ پوائنٹس (-) یا پیراگراف کا استعمال کریں
 - عنوان کے لیے شروع میں ## اور اہم الفاظ کو **bold** کریں
 - عنوان یا جملے کے آخر میں ## یا - نہ لگائیں
 - زراعت ہیلپ لائن: 0800-15000 (مفت)`;
-
-
-  if (language === 'pj') return base + '\nپنجابی یا سرائیکی میں جواب دینا قبول ہے';
-  return base;
 }
 
 function aiUnavailable() {
@@ -309,7 +317,7 @@ router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
       return res.json({ answer: cached, fromCache: true });
     }
 
-    const text = await claudeAsk(q, buildFarmingSystem(), 700, 0.6);
+    const text = await claudeAsk(q, buildChatSystem(language), 700, 0.6);
 
     // M4 fix: Save to cache for future requests
     if (text) aiCache.set(q, language, text);
@@ -618,23 +626,27 @@ router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {
 
 // ─── POST /api/ai/chat/stream (SSE streaming) ───────────────────────────────
 router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
-  // H5 fix: declare heartbeat BEFORE try so it is accessible in catch block
   let heartbeat;
   try {
-    const { messages, language = 'ur' } = req.body;
-    if (!Array.isArray(messages) || messages.length === 0)
-      return res.status(400).json({ error: 'پیغامات ضروری ہیں' });
+    let { messages, question, language = 'ur' } = req.body;
+
+    // Accept both payload shapes: { messages: [...] } OR { question: '...', language: '...' }
+    if ((!messages || !Array.isArray(messages) || messages.length === 0) && question) {
+      messages = [{ role: 'user', content: question.trim() }];
+    }
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'پیغامات یا سوال ضروری ہے' });
+    }
 
     const lastMsg = messages[messages.length - 1];
 
-    // SSE headers
-    res.setHeader('Content-Type',  'text/event-stream; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection',    'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders();
-
     if (!claude) {
+      res.setHeader('Content-Type',  'text/event-stream; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection',    'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.flushHeaders();
       res.write(`data: ${JSON.stringify({ text: '⚠️ AI سروس دستیاب نہیں' })}\n\n`);
       res.write('data: [DONE]\n\n');
       return res.end();
@@ -642,43 +654,47 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
 
     // Off-topic guard
     if (lastMsg.role === 'user' && !isAgricultureRelated(lastMsg.content)) {
+      res.setHeader('Content-Type',  'text/event-stream; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection',    'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.flushHeaders();
       res.write(`data: ${JSON.stringify({ text: OFF_TOPIC_UR })}\n\n`);
       res.write('data: [DONE]\n\n');
       return res.end();
     }
 
-    // CRITICAL FIX: Start heartbeat IMMEDIATELY after SSE setup.
-    // Must be before cache lookup — if DB hangs on getCacheFromDB(), the handler
-    // freezes and the client sees "..." forever. Heartbeat forces keep-alive.
-    heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 8000);
-
-    // Cleanup on client disconnect (prevents heartbeat interval leak)
-    req.on('close', () => { clearInterval(heartbeat); });
-
-    // Optional: disable Nagle's algorithm to prevent Railway proxy buffering
-    try { if (req.socket) { req.socket.setNoDelay(true); } } catch {}
-
-    // ——— Cache lookup with 3-second timeout (prevents DB TCP hang) ———
+    // ——— Cache lookup before sending headers ———
     const userMessages = messages.filter(m => m.role === 'user');
+    let cachedHit = null;
     if (lastMsg.role === 'user' && userMessages.length === 1) {
       const cacheTimeout = new Promise(resolve => setTimeout(() => resolve(null), 3000));
-      const cached = await Promise.race([aiCache.get(lastMsg.content, language), cacheTimeout]);
-      if (cached) {
-        // Stream cached answer in chunks (feels like live streaming)
-        res.setHeader('X-Cache', 'HIT');
-        const chunkSize = 30;
-        for (let i = 0; i < cached.length; i += chunkSize) {
-          res.write(`data: ${JSON.stringify({ text: cached.slice(i, i + chunkSize) })}\n\n`);
-          // Tiny delay so UI renders progressively
-          await new Promise(r => setTimeout(r, 8));
-        }
-        clearInterval(heartbeat);
-        res.write('data: [DONE]\n\n');
-        return res.end();
-      }
+      cachedHit = await Promise.race([aiCache.get(lastMsg.content, language), cacheTimeout]);
     }
 
-    res.setHeader('X-Cache', 'MISS');
+    // Set ALL headers (including X-Cache) BEFORE calling flushHeaders!
+    res.setHeader('Content-Type',  'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection',    'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('X-Cache', cachedHit ? 'HIT' : 'MISS');
+    res.flushHeaders();
+
+    if (cachedHit) {
+      // Stream cached answer in chunks (feels like live streaming)
+      const chunkSize = 30;
+      for (let i = 0; i < cachedHit.length; i += chunkSize) {
+        res.write(`data: ${JSON.stringify({ text: cachedHit.slice(i, i + chunkSize) })}\n\n`);
+        await new Promise(r => setTimeout(r, 8));
+      }
+      res.write('data: [DONE]\n\n');
+      return res.end();
+    }
+
+    // Start heartbeat AFTER headers are flushed
+    heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 8000);
+    req.on('close', () => { clearInterval(heartbeat); });
+    try { if (req.socket) { req.socket.setNoDelay(true); } } catch {}
 
     // ——— Build Claude messages with last 10 turns (multi-turn context memory) ———
     const claudeMessages = messages
@@ -814,4 +830,16 @@ router.post('/animal', aiLimiter, authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'جواب دینے میں ناکام' });
   }
 });
+
+// ─── GET /api/ai/history (User Chat History Persistence) ───────────────────
+router.get('/history', authenticateToken, async (req, res) => {
+  try {
+    const history = await db.getUserChatHistory(req.user.id);
+    res.json({ history });
+  } catch (err) {
+    console.error('History error:', err.message);
+    res.status(500).json({ error: 'ہسٹری لوڈ نہیں ہو سکی' });
+  }
+});
+
 module.exports = router;

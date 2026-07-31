@@ -17,16 +17,50 @@ function getToken() {
   return localStorage.getItem('dehati_token');
 }
 
-const QUICK_REPLIES = [
-  'کھاد کی سفارش دیں',
-  'فصل کو پانی کب دیں',
-  'سرکاری قرضہ کیسے لیں',
-  'گندم میں بیماری کی علامات',
-  'منڈی کی آج کی قیمتیں',
-  'DAP اور یوریا کا فرق',
-  'سپرے کا بہترین وقت',
-  'بھینس کا دودھ کم ہے'
-];
+const QUICK_REPLIES = {
+  ur: [
+    'کھاد کی سفارش دیں',
+    'فصل کو پانی کب دیں',
+    'سرکاری قرضہ کیسے لیں',
+    'گندم میں بیماری کی علامات',
+    'منڈی کی آج کی قیمتیں',
+    'DAP اور یوریا کا فرق',
+    'سپرے کا بہترین وقت',
+    'بھینس کا دودھ کم ہے'
+  ],
+  pj: [
+    'کھاد دی سفارش دیو',
+    'فصل نوں پانی کدووں دیو',
+    'سرکاری قرضہ کیویں لئیے',
+    'کݨک وچ بیماری دیاں نشانیاں',
+    'منڈی دیاں اج دیاں قیمتاں',
+    'DAP تے یوریا دا فرق',
+    'سپرے دا بہترین ویلا',
+    'مجھ دا دُدھ گھٹ اے'
+  ],
+  en: [
+    'Fertilizer recommendation',
+    'When to irrigate wheat?',
+    'How to apply for farm loan?',
+    'Wheat disease symptoms',
+    'Today mandi rates',
+    'DAP vs Urea difference',
+    'Best time to spray',
+    'Increase buffalo milk yield'
+  ]
+};
+
+const PLACEHOLDERS = {
+  ur: 'فصل، کھاد، بیماری، منڈی ریٹ پوچھیں...',
+  pj: 'فصل، کھاد، بیماری، منڈی ریٹ پچھو...',
+  en: 'Ask about crops, fertilizer, disease, mandi rates...'
+};
+
+const WELCOME_MESSAGES = {
+  ur: 'سلام! 👋 نئی گفتگو شروع کریں — فصل، کھاد، بیماری، موسم کچھ بھی پوچھیں 🌾',
+  pj: 'جی آیاں نوں! 👋 نویں گل بات شروع کرو — فصل، کھاد، بیماری، موسم کجھ وی پچھو 🌾',
+  en: 'Hello! 👋 Start a new conversation — ask about crops, fertilizers, weather, or market rates 🌾'
+};
 
 const LANGS = [
   { key: 'ur', label: 'اردو', srLang: 'ur-PK' },
@@ -37,8 +71,12 @@ const LANGS = [
 // Detect iOS (Safari on iPhone/iPad doesn't support SpeechRecognition in PWA mode)
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-function formatTime(date) {
-  return date.toLocaleTimeString('ur-PK', { hour: '2-digit', minute: '2-digit' });
+function formatTime(date, lang = 'ur') {
+  if (!date) return '';
+  const d = new Date(date);
+  const locale = lang === 'en' ? 'en-US' : 'ur-PK';
+  const timeStr = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  return <bdi style={{ unicodeBidi: 'isolate' }}>{timeStr}</bdi>;
 }
 
 // ── Waveform animation bars ────────────────────────────────────────────────────
@@ -264,7 +302,7 @@ function MessageBubble({ msg }) {
           ) : isUser ? (
             formatContent(msg.content)
           ) : (
-            <MarkdownRenderer text={msg.content} />
+            <MarkdownRenderer text={msg.content} dir={dir} lang={dir === 'rtl' ? 'ur' : 'en'} />
           )}
           {msg.streaming && msg.content !== '' && (
             <span style={{
@@ -287,13 +325,13 @@ function MessageBubble({ msg }) {
             display: 'flex', alignItems: 'center', gap: 6,
             flexDirection: isUser ? 'row-reverse' : 'row'
           }}>
-            {formatTime(msg.time)}
+            {formatTime(msg.time, dir === 'rtl' ? 'ur' : 'en')}
             {isUser && <span style={{ color: '#4ade80' }}>✓✓</span>}
             {/* Compact audio player — only for AI messages with content */}
             {!isUser && msg.content && (
               <AudioPlayer
                 text={msg.content}
-                langKey="ur"
+                langKey={dir === 'rtl' ? 'ur' : 'en'}
                 compact={true}
               />
             )}
@@ -726,12 +764,10 @@ export default function ChatPage() {
 
     } catch (err) {
       if (err.name === 'AbortError' && abortRef.current?.signal?.reason !== 'user_stop') {
-        // Timed-out abort (10s no-data) — fall through to non-streaming fallback
         err._isTimeout = true;
       }
 
       if (err.name === 'AbortError' && !err._isTimeout) {
-        // User manually pressed Stop — finalize whatever was received
         setMessages(prev => {
           const copy = [...prev];
           const last = copy[copy.length - 1];
@@ -739,11 +775,8 @@ export default function ChatPage() {
           return copy;
         });
       } else {
-        // Stream failed / timed-out / empty — try reliable non-streaming fallback
         let recovered = false;
         try {
-          // CRITICAL: Fallback is /api/ai/ask (NOT /api/ai/chat which returns 404)
-          // /api/ai/ask expects { question, language } — not { messages }
           const lastUserMsg = history.filter(m => m.role === 'user').slice(-1)[0]?.content || msg;
           const fallbackController = new AbortController();
           const fallbackTimeout = setTimeout(() => fallbackController.abort(), 30000);
@@ -772,51 +805,56 @@ export default function ChatPage() {
         } catch {}
 
         if (!recovered) {
-          // Both streaming and fallback failed — show retry banner
           setMessages(prev => {
             const copy = [...prev];
             const last = copy[copy.length - 1];
             if (last?.streaming) copy.pop();
             return copy;
           });
-          setNetError('❌ سرور سے رابطہ نہیں — دوبارہ بھیجیں');
+          const errText = language === 'en' ? '❌ Connection error — tap retry' : language === 'pj' ? '❌ سرور نال رابطہ نہیں ہویا — مڑ بھیجو' : '❌ سرور سے رابطہ نہیں — دوبارہ بھیجیں';
+          setNetError(errText);
         }
       }
     } finally {
       setIsStreaming(false);
     }
-  // Bug fix: removed 'messages' from deps — use messagesRef.current instead to avoid stale closures
   }, [input, isBusy, isListening, isOffline, language]);
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent?.isComposing && e.keyCode !== 229) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
-  // Bug fix: keep sendMessageRef always pointing to latest sendMessage
   sendMessageRef.current = sendMessage;
 
   const stopGenerating = () => {
     try { abortRef.current?.abort('user_stop'); } catch {}
   };
 
-  const clearChat = () => {
-    // Save current session before clearing
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const handleClearClick = () => {
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearChat = () => {
+    setShowClearConfirm(false);
     saveChatSession(messagesRef.current);
     try { abortRef.current?.abort(); } catch {}
-    currentSessionId.current = Date.now().toString(); // New session ID
+    currentSessionId.current = Date.now().toString();
     setNetError('');
     setMessages([{
       role: 'assistant',
-      content: `سلام! 👋 نئی گفتگو شروع کریں — فصل، کھاد، بیماری، موسم کچھ بھی پوچھیں 🌾`,
+      content: WELCOME_MESSAGES[language] || WELCOME_MESSAGES.ur,
       time: new Date()
     }]);
     setInput('');
     setInterimText('');
     setIsStreaming(false);
-    setShowQuickReplies(true);
   };
 
-  // Auto-send queued questions when back online
   useEffect(() => {
     if (!isOffline && hasQueuedQuestions) {
       const queue = getOfflineQueue();
@@ -824,15 +862,16 @@ export default function ChatPage() {
         setHasQueuedQuestions(false);
         const first = queue[0];
         removeFromQueue(first.id);
-        // Bug fix: use ref so we always call the latest sendMessage
         setTimeout(() => sendMessageRef.current?.(first.question), 800);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOffline]);
 
   const displayInput = input + (interimText ? (input ? ' ' : '') + interimText : '');
   const showMicOnly  = !input.trim() && !isListening;
+
+  const currentQuickReplies = QUICK_REPLIES[language] || QUICK_REPLIES.ur;
+  const currentPlaceholder = PLACEHOLDERS[language] || PLACEHOLDERS.ur;
 
   return (
     <div style={{
@@ -842,18 +881,62 @@ export default function ChatPage() {
       position: 'relative', overflow: 'hidden'
     }}>
 
-      {/* ── Recent Chats Sidebar (collapsible drawer) ── */}
+      {/* ── Clear Confirmation Modal ── */}
+      {showClearConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 2000,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 16
+        }}>
+          <div style={{
+            background: 'white', borderRadius: 16, padding: '20px 24px',
+            maxWidth: 320, width: '100%', textAlign: 'center',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+            direction: language === 'en' ? 'ltr' : 'rtl',
+            fontFamily: language === 'en' ? 'Inter, sans-serif' : 'Noto Nastaliq Urdu, serif'
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: 8 }}>🗑️</div>
+            <div style={{ fontWeight: 800, fontSize: '1rem', color: '#111827', marginBottom: 8 }}>
+              {language === 'en' ? 'Clear Conversation?' : language === 'pj' ? 'کیہ تسیں گل بات صاف کرنا چاہندے او؟' : 'کیا آپ گفتگو صاف کرنا چاہتے ہیں؟'}
+            </div>
+            <div style={{ fontSize: '.82rem', color: '#6b7280', marginBottom: 20, lineHeight: 1.5 }}>
+              {language === 'en' ? 'This action will clear all messages in this session.' : 'موجودہ گفتگو کے تمام پیغامات صاف ہو جائیں گے۔'}
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                style={{
+                  flex: 1, padding: '9px 14px', borderRadius: 10, border: '1px solid #d1d5db',
+                  background: '#f3f4f6', color: '#374151', fontWeight: 700, fontSize: '.85rem', cursor: 'pointer'
+                }}
+              >
+                {language === 'en' ? 'Cancel' : 'منسوخ'}
+              </button>
+              <button
+                onClick={confirmClearChat}
+                style={{
+                  flex: 1, padding: '9px 14px', borderRadius: 10, border: 'none',
+                  background: '#dc2626', color: 'white', fontWeight: 800, fontSize: '.85rem', cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(220,38,38,0.3)'
+                }}
+              >
+                {language === 'en' ? 'Yes, Clear' : 'جی ہاں، صاف کریں'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showSidebar && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1000,
           display: 'flex'
         }}>
-          {/* Backdrop */}
           <div
             onClick={() => setShowSidebar(false)}
             style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}
           />
-          {/* Drawer */}
           <div style={{
             position: 'relative', width: 300, maxWidth: '85vw',
             background: '#162410', height: '100%',
@@ -861,7 +944,6 @@ export default function ChatPage() {
             boxShadow: '4px 0 24px rgba(0,0,0,0.4)',
             animation: 'sidebarSlideIn 0.25s ease-out'
           }}>
-            {/* Sidebar Header */}
             <div style={{
               background: 'linear-gradient(135deg, #1a3a16, #2e5a27)',
               padding: '16px 14px',
@@ -871,101 +953,66 @@ export default function ChatPage() {
                 🌾 DehatiAI
               </div>
               <button
-                onClick={() => { setShowSidebar(false); clearChat(); }}
+                onClick={() => { setShowSidebar(false); handleClearClick(); }}
                 style={{
                   width: '100%', background: 'rgba(255,255,255,0.15)',
                   border: '1.5px solid rgba(255,255,255,0.3)',
                   borderRadius: 10, padding: '9px 14px',
                   color: 'white', fontWeight: 800, fontSize: '.88rem',
                   cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                  fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl'
+                  fontFamily: language === 'en' ? 'Inter, sans-serif' : '"Noto Nastaliq Urdu", serif',
+                  direction: language === 'en' ? 'ltr' : 'rtl'
                 }}
               >
                 <span style={{ fontSize: '1.1rem' }}>✏️</span>
-                + نئی بات چیت
+                {language === 'en' ? '+ New Chat' : '+ نئی بات چیت'}
               </button>
             </div>
 
-            {/* Session List */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
               {chatHistory.length === 0 ? (
                 <div style={{
                   padding: '2rem 1rem', textAlign: 'center',
                   color: '#64748b', fontSize: '.82rem',
-                  fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl'
+                  fontFamily: language === 'en' ? 'Inter, sans-serif' : '"Noto Nastaliq Urdu", serif',
+                  direction: language === 'en' ? 'ltr' : 'rtl'
                 }}>
-                  کوئی پرانی گفتگو نہیں۔<br/>سوال کریں — پھر یہاں ظاہر ہو گا۔
+                  {language === 'en' ? 'No chat history. Ask a question!' : 'کوئی پرانی گفتگو نہیں۔ سوال کریں — پھر یہاں ظاہر ہو گا۔'}
                 </div>
               ) : (
                 <>
-                  <div style={{ padding: '8px 14px 4px', fontSize: '.7rem', color: '#475569', fontFamily: 'Inter, sans-serif', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-                    گزشتہ گفتگوئیں
-                  </div>
                   {chatHistory.map(session => (
                     <div
                       key={session.id}
-                      onClick={() => loadSession(session)}
+                      onClick={() => loadChatSession(session)}
                       style={{
-                        padding: '10px 14px', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        borderRadius: 8, margin: '2px 6px',
-                        transition: 'background 0.15s',
-                        background: session.id === currentSessionId.current
-                          ? 'rgba(16,185,129,0.12)'
-                          : 'transparent',
-                        border: session.id === currentSessionId.current
-                          ? '1px solid rgba(16,185,129,0.3)'
-                          : '1px solid transparent'
+                        padding: '10px 14px', margin: '2px 8px', borderRadius: 8,
+                        background: currentSessionId.current === session.id ? 'rgba(255,255,255,0.15)' : 'transparent',
+                        cursor: 'pointer', transition: 'background .15s',
+                        display: 'flex', flexDirection: 'column', gap: 2,
+                        direction: language === 'en' ? 'ltr' : 'rtl'
                       }}
-                      onMouseEnter={e => { if (session.id !== currentSessionId.current) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-                      onMouseLeave={e => { if (session.id !== currentSessionId.current) e.currentTarget.style.background = 'transparent'; }}
                     >
-                      <span style={{ fontSize: '1rem', flexShrink: 0 }}>💬</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          color: '#e2e8f0', fontSize: '.83rem', fontWeight: 600,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          direction: getDir(session.title), fontFamily: getFont(session.title)
-                        }}>
-                          {session.title}
-                        </div>
-                        <div style={{ color: '#475569', fontSize: '.68rem', marginTop: 2, fontFamily: 'Inter, sans-serif' }}>
-                          {formatSessionDate(session.date)} • {session.messageCount} سوالات
-                        </div>
+                      <div style={{
+                        color: 'white', fontSize: '.84rem', fontWeight: 600,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        fontFamily: language === 'en' ? 'Inter, sans-serif' : '"Noto Nastaliq Urdu", serif'
+                      }}>
+                        {session.title || (language === 'en' ? 'Untitled Conversation' : 'غیر عنوان گفتگو')}
                       </div>
-                      <button
-                        onClick={(e) => deleteSession(session.id, e)}
-                        title="حذف کریں"
-                        style={{
-                          background: 'transparent', border: 'none',
-                          color: '#475569', cursor: 'pointer', fontSize: '.9rem',
-                          padding: '2px 4px', borderRadius: 4, flexShrink: 0,
-                          opacity: 0.7, transition: 'opacity 0.15s'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                        onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
-                      >🗑️</button>
+                      <div style={{ color: '#94a3b8', fontSize: '.7rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{session.messages?.length || 0} {language === 'en' ? 'messages' : 'پیغامات'}</span>
+                        <span>{formatSessionDate(session.updatedAt || session.createdAt)}</span>
+                      </div>
                     </div>
                   ))}
                 </>
               )}
             </div>
-
-            {/* Sidebar Footer */}
-            <div style={{
-              padding: '12px 14px',
-              paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
-              borderTop: '1px solid #2e5a27'
-            }}>
-              <div style={{ fontSize: '.7rem', color: '#a3e635', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
-                DehatiAI • زراعت ہیلپ لائن: 0800-17000
-              </div>
-            </div>
           </div>
         </div>
       )}
 
-      {/* ── WhatsApp Mic Overlay ── */}
       {showMicOverlay && (
         <MicOverlay
           isListening={isListening}
@@ -979,21 +1026,20 @@ export default function ChatPage() {
         />
       )}
 
-      {/* ── Header (Android-Aware Header-Height Offset) ── */}
       <div style={{
         background: 'linear-gradient(135deg, #1a3a16, #2e5a27)',
-        padding: '12px 16px 10px',
-        paddingTop: 'calc(var(--header-height, 60px) + 8px + env(safe-area-inset-top, 0px))',
+        padding: '10px 12px',
+        paddingTop: 'calc(var(--header-height, 60px) + 6px + env(safe-area-inset-top, 0px))',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        boxShadow: '0 2px 8px rgba(0,0,0,.2)', flexShrink: 0, zIndex: 10
+        boxShadow: '0 2px 8px rgba(0,0,0,.2)', flexShrink: 0, zIndex: 10,
+        maxWidth: '100%', overflowX: 'hidden'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Sidebar toggle (hamburger) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <button
             onClick={() => setShowSidebar(true)}
-            title="گزشتہ گفتگوئیں"
+            title={language === 'en' ? 'Past conversations' : 'گزشتہ گفتگوئیں'}
             style={{
-              width: 36, height: 36, borderRadius: 10, border: 'none',
+              width: 34, height: 34, borderRadius: 10, border: 'none',
               background: 'rgba(255,255,255,.15)', color: 'white',
               cursor: 'pointer', fontSize: '1rem',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1001,42 +1047,43 @@ export default function ChatPage() {
             }}
           >☰</button>
           <div style={{
-            width: 36, height: 36, borderRadius: '50%',
+            width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
             background: 'rgba(255,255,255,.15)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.2rem', border: '2px solid rgba(255,255,255,.3)'
+            fontSize: '1.1rem', border: '2px solid rgba(255,255,255,.3)'
           }}>🌾</div>
-          <div>
-            <div style={{ color: 'white', fontWeight: 700, fontSize: '.95rem', fontFamily: 'Inter, sans-serif' }}>DehatiAI</div>
-            <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '.72rem', fontFamily: 'Inter, sans-serif' }}>
-              {isBusy ? '✍️ جواب لکھ رہا ہوں...' : isListening ? '🎙️ سن رہا ہوں...' : '🟢 آن لائن'}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: 'white', fontWeight: 700, fontSize: '.9rem', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>DehatiAI</div>
+            <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '.68rem', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+              {isBusy
+                ? (language === 'en' ? '✍️ Typing...' : '✍️ جواب لکھ رہا ہوں...')
+                : isListening
+                  ? (language === 'en' ? '🎙️ Listening...' : '🎙️ سن رہا ہوں...')
+                  : (language === 'en' ? '🟢 Online' : '🟢 آن لائن')}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* Language selector */}
-          <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 3, overflowX: 'auto', scrollbarWidth: 'none', maxWidth: 170 }}>
             {LANGS.map(l => (
               <button key={l.key} onClick={() => setLanguage(l.key)} style={{
-                padding: '3px 9px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                padding: '3px 8px', borderRadius: 20, border: 'none', cursor: 'pointer',
                 background: language === l.key ? 'white' : 'rgba(255,255,255,.2)',
                 color: language === l.key ? '#2e5a27' : 'white',
-                fontSize: '.7rem', fontWeight: 700, fontFamily: 'Inter, sans-serif',
-                transition: 'all .2s'
+                fontSize: '.68rem', fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                whiteSpace: 'nowrap', transition: 'all .2s'
               }}>{l.label}</button>
             ))}
           </div>
-          {/* Clear button */}
-          <button onClick={clearChat} title="نئی گفتگو" style={{
-            width: 34, height: 34, borderRadius: '50%', border: 'none',
+          <button onClick={handleClearClick} title={language === 'en' ? 'Clear conversation' : 'نئی گفتگو'} style={{
+            width: 32, height: 32, borderRadius: '50%', border: 'none',
             background: 'rgba(255,255,255,.15)', color: 'white', cursor: 'pointer',
-            fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center'
+            fontSize: '.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
           }}>🗑️</button>
         </div>
       </div>
 
-      {/* ── Messages ── */}
       <div style={{
         flex: 1, overflowY: 'auto', padding: '12px 12px 0',
         display: 'flex', flexDirection: 'column',
@@ -1047,10 +1094,9 @@ export default function ChatPage() {
           <MessageBubble key={i} msg={msg} isLast={i === messages.length - 1} />
         ))}
 
-        {/* Live interim transcript bubble */}
         {isListening && interimText && (
           <div style={{
-            display: 'flex', justifyContent: 'flex-end', marginBottom: 8,
+            display: 'flex', justifyContent: language === 'en' ? 'flex-start' : 'flex-end', marginBottom: 8,
             animation: 'msgFadeIn .2s ease-out'
           }}>
             <div style={{
@@ -1068,21 +1114,22 @@ export default function ChatPage() {
         <div ref={bottomRef} style={{ height: 8 }} />
       </div>
 
-      {/* ── Quick replies ── */}
       {showQuickReplies && (
         <div style={{
-          padding: '6px 12px',
+          padding: '6px 10px',
           background: 'transparent',
           flexShrink: 0,
-          overflowX: 'auto'
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          maxWidth: '100%'
         }}>
           <div style={{ display: 'flex', gap: 6, width: 'max-content' }}>
-            {QUICK_REPLIES.map((r, i) => (
+            {currentQuickReplies.map((r, i) => (
               <button key={i} onClick={() => sendMessage(r)} disabled={isBusy} style={{
-                padding: '6px 14px', borderRadius: 20, border: '1.5px solid #2e5a27',
-                background: 'white', color: '#2e5a27', fontSize: '.78rem',
+                padding: '5px 12px', borderRadius: 20, border: '1.5px solid #2e5a27',
+                background: 'white', color: '#2e5a27', fontSize: '.76rem',
                 fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-                fontFamily: '"Noto Nastaliq Urdu", serif',
+                fontFamily: language === 'en' ? 'Inter, sans-serif' : '"Noto Nastaliq Urdu", serif',
                 boxShadow: '0 1px 4px rgba(0,0,0,.08)',
                 opacity: isBusy ? 0.5 : 1, transition: 'all .15s',
                 direction: 'rtl'
@@ -1199,7 +1246,7 @@ export default function ChatPage() {
             ref={inputRef}
             id="chat-input"
             rows={1}
-            placeholder={isListening ? '🎙️ بول رہے ہیں...' : isBusy ? 'جواب آ رہا ہے...' : 'یہاں لکھیں یا 🎤 سے بولیں...'}
+            placeholder={isListening ? (language === 'en' ? '🎙️ Listening...' : '🎙️ بول رہے ہیں...') : isBusy ? (language === 'en' ? 'Thinking...' : 'جواب آ رہا ہے...') : currentPlaceholder}
             value={isListening ? displayInput : input}
             onChange={e => !isListening && setInput(e.target.value)}
             onKeyDown={handleKeyDown}

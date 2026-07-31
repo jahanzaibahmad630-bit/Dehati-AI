@@ -6,8 +6,10 @@ import React from 'react';
  * Cleanly renders headings, lists, bold/italic, dividers, and callouts
  * while sanitizing messy markdown artifacts (like trailing ## or misplaced *).
  */
-export default function MarkdownRenderer({ text, className = '' }) {
+export default function MarkdownRenderer({ text, className = '', dir = 'rtl', lang = 'ur' }) {
   if (!text) return null;
+
+  const isLTR = dir === 'ltr' || lang === 'en';
 
   // Pre-process and normalize markdown text
   const normalizedText = text
@@ -26,13 +28,24 @@ export default function MarkdownRenderer({ text, className = '' }) {
   const parseInline = (str) => {
     if (!str) return '';
     let s = str;
+
     // Bold + Italic: ***text***
     s = s.replace(/\*\*\*(.*?)\*\*\*/g, (_, t) => `<strong><em>${t}</em></strong>`);
     // Bold: **text**
     s = s.replace(/\*\*(.*?)\*\*/g, (_, t) => `<strong>${t}</strong>`);
-    // Italic: *text*
-    s = s.replace(/\*(.*?)\*/g, (_, t) => `<em>${t}</em>`);
-    // Strip leftover stray raw markdown symbols like isolated ** or ##
+    // Italic / Bullet wrapper: *text*
+    s = s.replace(/(^|\s)\*(.*?)\*(\s|$)/g, (_, p1, t, p2) => `${p1}<em>${t}</em>${p2}`);
+
+    // Linkify URLs
+    s = s.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #2e5a27; text-decoration: underline;">$1</a>');
+
+    // Linkify Helpline & Pakistani Phone numbers: e.g. 0800-15000, 0800 15000, 0300-1234567, 080015000
+    s = s.replace(/\b(0800[-\s]?\d{5}|03\d{2}[-\s]?\d{7})\b/g, (match) => {
+      const cleanNum = match.replace(/[-\s]/g, '');
+      return `<a href="tel:${cleanNum}" style="color: #2e5a27; font-weight: 700; text-decoration: underline; unicode-bidi: embed;">${match}</a>`;
+    });
+
+    // Clean up stray double symbols
     s = s.replace(/#{2,}/g, '').replace(/\*{2,}/g, '');
     return s;
   };
@@ -73,8 +86,9 @@ export default function MarkdownRenderer({ text, className = '' }) {
       elements.push(
         <div key={key++} style={{
           background: 'rgba(47, 74, 30, 0.06)',
-          borderRight: '3px solid #2F4A1E',
-          borderRadius: '4px 8px 8px 4px',
+          borderRight: isLTR ? 'none' : '3px solid #2F4A1E',
+          borderLeft: isLTR ? '3px solid #2F4A1E' : 'none',
+          borderRadius: isLTR ? '8px 4px 4px 8px' : '4px 8px 8px 4px',
           padding: '4px 10px',
           margin: '0.5rem 0 0.3rem',
           fontWeight: 700,
@@ -103,10 +117,10 @@ export default function MarkdownRenderer({ text, className = '' }) {
       }
       elements.push(
         <ul key={key++} style={{
-          paddingRight: '1.2rem',
-          paddingLeft: '0',
+          paddingRight: isLTR ? '0' : '1.2rem',
+          paddingLeft: isLTR ? '1.2rem' : '0',
           margin: '0.3rem 0',
-          direction: 'rtl',
+          direction: isLTR ? 'ltr' : 'rtl',
           listStyleType: 'disc'
         }}>
           {items}
@@ -131,10 +145,10 @@ export default function MarkdownRenderer({ text, className = '' }) {
       }
       elements.push(
         <ol key={key++} style={{
-          paddingRight: '1.2rem',
-          paddingLeft: '0',
+          paddingRight: isLTR ? '0' : '1.2rem',
+          paddingLeft: isLTR ? '1.2rem' : '0',
           margin: '0.3rem 0',
-          direction: 'rtl'
+          direction: isLTR ? 'ltr' : 'rtl'
         }}>
           {items}
         </ol>
@@ -156,9 +170,9 @@ export default function MarkdownRenderer({ text, className = '' }) {
 
   return (
     <div className={`markdown-body ${className}`} style={{
-      direction: 'rtl',
-      textAlign: 'right',
-      fontFamily: 'Noto Nastaliq Urdu, sans-serif'
+      direction: isLTR ? 'ltr' : 'rtl',
+      textAlign: isLTR ? 'left' : 'right',
+      fontFamily: isLTR ? 'Inter, system-ui, sans-serif' : 'Noto Nastaliq Urdu, sans-serif'
     }}>
       {elements}
     </div>
