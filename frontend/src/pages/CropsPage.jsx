@@ -378,7 +378,7 @@ function PestScoutingBanner() {
             boxShadow: '0 0 8px #ef4444', animation: 'pulse 2s infinite', flexShrink: 0 
           }} />
           <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fca5a5' }}>
-            🚨 ضلعی کیڑا انتباہ ریڈار — Punjab Pest Warning Directorate 2026
+            🌦️ عمومی موسمی کیڑا رجحان (تخمینہ)
           </div>
         </div>
         <div style={{ fontSize: '1.2rem' }}>{expanded ? '▲' : '▼'}</div>
@@ -404,7 +404,7 @@ function PestScoutingBanner() {
                 display: 'inline-block', background: 'rgba(239,68,68,0.2)', color: '#fca5a5', 
                 padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, marginBottom: '8px'
               }}>
-                ⚠️ 24% زیادہ خطرہ
+                ⚠️ موسم کے لحاظ سے خطرہ
               </div>
               <div style={{ fontSize: '0.75rem', color: '#bbf7d0' }}>
                 <span style={{ color: '#3a7232', fontWeight: 700 }}>سپرے:</span> Confidor 200SL 250ml/ایکڑ
@@ -425,7 +425,7 @@ function PestScoutingBanner() {
                 display: 'inline-block', background: 'rgba(239,68,68,0.2)', color: '#fca5a5', 
                 padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, marginBottom: '8px'
               }}>
-                🔴 الرٹ
+                ⚠️ موسمی رجحان
               </div>
               <div style={{ fontSize: '0.75rem', color: '#bbf7d0' }}>
                 <span style={{ color: '#3a7232', fontWeight: 700 }}>سپرے:</span> Ridomil Gold MZ 68WG 600g/ایکڑ
@@ -456,7 +456,7 @@ function PestScoutingBanner() {
           <div style={{ 
             marginTop: '0.5rem', fontSize: '0.65rem', color: '#64748b', textAlign: 'left', direction: 'ltr'
           }}>
-            ماخذ: Punjab Pest Warning & Quality Control of Pesticides, لاہور
+            ماخذ: DehatiAI موسمی تخمینہ — سرکاری تصدیق نہیں
           </div>
         </div>
       )}

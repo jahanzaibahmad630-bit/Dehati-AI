@@ -401,12 +401,12 @@ export default function DiseasePage() {
             <p style={{ marginTop: '.75rem', color: '#10b981', fontWeight: 600 }}>
               {compressing
                 ? '⏳ تصویر کمپریس ہو رہی ہے...'
-                : '🔬 ResNet50 اعتماد جانچ رہا ہے — 85% گیٹ...'}
+                : '🔬 بیماری تشخیص ہو رہی ہے...'}
             </p>
             <div style={{ marginTop: '.5rem', display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
               <div style={{ fontSize: '.7rem', color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
-                <span>Confidence ≥ 85% → Local DB ✓</span>
-                <span>Confidence &lt; 85% → Claude Vision 🤖</span>
+                <span>مقامی ڈیٹابیس</span>
+                <span>AI وژن تجزیہ</span>
               </div>
               <div style={{ height: 4, background: '#334155', borderRadius: 4, overflow: 'hidden' }}>
                 <div style={{
@@ -430,7 +430,7 @@ export default function DiseasePage() {
                   background: 'rgba(251,192,45,0.2)', color: 'var(--gold)',
                   fontSize: '.75rem', padding: '4px 12px', borderRadius: 20, fontWeight: 800, border: '1px solid var(--gold)'
                 }}>
-                  🧠 {result.model_attribution || 'ResNet50 PyTorch Model • 98.4% Ground-Truth Match'}
+                  🧠 {result.model_attribution || 'مقامی ڈیٹابیس ریکارڈ'}
                 </span>
                 <AIDisclaimer small />
               </div>
@@ -458,7 +458,7 @@ export default function DiseasePage() {
                     {result.confidence !== undefined && (
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.68rem', color: '#cbd5e1', marginBottom: 3 }}>
-                          <span>ResNet50 اعتماد</span>
+                          <span>تشخیص اعتماد</span>
                           <span style={{ color: barColor, fontWeight: 800 }}>
                             {confPct.toFixed(1)}% {confPct >= 85 ? ' ✅ High' : ' ⚠️ Low → AI Verified'}
                           </span>

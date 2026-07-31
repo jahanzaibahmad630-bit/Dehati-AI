@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt   = require('bcryptjs');
 const { randomUUID } = require('crypto');
-const { signToken } = require('../middleware/auth');
+const { signToken, authenticateToken } = require('../middleware/auth');
 const db = require('../lib/db');
 
 const router      = express.Router();
@@ -105,6 +105,20 @@ router.post('/guest', (req, res) => {
   };
   const token = signToken(guestUser);
   res.json({ token, user: { name: 'مہمان کسان', phone: 'guest', isGuest: true } });
+});
+
+// ─── DELETE /api/auth/account ─────────────────────────────────────────────────
+router.delete('/account', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.is_guest) {
+      return res.status(400).json({ error: 'مہمان اکاؤنٹ حذف نہیں ہو سکتا' });
+    }
+    await db.deleteUser(req.user.id);
+    res.json({ success: true, message: 'اکاؤنٹ کامیابی سے ختم ہو گیا' });
+  } catch (err) {
+    console.error('Account deletion error:', err.message);
+    res.status(500).json({ error: 'اکاؤنٹ ختم نہیں ہو سکا — دوبارہ کوشش کریں' });
+  }
 });
 
 module.exports = router;

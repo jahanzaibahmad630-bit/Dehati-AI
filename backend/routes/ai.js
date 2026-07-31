@@ -1,7 +1,7 @@
 const express   = require('express');
 const Anthropic  = require('@anthropic-ai/sdk');
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
-const { aiLimiter }         = require('../middleware/rateLimit');
+const { aiLimiter, diseaseLimiter } = require('../middleware/rateLimit');
 const db                    = require('../lib/db');
 const aiCache               = require('../lib/aiCache');
 
@@ -388,36 +388,33 @@ router.get('/disease-catalog', (req, res) => {
   }
 });
 
-// ——— POST /api/ai/disease — 3-Tier Confidence-Gated Leaf Scanner Pipeline ────────
-router.post('/disease', aiLimiter, optionalAuth, async (req, res) => {
+router.post('/disease', diseaseLimiter, optionalAuth, async (req, res) => {
   try {
     const { imageBase64, cropName, diseaseKey, mimeType = 'image/jpeg' } = req.body;
 
-    // ── Step 1: Run ResNet50 local inference against 306-class index ─────────
+    if (imageBase64 && Buffer.byteLength(imageBase64, 'base64') > 5 * 1024 * 1024) {
+      return res.status(413).json({ error: 'تصویر کا سائز 5MB سے زیادہ نہیں ہونا چاہیے۔' });
+    }
+
+    // ── Step 1: Check database or require AI analysis ─────────
     const tier1 = modelInference.predictDisease(imageBase64, cropName, diseaseKey);
 
     console.log(
-      `[Scanner] ResNet50 → "${tier1.disease_en}" | ` +
-      `Confidence: ${tier1.match_score} | ` +
-      `Gate: ${tier1.meetsThreshold ? '✅ HIGH (≥85%)' : '⚠️  LOW (<85%)'} | ` +
+      `[Scanner] Result → "${tier1.disease_en}" | ` +
+      `Source: ${tier1.source} | ` +
       `Local DB: ${tier1.hasLocalRecord ? '✓ Match' : '✗ Unknown'}`
     );
 
     // ══════════════════════════════════════════════════════════════════════════
-    // TIER 1: HIGH CONFIDENCE + LOCAL MATCH
-    // Confidence >= 85%  AND  agronomyDatabase.json has a verified prescription.
-    // Return instantly. Zero Cloud API call. Zero latency. Zero cost.
+    // TIER 1: LOCAL DATABASE MATCH
     // ══════════════════════════════════════════════════════════════════════════
-    if (tier1.meetsThreshold && tier1.hasLocalRecord) {
-      console.log(`[Tier-1 ✅ HIGH CONFIDENCE] ${tier1.localKey} → ${tier1.disease_en} (${tier1.match_score})`);
+    if (tier1.source === 'database_match' && tier1.hasLocalRecord) {
+      console.log(`[Tier-1 ✅ LOCAL MATCH] ${tier1.localKey} → ${tier1.disease_en}`);
       return res.json({
         tier:                    1,
-        source:                  'local_high_confidence',
-        source_label:            `✓ Verified ResNet50 Local Model • High Confidence Match (${tier1.match_score})`,
-        confidence:              tier1.confidenceRaw,
+        source:                  tier1.source,
+        source_label:            tier1.model_attribution,
         model_attribution:       tier1.model_attribution,
-        model_weights:           tier1.model_weights,
-        match_score:             tier1.match_score,
         disease_ur:              tier1.disease_ur,
         disease_en:              tier1.disease_en,
         disease:                 tier1.disease,
@@ -426,20 +423,17 @@ router.post('/disease', aiLimiter, optionalAuth, async (req, res) => {
         prevention:              tier1.prevention,
         withholding_period_days: tier1.withholding_period_days,
         organic_alternative:     tier1.organic_alternative,
-        medicines:               tier1.medicines
+        medicines:               tier1.medicines,
+        disclaimer:              'استعمال سے پہلے مقامی زرعی افسر سے تصدیق کروائیں۔'
       });
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // TIER 2: LOW CONFIDENCE OR UNKNOWN DISEASE → CLOUD VISION AI
-    // Fires when: confidence < 85%  OR  disease not in agronomyDatabase.json.
-    // Check if device is online (claude client available) before calling Cloud.
-    // Active Learning: saves AI result → agronomyDatabase.json for future hits.
+    // TIER 2: CLOUD VISION AI
     // ══════════════════════════════════════════════════════════════════════════
-    if (imageBase64 && claude) {
+    if (tier1.source === 'requires_ai_analysis' && imageBase64 && claude) {
       console.log(
-        `[Tier-2 🤖 CLOUD VISION] Confidence ${tier1.match_score} < 85% or unknown — ` +
-        `delegating to Claude Vision AI for high-accuracy analysis`
+        `[Tier-2 🤖 CLOUD VISION] Requires AI analysis — delegating to Claude Vision AI`
       );
 
       const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -459,8 +453,6 @@ router.post('/disease', aiLimiter, optionalAuth, async (req, res) => {
       const systemPrompt =
 `You are Dr. Zara — senior plant pathologist with 20+ years in Punjab & Sindh Pakistan.
 Diagnose the crop disease from the leaf image and prescribe localized Pakistani remedies.
-
-ResNet50 Low-Confidence Baseline: ${tier1.disease_en} (${tier1.match_score} — below 85% threshold).
 
 CRITICAL PRODUCT DATABASE:
 Always use Pakistani registered brands: ${samplePakistaniMeds}.
@@ -488,7 +480,7 @@ Respond strictly in valid JSON:
   ]
 }`;
 
-      const promptText = `Season: ${season}\n${cropText}\nAnalyze this leaf image. ResNet50 was uncertain (${tier1.match_score}). Provide precise diagnosis and Pakistani agronomy prescription in the JSON format above.`;
+      const promptText = `Season: ${season}\n${cropText}\nAnalyze this leaf image. Provide precise diagnosis and Pakistani agronomy prescription in the JSON format above.`;
 
       try {
         const response = await claude.messages.create({
@@ -523,11 +515,8 @@ Respond strictly in valid JSON:
           return res.json({
             tier:                    2,
             source:                  'ai_vision',
-            source_label:            `🤖 AI Vision Analysis (ResNet50 ${tier1.match_score} — Low Confidence → Cloud Verified)`,
-            confidence:              tier1.confidenceRaw,
-            model_attribution:       `ResNet50 + Claude Vision • ${tier1.match_score} Baseline → AI Verified`,
-            model_weights:           'ResNet50-Plant-model-80.pth',
-            match_score:             tier1.match_score,
+            source_label:            '🤖 AI وژن تجزیہ ضروری',
+            model_attribution:       '🤖 AI وژن تجزیہ ضروری',
             disease:                 `${parsed.disease_ur} (${parsed.disease_en || ''})`,
             disease_ur:              parsed.disease_ur,
             disease_en:              parsed.disease_en || '',
@@ -536,7 +525,8 @@ Respond strictly in valid JSON:
             prevention:              parsed.prevention           || 'کھیت صاف رکھیں اور متوازن کھاد دیں۔',
             withholding_period_days: parsed.withholding_period_days || 14,
             organic_alternative:     parsed.organic_alternative  || 'دیسی علاج: نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر احتیاطی سپرے کریں۔',
-            medicines:               parsed.medicines             || []
+            medicines:               parsed.medicines             || [],
+            disclaimer:              'استعمال سے پہلے مقامی زرعی افسر سے تصدیق کروائیں۔'
           });
         }
       } catch (aiErr) {
@@ -555,15 +545,12 @@ Respond strictly in valid JSON:
         ? 'Cloud AI not configured'
         : 'Cloud AI unreachable';
 
-    console.log(`[Tier-3 📱 OFFLINE] "${tier1.disease_en}" — ${offlineReason} | Confidence: ${tier1.match_score}`);
+    console.log(`[Tier-3 📱 OFFLINE] "${tier1.disease_en}" — ${offlineReason}`);
     res.json({
       tier:                    3,
       source:                  'offline_fallback',
-      source_label:            `📱 آف لائن موڈ: اندازاً تجویز — ${tier1.match_score} اعتماد (تصدیق کریں)`,
-      confidence:              tier1.confidenceRaw,
-      model_attribution:       `${tier1.model_name} • ${tier1.match_score} (Offline / Low Confidence)`,
-      model_weights:           tier1.model_weights,
-      match_score:             tier1.match_score,
+      source_label:            '📱 آف لائن موڈ: اندازاً تجویز (تصدیق کریں)',
+      model_attribution:       tier1.model_attribution,
       disease:                 tier1.disease,
       disease_ur:              tier1.disease_ur,
       disease_en:              tier1.disease_en,
@@ -572,7 +559,8 @@ Respond strictly in valid JSON:
       prevention:              tier1.prevention,
       withholding_period_days: tier1.withholding_period_days,
       organic_alternative:     tier1.organic_alternative,
-      medicines:               tier1.medicines
+      medicines:               tier1.medicines,
+      disclaimer:              'استعمال سے پہلے مقامی زرعی افسر سے تصدیق کروائیں۔'
     });
 
   } catch (err) {

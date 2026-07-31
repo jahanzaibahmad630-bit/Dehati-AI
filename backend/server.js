@@ -40,7 +40,17 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json({ limit: '15mb' }));
+// Force UTF-8 on all JSON responses
+app.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = (body) => {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return originalJson(body);
+  };
+  next();
+});
+
+app.use(express.json({ limit: '6mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(apiLimiter);
 

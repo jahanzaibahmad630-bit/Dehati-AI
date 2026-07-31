@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../config';
 import SprayDoseCalc from '../components/tools/SprayDoseCalc';
 import ProfitEstimator from '../components/tools/ProfitEstimator';
 import SeedRateCalc from '../components/tools/SeedRateCalc';
@@ -41,7 +42,25 @@ const NAV_TOOLS = [
 
 export default function MorePage() {
   const [activeTool, setActiveTool] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${API_URL}/api/auth/account`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      localStorage.clear();
+      navigate('/auth');
+    } catch (e) {
+      console.error(e);
+      setDeleting(false);
+    }
+  };
 
   const tool = SHEET_TOOLS.find(t => t.id === activeTool);
   const ToolComponent = tool?.component;
@@ -111,7 +130,44 @@ export default function MorePage() {
             ))}
           </div>
         </div>
+
+        <div style={{ marginTop: '2rem', padding: '1rem', background: '#fee2e2', borderRadius: 'var(--radius-md)', border: '1px solid #f87171', textAlign: 'center' }}>
+          <div style={{ color: '#b91c1c', fontWeight: 'bold', marginBottom: '0.75rem' }}>اکاؤنٹ کا انتظام</div>
+          <button 
+            onClick={() => setShowDeleteModal(true)} 
+            style={{ background: '#dc2626', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '0.75rem 1.25rem', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', width: '100%' }}
+          >
+            🗑️ اکاؤنٹ ختم کریں
+          </button>
+        </div>
       </div>
+
+      {showDeleteModal && (
+        <div className="overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="bottom-sheet" onClick={e => e.stopPropagation()} style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+            <h3 style={{ color: '#dc2626', marginBottom: '1rem' }}>کیا آپ واقعی اپنا اکاؤنٹ ختم کرنا چاہتے ہیں؟ یہ عمل واپس نہیں ہو سکتا۔</h3>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              <button 
+                className="btn btn-outline" 
+                style={{ flex: 1 }} 
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                منسوخ کریں
+              </button>
+              <button 
+                className="btn btn-danger" 
+                style={{ flex: 1 }} 
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+              >
+                {deleting ? 'ختم ہو رہا ہے...' : 'جی ہاں، ختم کریں'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Sheet */}
       {activeTool && ToolComponent && (

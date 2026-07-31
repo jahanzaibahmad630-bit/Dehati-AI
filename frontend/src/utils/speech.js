@@ -131,7 +131,8 @@ export function correctUrduAgriPhonetics(text) {
   let prev = '';
   let iterations = 0;
   while (t !== prev && iterations < 5) {
-    prev = t;
+    // Universal phrase deduplication ("فصل کو پانی کب لگائیں فصل کو پانی کب لگائیں" -> "فصل کو پانی کب لگائیں")
+    t = t.replace(/(.+?)\s+\1/g, '$1');
     // Deduplicate single repeated words ("گندم گندم گندم" -> "گندم")
     t = t.replace(/\b([\u0600-\u06FF\w]+)(?:\s+\1)+\b/gu, '$1');
     // Deduplicate repeated multi-word phrases ("السلام علیکم السلام علیکم" -> "السلام علیکم")
@@ -467,29 +468,31 @@ export function createSpeechEngine({
       }
 
       // ── Rural / Continuous Mode ────────────────────────────────────────
-      // Rebuild transcript cleanly from e.results indices on EVERY event.
-      let finalChunks = [];
-      let interimChunks = [];
+      // Take canonical final text without duplicating past e.results chunks.
+      let finalTexts = [];
+      let interimTexts = [];
 
       for (let i = 0; i < e.results.length; i++) {
-        const text = e.results[i][0].transcript.trim();
-        if (!text) continue;
-        if (e.results[i].isFinal) {
-          if (!finalChunks.includes(text) && !finalChunks.some(f => f.endsWith(text) || text.endsWith(f))) {
-            finalChunks.push(text);
-          } else if (finalChunks.length > 0 && text.length > finalChunks[finalChunks.length - 1].length) {
-            finalChunks[finalChunks.length - 1] = text;
+        const item = e.results[i];
+        const phrase = item[0]?.transcript?.trim() || '';
+        if (!phrase) continue;
+
+        if (item.isFinal) {
+          // Only add phrase if it is NOT already a substring or duplicate of existing final entries
+          if (!finalTexts.some(existing => existing.includes(phrase) || phrase.includes(existing))) {
+            finalTexts.push(phrase);
           }
         } else {
-          interimChunks.push(text);
+          interimTexts.push(phrase);
         }
       }
 
-      let combinedFinal = finalChunks.join(' ').trim();
-      let combinedInterim = interimChunks.join(' ').trim();
+      let combinedFinal = finalTexts.join(' ').trim();
+      let combinedInterim = interimTexts.join(' ').trim();
 
-      if (combinedInterim && combinedFinal && combinedInterim.startsWith(combinedFinal)) {
-        combinedFinal = '';
+      // Deduplicate overlapping interim/final text
+      if (combinedInterim && combinedFinal && (combinedFinal.includes(combinedInterim) || combinedInterim.includes(combinedFinal))) {
+        combinedInterim = '';
       }
 
       const cleanFinal   = correctUrduAgriPhonetics(combinedFinal);

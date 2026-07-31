@@ -15,8 +15,19 @@ const aiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,
   message: {
-    error: 'AI کالز کی حد ختم ہو گئی — ایک گھنٹے بعد دوبارہ کوشش کریں',
+    error: 'آپ کے روزانہ AI سوالات کی حد پوری ہو گئی ہے۔ براہ کرم کچھ دیر بعد کوشش کریں۔',
     code: 'AI_RATE_LIMIT'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const diseaseLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  message: {
+    error: 'تصویر تجزیہ کی حد پوری ہو گئی — ایک گھنٹے بعد دوبارہ کوشش کریں',
+    code: 'DISEASE_RATE_LIMIT'
   },
   standardHeaders: true,
   legacyHeaders: false
@@ -32,4 +43,4 @@ const adminLoginLimiter = rateLimit({
   skipSuccessfulRequests: true // only count failed attempts
 });
 
-module.exports = { apiLimiter, aiLimiter, adminLoginLimiter };
+module.exports = { apiLimiter, aiLimiter, adminLoginLimiter, diseaseLimiter };
