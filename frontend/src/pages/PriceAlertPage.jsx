@@ -119,7 +119,10 @@ function MandiTrendPanel() {
 
 
 function loadAlerts() {
-  try { return JSON.parse(localStorage.getItem('dehati_price_alerts') || '[]'); } catch { return []; }
+  try {
+    const data = JSON.parse(localStorage.getItem('dehati_price_alerts') || '[]');
+    return Array.isArray(data) ? data : [];
+  } catch { return []; }
 }
 function saveAlerts(alerts) {
 

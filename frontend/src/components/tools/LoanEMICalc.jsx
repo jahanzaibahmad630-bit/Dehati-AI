@@ -7,8 +7,8 @@ export default function LoanEMICalc() {
   const [result, setResult] = useState(null);
 
   const calculate = () => {
-    const a = parseFloat(amount), r = parseFloat(rate), m = parseFloat(months);
-    if (!a || !r || !m) return;
+    const a = parseFloat(amount), r = parseFloat(rate || '0'), m = parseFloat(months);
+    if (!a || isNaN(r) || !m || a <= 0 || m <= 0) return;
     // Simple interest EMI (common in agricultural loans)
     const interest = a * (r / 100) * (m / 12);
     const total = a + interest;

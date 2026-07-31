@@ -504,17 +504,18 @@ export default function CropsPage() {
 
   const getAdvice = async () => {
     if (isOffline || !crops.length || aiLoading) return;
-    let cancelled = false;
     setAiLoading(true);
     try {
       const cropSummary = crops.map(c => `${c.name} (${c.area} ایکڑ، صحت ${c.health}%)`).join('، ');
       const data = await askAI(
         `میری فصلیں: ${cropSummary}۔ مٹی کی نمی ${avgMoisture}% ہے۔ آج کے موسم کے مطابق 3 عملی مشورے دیں۔`
       );
-      if (!cancelled) setAiAdvice(data.answer);
-    } catch {}
-    finally { if (!cancelled) setAiLoading(false); }
-    return () => { cancelled = true; };
+      setAiAdvice(data?.answer || 'مشورہ موصول نہیں ہوا۔');
+    } catch (err) {
+      setAiAdvice('AI سروس سے رابطہ نہیں ہو سکا — بعد میں کوشش کریں۔');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   return (
@@ -744,15 +745,14 @@ export default function CropsPage() {
 </div>
 
 <div class="section">
-  <div class="section-title">🔬 ResNet50 AI تشخیص</div>
-  <div class="row"><span class="label">ماڈل:</span><span class="value">ResNet50 PyTorch Model (306 Classes)</span></div>
-  <div class="row"><span class="label">ماڈل فائل:</span><span class="value">ResNet50-Plant-model-80.pth (74.58 MB)</span></div>
-  <div class="row"><span class="label">تصدیقی ڈیٹابیس:</span><span class="value">Pakistan Agronomy Database — agronomyDatabase.json</span></div>
+  <div class="section-title">🔬 DehatiAI زرعی تجزیہ</div>
+  <div class="row"><span class="label">سسٹم:</span><span class="value">DehatiAI Agronomy Engine</span></div>
+  <div class="row"><span class="label">ڈیٹا پروویننس:</span><span class="value">دیہی پاکستان زرعی گائیڈ لائنز (UAF/NARC)</span></div>
 </div>
 
 <div class="section">
   <div class="section-title">🤖 AI زرعی مشورہ</div>
-  <div style="font-size:13px;line-height:1.9;white-space:pre-wrap">${aiAdvice.replace(/[#*`]/g, '').slice(0, 1200)}</div>
+  <div style="font-size:13px;line-height:1.9;white-space:pre-wrap">${(aiAdvice || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/[#*`]/g, '').slice(0, 1200)}</div>
 </div>
 
 <div class="section">

@@ -49,15 +49,19 @@ export default function MorePage() {
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
-      const token = localStorage.getItem('token');
-      await fetch(`${API_URL}/api/auth/account`, {
+      const token = localStorage.getItem('dehati_token');
+      const res = await fetch(`${API_URL}/api/auth/account`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'اکاؤنٹ ختم کرنے میں ناکامی ہوئی');
+      }
       localStorage.clear();
       navigate('/auth');
     } catch (e) {
-      console.error(e);
+      alert(e.message || 'اکاؤنٹ ختم نہیں ہو سکا — دوبارہ کوشش کریں');
       setDeleting(false);
     }
   };

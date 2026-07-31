@@ -481,10 +481,12 @@ function ExportTab({ dark }) {
       const res = await adminFetch('/export');
       const data = await res.json();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
+      a.href = url;
       a.download = `dehati_backup_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       flash(`✅ Exported: ${data.users?.length || 0} users, ${data.prices?.length || 0} prices, ${data.chatLogs?.length || 0} chat logs`);
     } catch { flash('❌ Export failed'); }
     setExporting(false);
@@ -612,9 +614,14 @@ export default function AdminPanel({ onLogout }) {
   };
 
   const handleClearCache = async () => {
-    await adminFetch('/cache/flush', { method: 'POST' });
-    setShowClearModal(false);
-    loadStats();
+    try {
+      await adminFetch('/cache/flush', { method: 'POST' });
+      loadStats();
+    } catch (err) {
+      alert('Failed to clear cache: ' + err.message);
+    } finally {
+      setShowClearModal(false);
+    }
   };
 
   const textPrimary = dark ? '#F1F5F9' : '#111827';

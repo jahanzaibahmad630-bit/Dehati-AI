@@ -224,13 +224,13 @@ export default function WeatherPage() {
   const locPerm = usePermission('geolocation');
   const requestGen = useRef(0);
 
-  // Auto-load last city on mount
+  // Auto-load last city on mount or when back online
   useEffect(() => {
     const lastCity = localStorage.getItem('dehati_last_city');
-    if (lastCity && !isOffline) {
+    if (lastCity && !isOffline && !weather) {
       handleCitySelect(lastCity);
     }
-  }, []); // eslint-disable-line
+  }, [isOffline]); // eslint-disable-line
 
   const fetchWeatherAndAdvice = async (weatherData) => {
     setWeather(weatherData);
@@ -238,9 +238,9 @@ export default function WeatherPage() {
     try {
       const prompt = `موسم: ${weatherData.condition}, درجہ حرارت: ${weatherData.temp}°C, نمی: ${weatherData.humidity}%, ہوا: ${weatherData.windSpeed} km/h\n\nآج کے موسم کے مطابق پنجاب کے کسانوں کے لیے 2-3 عملی مشورے دیں (آبپاشی، سپرے، دھوپ سے بچاؤ وغیرہ)`;
       const data = await askAI(prompt);
-      setAdvice(data.answer);
+      setAdvice(data?.answer || null);
     } catch {
-      // advice is optional
+      setAdvice('AI مشورہ فی الحال دستیاب نہیں — موسمی کالم کے مطابق احتیاط کریں۔');
     } finally {
       setAdviceLoading(false);
     }

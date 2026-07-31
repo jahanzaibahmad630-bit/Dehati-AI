@@ -51,10 +51,13 @@ export async function getDiseaseCatalog() {
 }
 
 export async function chatWithAI(messages, language = 'ur') {
-  const res = await fetch(`${API_URL}/api/ai/chat`, {
+  const lastUserMsg = Array.isArray(messages)
+    ? messages.filter(m => m.role === 'user').slice(-1)[0]?.content || ''
+    : (typeof messages === 'string' ? messages : '');
+  const res = await fetch(`${API_URL}/api/ai/ask`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ messages, language })
+    body: JSON.stringify({ question: lastUserMsg, language })
   });
   return handleResponse(res);
 }
