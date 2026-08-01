@@ -48,15 +48,22 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (name, phone, district, landSize, password) => {
-    const res = await fetch(`${API_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone, district, landSize, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'رجسٹریشن ناکام');
-    saveSession(data.token, data.user);
-    return data;
+    try {
+      const res = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone, district, landSize, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'رجسٹریشن ناکام');
+      saveSession(data.token, data.user);
+      return data;
+    } catch (err) {
+      if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+        throw new Error('انٹرنیٹ یا سرور سے رابطہ نہیں ہو سکا۔ دوبارہ کوشش کریں یا "مہمان لاگ ان" استعمال کریں۔');
+      }
+      throw err;
+    }
   };
 
   const login = async (phone, password) => {
