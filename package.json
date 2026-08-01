@@ -1,0 +1,14 @@
+{
+  "name": "dehati-ai-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DehatiAI Root Package for Railway & Vercel deployment resolution",
+  "scripts": {
+    "start": "cd backend && node server.js",
+    "build": "cd backend && npm install",
+    "postinstall": "cd backend && npm install"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
