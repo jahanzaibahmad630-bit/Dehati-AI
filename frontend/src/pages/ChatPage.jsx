@@ -1289,11 +1289,12 @@ export default function ChatPage() {
 
       {/* ── Input bar ── */}
       <div style={{
-        padding: '10px 12px',
-        paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
+        padding: '8px 10px',
+        paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
         background: '#ece5dd',
         flexShrink: 0,
-        display: 'flex', alignItems: 'flex-end', gap: 8
+        display: 'flex', alignItems: 'flex-end', gap: 8,
+        direction: 'ltr'
       }}>
         {/* Mic button — left side (WhatsApp style) */}
         <button
