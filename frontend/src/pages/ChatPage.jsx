@@ -475,7 +475,7 @@ export default function ChatPage() {
   // Cleanup on unmount — abort (not stop) to avoid Android buffer-flush hang
   useEffect(() => {
     return () => {
-      try { speechEngineRef.current?.abort?.() || speechEngineRef.current?.reset?.(); } catch {}
+      try { speechEngineRef.current?.reset(); } catch {}
       try { abortRef.current?.abort(); } catch {}
     };
   }, []);
@@ -488,52 +488,53 @@ export default function ChatPage() {
       return;
     }
 
-    // Set isListening=true IMMEDIATELY for 0ms visual feedback on touch
+    // Show overlay and mic state IMMEDIATELY on tap (0ms visual feedback)
     setIsListening(true);
     setShowMicOverlay(true);
     setIosError(false);
     setFinalSpeech('');
     setInterimText('');
+    setInput('');
     isProcessingRef.current = false;
 
-    // Abort previous engine immediately (abort=0ms, stop=buffer wait on Android)
+    // Destroy previous engine — abort() for instant 0ms hardware release
     try { speechEngineRef.current?.reset(); } catch {}
+    speechEngineRef.current = null;
 
     const engine = createSpeechEngine({
       langKey: language,
-      ruralMode: true,       // Live interim + 3.5s silence auto-stop
-      silenceMs: 3500,       // 3.5s — rural farmers take natural pauses mid-sentence
+      ruralMode: true,
+      silenceMs: 3500, // 3.5s — rural farmers pause mid-sentence naturally
 
+      // Live interim: stream words character-by-character into overlay text box
       onInterim: (text) => {
-        // Live transcription: stream what the farmer is speaking into UI in real-time
-        if (!isProcessingRef.current && text) {
-          setInterimText(text);
-          setInput(text);
-          setIsListening(true);
-        }
+        setInterimText(text || '');
+        setIsListening(true);
       },
 
+      // Final confirmed word/phrase: populate both overlay + input box (REPLACE, never append)
       onFinalWord: (text) => {
-        // Called each time a final result arrives — REPLACE state, never append
-        if (!isProcessingRef.current && text) {
-          setFinalSpeech(text);
-          setInterimText('');
-          setInput(text);
-          setIsListening(true);
-        }
+        if (!text) return;
+        setFinalSpeech(text);
+        setInterimText('');
+        setInput(text);
+        setIsListening(true);
       },
 
+      // 3.5s silence auto-stop: populate input for user to review then tap Send
       onStopped: (finalText) => {
-        // 3.5s silence expired — finalize the transcript
-        if (isProcessingRef.current) return; // debounce: ignore duplicate fires
+        if (isProcessingRef.current) return;
         isProcessingRef.current = true;
         setIsListening(false);
         setInterimText('');
-        if (finalText) {
+        if (finalText && finalText.trim()) {
           setFinalSpeech(finalText);
           setInput(finalText);
+          // Overlay stays open — user reviews text and taps بھیجیں
+        } else {
+          // Nothing was captured — close overlay cleanly
+          setShowMicOverlay(false);
         }
-        // Release debounce lock after 300ms
         setTimeout(() => { isProcessingRef.current = false; }, 300);
       },
 
@@ -567,53 +568,64 @@ export default function ChatPage() {
   }, [language]);
 
 
+  // Stop recording — called by overlay ⏹ button (keeps overlay open to show text)
   const stopListening = useCallback(() => {
-    try { speechEngineRef.current?.reset(); } catch {}
+    try { speechEngineRef.current?.stop(); } catch {}
     setIsListening(false);
   }, []);
 
+  // Send voice message — called by overlay بھیجیں button
   const sendVoiceMessage = useCallback(() => {
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
-    setTimeout(() => { isProcessingRef.current = false; }, 300);
 
-    const rawText = finalSpeech.trim() || interimText.trim();
-    const text = correctUrduAgriPhonetics(rawText);
+    // Get best available transcript
+    const accumulated = speechEngineRef.current?.getAccumulated?.() || '';
+    const rawText = finalSpeech.trim() || accumulated.trim() || interimText.trim();
+    const text    = correctUrduAgriPhonetics(rawText);
+
+    // Destroy engine immediately
     try { speechEngineRef.current?.reset(); } catch {}
+    speechEngineRef.current = null;
+
+    // Close overlay and clear voice state
     setShowMicOverlay(false);
     setFinalSpeech('');
     setInterimText('');
     setIsListening(false);
+    setInput('');
+
+    setTimeout(() => { isProcessingRef.current = false; }, 300);
+
     if (text) {
-      // Send question ONCE with 300ms debounce
-      setTimeout(() => {
-        sendMessageRef.current?.(text);
-      }, 150);
+      setTimeout(() => { sendMessageRef.current?.(text); }, 150);
     }
   }, [finalSpeech, interimText]);
 
+  // Cancel mic — close overlay with NO message sent
   const cancelMic = useCallback(() => {
-    // abort() not stop() — stop() can hang on Android Chrome waiting for buffer flush
+    // reset() uses abort() internally — 0ms hardware release, no buffer-flush hang
     try { speechEngineRef.current?.reset(); } catch {}
+    speechEngineRef.current = null;
     setIsListening(false);
     setShowMicOverlay(false);
     setFinalSpeech('');
     setInterimText('');
+    // Keep input text if user had already typed something before using mic
   }, []);
 
+  // Retry mic — re-open overlay and start fresh session
   const retryMic = useCallback(() => {
-    setIsListening(false);
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    // abort() not stop() to prevent Android Chrome buffer-flush freeze on retry
     try { speechEngineRef.current?.reset(); } catch {}
+    speechEngineRef.current = null;
+    setIsListening(false);
     setFinalSpeech('');
     setInterimText('');
-    setTimeout(() => {
-      startListening();
-    }, 200);
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    setTimeout(() => { startListening(); }, 200);
   }, [startListening]);
 
-  // Legacy toggle for input-bar mic button
+  // Toggle: input bar 🎤 button
   const toggleSpeech = useCallback(() => {
     if (showMicOverlay) { cancelMic(); return; }
     startListening();
@@ -625,11 +637,13 @@ export default function ChatPage() {
     if (!msg || isBusy) return;
     setNetError(''); // clear any previous error
 
-    // Stop recording if active
+    // Stop recording if active — use reset() (abort) to prevent Android hang
     if (isListening) {
-      try { speechEngineRef.current?.stop(); } catch {}
+      try { speechEngineRef.current?.reset(); } catch {}
+      speechEngineRef.current = null;
       setIsListening(false);
       setInterimText('');
+      setShowMicOverlay(false);
     }
 
     if (isOffline) {
