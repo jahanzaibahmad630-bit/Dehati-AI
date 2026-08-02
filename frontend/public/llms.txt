@@ -1,0 +1,10 @@
+# DehatiAI — کسان کا ذہین ساتھی
+
+DehatiAI is a bilingual (Urdu & English) agricultural advisory AI platform for Pakistani farmers in Punjab, Pakistan.
+
+## Core Services
+- [AI Chat Advisory](https://dehati-ai.vercel.app/chat): Real-time agronomy Q&A powered by Anthropic Claude 3.5 Sonnet.
+- [Crop Disease Vision Scan](https://dehati-ai.vercel.app/disease): ResNet50 PyTorch vision diagnosis for 306 plant diseases with local spray prescriptions.
+- [Punjab Weather Radar](https://dehati-ai.vercel.app/weather): Live weather forecasts for 34 Punjab districts.
+- [Mandi Market Prices](https://dehati-ai.vercel.app/alerts): Daily Punjab mandi commodity price tracking.
+- [Kisan Card & Schemes](https://dehati-ai.vercel.app/schemes): Government subsidy guidance (ZTBL loan EMI, Kisan Card eligibility).

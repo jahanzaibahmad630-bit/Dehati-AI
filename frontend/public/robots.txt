@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://dehati-ai.vercel.app/sitemap.xml
