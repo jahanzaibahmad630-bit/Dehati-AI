@@ -538,9 +538,9 @@ export default function ChatPage() {
       onError: (errType) => {
         setIsListening(false);
         isProcessingRef.current = false;
+        setShowMicOverlay(false);
+
         if (errType === 'permission_denied') {
-          setShowMicOverlay(false);
-          // Explicit Urdu guidance — exact path differs by browser/device
           alert(
             'مائیک کی اجازت دیں:\n' +
             '• ایڈریس بار میں 🔒 تالے کے نشان پر ٹیپ کریں\n' +
@@ -548,9 +548,13 @@ export default function ChatPage() {
             '• صفحہ دوبارہ لوڈ کریں'
           );
         } else if (errType === 'audio-capture') {
-          setShowMicOverlay(false);
           alert('مائیک دستیاب نہیں — براہ کرم دوبارہ کوشش کریں');
+        } else if (errType === 'no_speech') {
+          setNetError('آواز محسوس نہیں ہوئی — 🎤 دبا کر دوبارہ بولیں یا کی بورڈ سے ٹائپ کریں');
+        } else if (errType === 'language-not-supported') {
+          setNetError('آپ کے فون پر اردو آواز سپورٹ نہیں ہے — براہ کرم کی بورڈ سے ٹائپ کریں');
         } else if (errType === 'ios_limit') {
+          setShowMicOverlay(true);
           setIosError(true);
         }
       }
