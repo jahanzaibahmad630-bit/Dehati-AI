@@ -413,7 +413,8 @@ export function createSpeechEngine({
       if (!stopped && !isProcessing) {
         stopped = true;
         isProcessing = true;
-        try { recognition._stopped?.(); recognition.stop(); } catch {}
+        // Use abort() — stop() can hang on Android Chrome waiting for buffer flush
+        try { recognition.abort(); } catch {}
         const clean = correctUrduAgriPhonetics(transcriptRef.trim());
         onStopped?.(clean);
         if (clean && onResult) onResult(clean);
@@ -433,10 +434,11 @@ export function createSpeechEngine({
       recognition.continuous     = false;
       recognition.interimResults = false;
     } else if (ruralMode) {
-      // Rural Mode: live interim + 3.5s silence auto-stop — for ChatPage
-      // ANDROID FIX: continuous=true on Android Chrome deadlocks Google Speech
-      // Services so onresult never fires. Force continuous=false on Android.
-      // onend auto-restarts recognition to maintain the session.
+      // Rural Mode: live interim + 3.5s silence auto-stop
+      // ANDROID/iOS MOBILE FIX: continuous=true on Android Chrome mobile deadlocks
+      // Google Speech Services — onresult never fires.
+      // Force continuous=false on mobile devices. onend auto-restarts the session.
+      // Desktop Chrome/Edge/Firefox get continuous=true for uninterrupted recording.
       recognition.continuous     = !isIOS && !isAndroid;
       recognition.interimResults = true;
     } else {
@@ -577,15 +579,14 @@ export function createSpeechEngine({
         onError?.('ios_limit');
         return;
       }
-      // Auto-restart for continuous / ruralMode on Android
+      // Auto-restart for ruralMode on Android/iOS (continuous=false)
+      // 150ms gap prevents InvalidStateError from stale recognition session
       setTimeout(() => {
         if (!stopped && !singlePass) {
           try {
             const next = createRecognition();
             recognitionInstance.current = next;
             next._stopped = () => { stopped = true; clearSilenceTimer(); };
-            // abort() before start() prevents InvalidStateError on stale sessions
-            try { next.abort(); } catch {}
             next.start();
           } catch (restartErr) {
             console.warn('[DehatiAI] Restart error:', restartErr.message);

@@ -152,7 +152,7 @@ function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCan
           }} />
         ))}
         <button
-          onClick={isListening ? onStop : undefined}
+          onClick={isListening ? onStop : onRetry}
           style={{
             width: 90, height: 90, borderRadius: '50%', border: 'none',
             background: iosError
@@ -212,8 +212,10 @@ function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCan
         {iosError
           ? 'iPhone Safari — voice limited. Type or use Android Chrome.'
           : isListening
-            ? 'سن رہے ہیں... خاموش ہونے سے 2.5 سیکنڈ بعد خود بخود رک جائے گا'
-            : 'مایک سے مل رہے ہیں...'}
+            ? 'سن رہے ہیں... خاموش ہونے کے 3.5 سیکنڈ بعد خود بخود رک جائے گا'
+            : hasText
+              ? 'بولنا مکمل — بھیجیں یا 🎤 دبا کر دوبارہ بولیں'
+              : '🎤 دبائیں اور بولنا شروع کریں'}
       </div>
     </div>
   );
