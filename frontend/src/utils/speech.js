@@ -418,9 +418,9 @@ export function createSpeechEngine({
     }, silenceMs);
   }
 
-  function createRecognition() {
+  function createRecognition(fallbackLang = null) {
     const recognition = new SR();
-    recognition.lang = srLang;
+    recognition.lang = fallbackLang || srLang;
     recognition.maxAlternatives = 1;
 
     if (singlePass) {
@@ -428,7 +428,7 @@ export function createSpeechEngine({
       recognition.continuous     = false;
       recognition.interimResults = false;
     } else if (ruralMode) {
-      // Rural Mode: live interim + 3.5s silence + debounce — for ChatPage
+      // Rural Mode: live interim + 3.5s silence auto-stop — for ChatPage
       recognition.continuous     = !isIOS;
       recognition.interimResults = true;
     } else {
@@ -515,6 +515,16 @@ export function createSpeechEngine({
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         stopped = true;
         onError?.('permission_denied');
+      } else if (e.error === 'language-not-supported' && srLang === 'ur-PK') {
+        console.warn('[DehatiAI] ur-PK not supported on device — trying ur-IN / hi-IN fallback');
+        try {
+          const fallbackRec = createRecognition('ur-IN');
+          recognitionInstance.current = fallbackRec;
+          fallbackRec.start();
+          return;
+        } catch {
+          onError?.('language-not-supported');
+        }
       } else if (e.error === 'network') {
         onError?.('network');
       } else if (e.error === 'aborted') {
@@ -629,7 +639,8 @@ export async function speakText(text, langKey = 'ur', rate = 0.85) {
 
   if (window.speechSynthesis.speaking) {
     window.speechSynthesis.cancel();
-    return false;
+    // Brief 50ms pause to allow Web Speech API engine to clear queue before starting new utterance
+    await new Promise(r => setTimeout(r, 50));
   }
 
   const normalized = normalizeUrduForSpeech(text);
