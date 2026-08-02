@@ -44,8 +44,8 @@ export default function AudioPlayer({
    * handlePlay — MUST be triggered from onClick/onTouchStart to comply with
    * Android Chrome autoplay policy. Never call from useEffect or setTimeout.
    */
-  const handlePlay = async () => {
-    if (!text || !hasSupport || isPending) return;
+  const handlePlay = () => {
+    if (!text || !hasSupport) return;
 
     // Toggle: if already playing, stop
     if (isPlaying) {
@@ -66,7 +66,6 @@ export default function AudioPlayer({
     utt.onstart  = () => { setIsPlaying(true);  setIsPending(false); };
     utt.onend    = () => setIsPlaying(false);
     utt.onerror  = (e) => {
-      // 'interrupted' is normal on Android when user taps again — not an error
       if (e.error !== 'interrupted' && e.error !== 'canceled') {
         console.warn('TTS error:', e.error);
       }
@@ -76,11 +75,14 @@ export default function AudioPlayer({
 
     setIsPending(true);
 
-    // waitForVoices is INSIDE the onClick handler — stays in the user-gesture
-    // call stack, which is required by Android Chrome's autoplay policy.
-    const voices = await waitForVoices();
-    const voice = selectUrduVoice(voices, langKey);
-    if (voice) utt.voice = voice;
+    // Synchronous voice selection — 0ms gesture delay for Android autoplay policy
+    try {
+      const voices = window.speechSynthesis.getVoices() || [];
+      if (voices.length > 0) {
+        const voice = selectUrduVoice(voices, langKey);
+        if (voice) utt.voice = voice;
+      }
+    } catch {}
 
     window.speechSynthesis.cancel(); // Clear any stale utterances
     window.speechSynthesis.speak(utt);

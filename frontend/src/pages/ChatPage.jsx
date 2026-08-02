@@ -484,7 +484,7 @@ export default function ChatPage() {
   }, []);
 
   // ── Voice input (Rural Mode: 3.5s silence + live transcription + zero duplication) ──
-  const startListening = useCallback(async () => {
+  const startListening = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
       alert('آپ کا براؤزر آواز سپورٹ نہیں کرتا۔ Android Chrome استعمال کریں۔');
@@ -493,16 +493,6 @@ export default function ChatPage() {
 
     // Set isListening=true IMMEDIATELY for 0ms visual feedback on touch
     setIsListening(true);
-
-    // Pre-warm hardware mic (cached after first call — instant on 2nd+ tap)
-    const { requestHardwareMic } = await import('../utils/speech');
-    const micResult = await requestHardwareMic();
-    if (micResult === 'denied') {
-      setIsListening(false);
-      alert('مائیک کی اجازت دیں (Allow Microphone Access in Settings)');
-      return;
-    }
-
     setShowMicOverlay(true);
     setIosError(false);
     setFinalSpeech('');
