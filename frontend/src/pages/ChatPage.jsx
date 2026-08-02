@@ -418,6 +418,7 @@ export default function ChatPage() {
   ]);
   const [interimText, setInterimText]   = useState(''); // live speech transcript
   const [finalSpeech, setFinalSpeech]   = useState(''); // finalized speech words
+  const [input, setInput]               = useState(''); // text input box value
   const [language, setLanguage]         = useState('ur');
   const [isStreaming, setIsStreaming]   = useState(false);
   const [isListening, setIsListening]   = useState(false);
@@ -428,6 +429,7 @@ export default function ChatPage() {
     () => getOfflineQueue().length > 0
   );
   const [netError, setNetError]   = useState('');   // network/server error message
+
 
   const bottomRef       = useRef(null);
   const inputRef        = useRef(null);
