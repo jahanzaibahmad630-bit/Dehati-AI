@@ -1171,6 +1171,94 @@ export default function ChatPage() {
           <MessageBubble key={i} msg={msg} isLast={i === messages.length - 1} />
         ))}
 
+        {/* ── Farmer Starter Hub (Fills empty space for new chats) ── */}
+        {messages.length <= 1 && (
+          <div style={{
+            margin: '16px 0', padding: '16px 14px',
+            background: 'rgba(255, 255, 255, 0.85)',
+            borderRadius: 20, border: '1.5px solid rgba(46, 90, 39, 0.2)',
+            boxShadow: '0 4px 16px rgba(46,90,39,0.08)',
+            animation: 'msgFadeIn 0.3s ease-out'
+          }}>
+            <div style={{
+              color: '#162410', fontSize: '.9rem', fontWeight: 800,
+              marginBottom: 14, textAlign: 'center', direction: 'rtl',
+              fontFamily: '"Noto Nastaliq Urdu", serif'
+            }}>
+              💡 کسان بھائیو! کوئی بھی سوال پوچھیں یا کٹہرے پر کلک کریں:
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <button
+                onClick={() => sendMessage('گندم کی فصل میں یوریا کھاد اور پانی کب دیں؟')}
+                disabled={isBusy}
+                style={{
+                  background: 'linear-gradient(135deg, #e8f5e3, #c5e3be)',
+                  border: '1px solid #9ecf94', borderRadius: 14,
+                  padding: '12px 10px', color: '#162410', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  fontSize: '.8rem', fontWeight: 700, fontFamily: '"Noto Nastaliq Urdu", serif',
+                  direction: 'rtl', boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  transition: 'transform 0.15s'
+                }}
+              >
+                <span style={{ fontSize: '1.5rem' }}>🌾</span>
+                <span>کھاد اور پانی</span>
+              </button>
+
+              <button
+                onClick={() => sendMessage('فصل میں بیماری اور سنڈی کا علاج کیا ہے؟')}
+                disabled={isBusy}
+                style={{
+                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                  border: '1px solid #f59e0b', borderRadius: 14,
+                  padding: '12px 10px', color: '#78350f', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  fontSize: '.8rem', fontWeight: 700, fontFamily: '"Noto Nastaliq Urdu", serif',
+                  direction: 'rtl', boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  transition: 'transform 0.15s'
+                }}
+              >
+                <span style={{ fontSize: '1.5rem' }}>🐛</span>
+                <span>بیماری کا علاج</span>
+              </button>
+
+              <button
+                onClick={() => sendMessage('آج اور اگلے ۵ دن کے موسم کی کیا صورتحال ہے؟')}
+                disabled={isBusy}
+                style={{
+                  background: 'linear-gradient(135deg, #e0f2fe, #bae6fd)',
+                  border: '1px solid #38bdf8', borderRadius: 14,
+                  padding: '12px 10px', color: '#0c4a6e', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  fontSize: '.8rem', fontWeight: 700, fontFamily: '"Noto Nastaliq Urdu", serif',
+                  direction: 'rtl', boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  transition: 'transform 0.15s'
+                }}
+              >
+                <span style={{ fontSize: '1.5rem' }}>🌦️</span>
+                <span>موسم اور بارش</span>
+              </button>
+
+              <button
+                onClick={() => sendMessage('سرکاری کسان کارڈ اور ZTBL قرضہ کیسے حاصل کریں؟')}
+                disabled={isBusy}
+                style={{
+                  background: 'linear-gradient(135deg, #fbc02d15, #fbc02d35)',
+                  border: '1px solid #fbc02d', borderRadius: 14,
+                  padding: '12px 10px', color: '#7a5c30', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  fontSize: '.8rem', fontWeight: 700, fontFamily: '"Noto Nastaliq Urdu", serif',
+                  direction: 'rtl', boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  transition: 'transform 0.15s'
+                }}
+              >
+                <span style={{ fontSize: '1.5rem' }}>💳</span>
+                <span>کسان کارڈ و قرضہ</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {isListening && interimText && (
           <div style={{
             display: 'flex', justifyContent: language === 'en' ? 'flex-start' : 'flex-end', marginBottom: 8,
@@ -1294,37 +1382,40 @@ export default function ChatPage() {
         paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
         background: '#ece5dd',
         flexShrink: 0,
-        display: 'flex', alignItems: 'flex-end', gap: 8,
-        direction: 'ltr'
+        display: 'flex', alignItems: 'center', gap: 8,
+        direction: 'ltr',
+        boxSizing: 'border-box',
+        width: '100%'
       }}>
-        {/* Mic button — left side (WhatsApp style) */}
+        {/* Mic button — Left side (WhatsApp style) */}
         <button
           id="chat-mic-btn"
           onClick={toggleSpeech}
           disabled={isBusy}
           aria-label={isListening ? 'آواز بند کریں' : 'آواز سے لکھیں'}
           style={{
-            width: 46, height: 46, borderRadius: '50%', border: 'none',
+            width: 44, minWidth: 44, height: 44, borderRadius: '50%', border: 'none',
             background: isListening
-              ? 'linear-gradient(135deg, #dc2626, #b91c1c)'
-              : 'linear-gradient(135deg, #2e5a27, #4a7c40)',
-            color: 'white', fontSize: '1.2rem',
+              ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+              : 'linear-gradient(135deg, #10b981, #059669)',
+            color: 'white', fontSize: '1.25rem',
             cursor: isBusy ? 'not-allowed' : 'pointer',
             flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: isListening
-              ? '0 0 0 4px rgba(220,38,38,.3), 0 4px 12px rgba(220,38,38,.4)'
-              : '0 2px 8px rgba(0,0,0,.2)',
+              ? '0 0 0 4px rgba(239,68,68,.3), 0 4px 12px rgba(239,68,68,.4)'
+              : '0 2px 8px rgba(16,185,129,.35)',
             animation: isListening ? 'micPulse 1.2s ease-in-out infinite' : 'none',
-            transition: 'background .25s, box-shadow .25s',
-            opacity: isBusy ? 0.5 : 1
+            transition: 'all .25s',
+            opacity: isBusy ? 0.5 : 1,
+            zIndex: 5
           }}
         >
           {isListening ? '⏹' : '🎤'}
         </button>
 
         {/* Text input — direction auto-switches as user types */}
-        <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
           <textarea
             ref={inputRef}
             id="chat-input"
@@ -1359,31 +1450,31 @@ export default function ChatPage() {
           />
         </div>
 
-        {/* Send button */}
+        {/* Send button — Right side */}
         <button
           id="chat-send-btn"
           onClick={() => sendMessage()}
           disabled={(!input.trim() && !interimText) || isBusy}
           aria-label="بھیجیں"
           style={{
-            width: 46, height: 46, borderRadius: '50%', border: 'none',
+            width: 44, minWidth: 44, height: 44, borderRadius: '50%', border: 'none',
             background: input.trim() || interimText
-              ? 'linear-gradient(135deg, #2e5a27, #4a7c40)'
+              ? 'linear-gradient(135deg, #10b981, #059669)'
               : '#d1d5db',
             color: 'white', fontSize: '1.1rem',
             cursor: input.trim() ? 'pointer' : 'not-allowed',
             flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: input.trim() ? '0 2px 8px rgba(0,0,0,.2)' : 'none',
-            transition: 'background .2s, box-shadow .2s'
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: input.trim() ? '0 2px 8px rgba(16,185,129,.35)' : 'none',
+            transition: 'all .2s'
           }}
         >
           {isBusy ? (
             <div style={{
-              width: 20, height: 20, borderRadius: '50%',
+              width: 18, height: 18, borderRadius: '50%',
               border: '2.5px solid rgba(255,255,255,.3)',
               borderTopColor: 'white',
-              animation: 'spin 0.7s linear infinite'
+              animation: 'spin .8s linear infinite'
             }} />
           ) : '➤'}
         </button>
