@@ -557,7 +557,7 @@ export default function ChatPage() {
     const engine = createSpeechEngine({
       langKey: language,
       ruralMode: true,
-      silenceMs: 3500, // 3.5s — rural farmers pause mid-sentence naturally
+      silenceMs: 4500, // 4.5s — gives room for natural mid-sentence pauses without interrupting
 
       // Live interim: stream words character-by-character into overlay text box
       onInterim: (text) => {
@@ -953,7 +953,7 @@ export default function ChatPage() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100dvh', maxWidth: 430, margin: '0 auto',
+      height: '100%', width: '100%', maxWidth: '100%', flex: 1,
       background: '#ece5dd',
       position: 'relative', overflow: 'hidden'
     }}>
@@ -1105,8 +1105,7 @@ export default function ChatPage() {
 
       <div style={{
         background: 'linear-gradient(135deg, #1a3a16, #2e5a27)',
-        padding: '10px 12px',
-        paddingTop: 'calc(var(--header-height, 60px) + 6px + env(safe-area-inset-top, 0px))',
+        padding: '10px 14px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         boxShadow: '0 2px 8px rgba(0,0,0,.2)', flexShrink: 0, zIndex: 10,
         maxWidth: '100%', overflowX: 'hidden'
@@ -1290,8 +1289,8 @@ export default function ChatPage() {
 
       {/* ── Input bar ── */}
       <div style={{
-        padding: '8px 10px',
-        paddingBottom: 'calc(8px + env(safe-area-inset-bottom) + 56px)',
+        padding: '10px 12px',
+        paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
         background: '#ece5dd',
         flexShrink: 0,
         display: 'flex', alignItems: 'flex-end', gap: 8

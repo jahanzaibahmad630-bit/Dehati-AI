@@ -84,10 +84,14 @@ export function correctUrduAgriPhonetics(text) {
     [/\bمکئیی\b/g, 'مکئی'],
     [/\bچاولوں\b/g, 'چاول'],
     [/\bکماد\b/g, 'گنا'],
+    [/\bسرصوں\b/g, 'سرسوں'],
+    [/\bکینولا\b/g, 'کینولا'],
     // Fertilizer & Chemical terms
     [/\bسپراے\b/g, 'سپرے'],
     [/\bاسپرے\b/g, 'سپرے'],
     [/\bاسپرےی\b/g, 'سپرے'],
+    [/\bسبرے\b/g, 'سپرے'],
+    [/\bسبرائی\b/g, 'سپرے'],
     [/\bکھادھ\b/g, 'کھاد'],
     [/\bیو ریا\b/g, 'یوریا'],
     [/\bڈی اے پی\b/g, 'DAP'],
@@ -102,6 +106,7 @@ export function correctUrduAgriPhonetics(text) {
     [/\bاکیڑ\b/g, 'ایکڑ'],
     [/\bمرلہ\b/g, 'مرلہ'],
     [/\bکنال\b/g, 'کنال'],
+    [/\bمن\b/g, 'من'],
     // Disease & Health terms
     [/\bبماری\b/g, 'بیماری'],
     [/\bبیماریاں\b/g, 'بیماری'],
@@ -110,6 +115,7 @@ export function correctUrduAgriPhonetics(text) {
     [/\bسندھی\b/g, 'سنڈی'],
     [/\bکیڑا\b/g, 'کیڑا'],
     [/\bکیڑے\b/g, 'کیڑے'],
+    [/\bورائرس\b/g, 'وائرس'],
   ];
 
   for (const [pattern, replacement] of corrections) {
@@ -365,7 +371,7 @@ export function createSpeechEngine({
   function createRecognition(fallbackLang = null) {
     const recognition = new SR();
     recognition.lang           = fallbackLang || srLang;
-    recognition.maxAlternatives = 1;
+    recognition.maxAlternatives = 3; // Check top 3 speech alternatives for maximum Urdu accuracy
 
     if (singlePass) {
       // Single-pass: capture one clean sentence, no live interim
@@ -384,9 +390,7 @@ export function createSpeechEngine({
 
     recognition.onresult = (e) => {
       if (isProcessing || stopped) return;
-
-      gotSpeech = true;
-      emptyEnds = 0;
+      emptyEnds = 0; // Reset empty counter whenever audio speech arrives
 
       if (!e.results || e.results.length === 0) return;
 
@@ -417,7 +421,8 @@ export function createSpeechEngine({
 
       for (let i = 0; i < e.results.length; i++) {
         const item   = e.results[i];
-        const phrase = item[0]?.transcript?.trim() || '';
+        // Select highest quality alternative transcript
+        const phrase = item[0]?.transcript?.trim() || item[1]?.transcript?.trim() || item[2]?.transcript?.trim() || '';
         if (!phrase) continue;
 
         if (item.isFinal) {
@@ -500,15 +505,10 @@ export function createSpeechEngine({
       clearSilenceTimer();
       if (stopped) return;
 
-      // On Android (continuous=false), onend fires after each utterance segment.
-      // We must restart recognition so the user can keep speaking.
-      // CRITICAL: Do NOT call onStopped here — that would close the overlay prematurely.
-      // onStopped is ONLY called by the 3.5s silence timer or explicit user stop.
-
-      if (!gotSpeech) emptyEnds++;
+      // Only increment empty counter if user has not spoken any text at all
+      if (!transcriptRef) emptyEnds++;
 
       if (emptyEnds >= MAX_EMPTY) {
-        // Too many consecutive empty endings — mic is not picking up anything
         stopped = true;
         onError?.('no_speech');
         return;
@@ -516,19 +516,19 @@ export function createSpeechEngine({
 
       if (singlePass) return;
 
-      // Auto-restart: 150ms gap prevents InvalidStateError from stale session
+      // Ultra-fast 30ms auto-restart prevents missing audio or interrupting speaker mid-sentence
       clearRestartTimer();
       restartTimer = setTimeout(() => {
         if (stopped) return;
         try {
           const next = createRecognition();
-          stripHandlers(recognitionInstance.current); // Kill old handlers before replacing
+          stripHandlers(recognitionInstance.current);
           recognitionInstance.current = next;
           next.start();
         } catch (err) {
           console.warn('[DehatiAI] Restart failed:', err.message);
         }
-      }, 150);
+      }, 30);
     };
 
     return recognition;
