@@ -1180,7 +1180,7 @@ export default function ChatPage() {
       )}
 
       {/* ── Recording indicator bar ── */}
-      {isListening && (
+      {isListening && !showMicOverlay && (
         <div style={{
           background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
           padding: '8px 16px',
@@ -1313,6 +1313,20 @@ export default function ChatPage() {
           ) : '➤'}
         </button>
       </div>
+
+      {/* ── WhatsApp Full-Screen Mic Overlay ── */}
+      {showMicOverlay && (
+        <MicOverlay
+          isListening={isListening}
+          interimText={interimText}
+          finalText={finalSpeech}
+          onStop={stopListening}
+          onSend={sendVoiceMessage}
+          onCancel={cancelMic}
+          onRetry={retryMic}
+          iosError={iosError}
+        />
+      )}
 
       {/* ── CSS animations ── */}
       <style>{`
