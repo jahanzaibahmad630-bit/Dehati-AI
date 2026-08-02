@@ -5,6 +5,14 @@ const cors    = require('cors');
 const { apiLimiter } = require('./middleware/rateLimit');
 const { initDB }     = require('./lib/db');
 
+// ─── Process-level safety nets (prevents one bad request killing the process) ──
+process.on('uncaughtException', (err) => {
+  console.error('⚠️  Uncaught Exception (non-fatal):', err.message);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️  Unhandled Rejection (non-fatal):', reason?.message || reason);
+});
+
 const authRoutes   = require('./routes/auth');
 const aiRoutes     = require('./routes/ai');
 const weatherRoutes = require('./routes/weather');
@@ -28,7 +36,7 @@ const ALLOWED_ORIGINS = new Set([
   'http://localhost:3000',
 ].filter(Boolean));
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
     // Allow server-to-server (no origin) and whitelisted origins only
     if (!origin || ALLOWED_ORIGINS.has(origin)) {
@@ -37,8 +45,14 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+// Handle preflight (OPTIONS) for ALL routes before any auth/rate-limit middleware
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 
 // Force UTF-8 on all JSON responses
 app.use((req, res, next) => {
@@ -54,13 +68,26 @@ app.use(express.json({ limit: '6mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(apiLimiter);
 
-// Health check — public, no auth
+// Health check — public, no auth, no rate-limit
 app.get('/api/health', (req, res) => {
+  const mem = process.memoryUsage();
   res.json({
-    status: 'ok',
-    service: 'DehatiAI API',
+    status:    'ok',
+    service:   'DehatiAI API',
+    version:   '1.0.0',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    uptimeSec: Math.floor(process.uptime()),
+    env: {
+      claude:    !!process.env.CLAUDE_API_KEY,
+      postgres:  !!process.env.DATABASE_URL,
+      supabase:  !!process.env.SUPABASE_URL,
+      jwt:       !!process.env.JWT_SECRET
+    },
+    memory: {
+      heapUsedMB:  +(mem.heapUsed  / 1048576).toFixed(1),
+      heapTotalMB: +(mem.heapTotal / 1048576).toFixed(1),
+      rssMB:       +(mem.rss       / 1048576).toFixed(1)
+    }
   });
 });
 
@@ -92,10 +119,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'سرور میں مسئلہ ہوا — دوبارہ کوشش کریں' });
 });
 
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   const claudeReady   = !!process.env.CLAUDE_API_KEY;
   const supabaseReady = !!process.env.SUPABASE_URL;
-  const jwtSet        = !!process.env.JWT_SECRET;   // warn if missing, not just short
+  const jwtSet        = !!process.env.JWT_SECRET;
   const dbReady       = !!process.env.DATABASE_URL;
   console.log(`✅ DehatiAI API running on port ${PORT}`);
   console.log(`   Claude API : ${claudeReady   ? '✅ configured' : '⚠️  not set — AI disabled'}`);
@@ -109,4 +136,9 @@ app.listen(PORT, async () => {
     console.error('⚠️  initDB failed (non-fatal):', e.message);
   }
 });
+
+// 120-second socket timeout — prevents Railway from killing cold-start requests
+// SSE streaming endpoints override this via res.setTimeout(0)
+server.timeout = 120000;
+server.keepAliveTimeout = 65000; // must be > Railway's 60s LB keepalive
 

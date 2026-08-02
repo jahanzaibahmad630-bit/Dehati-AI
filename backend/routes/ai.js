@@ -694,7 +694,12 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
     // Start heartbeat AFTER headers are flushed
     heartbeat = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 8000);
     req.on('close', () => { clearInterval(heartbeat); });
-    try { if (req.socket) { req.socket.setNoDelay(true); } } catch {}
+    try {
+      if (req.socket) {
+        req.socket.setNoDelay(true);
+        req.socket.setTimeout(0); // Disable socket timeout for active SSE stream
+      }
+    } catch {}
 
     // ——— Build Claude messages with last 10 turns (multi-turn context memory) ———
     const claudeMessages = messages
