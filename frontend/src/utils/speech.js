@@ -390,21 +390,21 @@ export function createSpeechEngine({
 
   const srLang = getSRLang(langKey);
 
-  // ── Single-source-of-truth transcript ref (NEVER appended, always rebuilt) ──
-  let transcriptRef = '';       // canonical final text rebuilt from e.results each event
+  let transcriptRef = '';
   let stopped       = false;
   let silenceTimer  = null;
+  let restartTimer  = null;
   let gotSpeech     = false;
   let emptyEnds     = 0;
-  const MAX_EMPTY   = isIOS ? 2 : 99;
-
-  // ── 300ms atomic debounce lock — prevents duplicate chat submissions ────────
-  // Set true when onStopped fires, reset after 300ms.
-  // Any duplicate onresult / onend that fires within that window is ignored.
+  const MAX_EMPTY   = 4; // Stop infinite auto-restart loops after 4 empty ends
   let isProcessing  = false;
 
   function clearSilenceTimer() {
     if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+  }
+
+  function clearRestartTimer() {
+    if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
   }
 
   function resetSilenceTimer(recognition) {
@@ -413,12 +413,10 @@ export function createSpeechEngine({
       if (!stopped && !isProcessing) {
         stopped = true;
         isProcessing = true;
-        // Use abort() — stop() can hang on Android Chrome waiting for buffer flush
         try { recognition.abort(); } catch {}
         const clean = correctUrduAgriPhonetics(transcriptRef.trim());
         onStopped?.(clean);
         if (clean && onResult) onResult(clean);
-        // Release debounce lock after 300ms
         setTimeout(() => { isProcessing = false; }, 300);
       }
     }, silenceMs);
@@ -430,28 +428,20 @@ export function createSpeechEngine({
     recognition.maxAlternatives = 1;
 
     if (singlePass) {
-      // Single-Pass: ONE final sentence, no interim, minimal latency
       recognition.continuous     = false;
       recognition.interimResults = false;
-    } else if (ruralMode) {
-      // Rural Mode: live interim + 3.5s silence auto-stop
-      // ANDROID/iOS MOBILE FIX: continuous=true on Android Chrome mobile deadlocks
-      // Google Speech Services — onresult never fires.
-      // Force continuous=false on mobile devices. onend auto-restarts the session.
-      // Desktop Chrome/Edge/Firefox get continuous=true for uninterrupted recording.
-      recognition.continuous     = !isIOS && !isAndroid;
-      recognition.interimResults = true;
     } else {
-      // Legacy continuous mode
+      // Use continuous = false on mobile to prevent deadlocks, continuous = true on desktop
       recognition.continuous     = !isIOS && !isAndroid;
       recognition.interimResults = true;
     }
 
-    recognition.onstart = () => {};
+    recognition.onstart = () => {
+      // On successful audio start, clear previous error flags
+    };
 
     recognition.onresult = (e) => {
-      // ── Debounce guard — if already processing a finalized result, skip ──
-      if (isProcessing) return;
+      if (isProcessing || stopped) return;
 
       gotSpeech = true;
       emptyEnds = 0;
@@ -459,9 +449,7 @@ export function createSpeechEngine({
       if (!e.results || e.results.length === 0) return;
 
       if (singlePass) {
-        // ── Single-Pass Mode ───────────────────────────────────────────────
-        // Fires once with one complete sentence — guaranteed no duplication
-        isProcessing = true; // lock immediately
+        isProcessing = true;
         const rawText    = e.results[0][0].transcript.trim();
         const spokenText = correctUrduAgriPhonetics(rawText);
         if (spokenText) {
@@ -477,8 +465,6 @@ export function createSpeechEngine({
         return;
       }
 
-      // ── Rural / Continuous Mode ────────────────────────────────────────
-      // Take canonical final text without duplicating past e.results chunks.
       let finalTexts = [];
       let interimTexts = [];
 
@@ -488,7 +474,6 @@ export function createSpeechEngine({
         if (!phrase) continue;
 
         if (item.isFinal) {
-          // Only add phrase if it is NOT already a substring or duplicate of existing final entries
           if (!finalTexts.some(existing => existing.includes(phrase) || phrase.includes(existing))) {
             finalTexts.push(phrase);
           }
@@ -500,7 +485,6 @@ export function createSpeechEngine({
       let combinedFinal = finalTexts.join(' ').trim();
       let combinedInterim = interimTexts.join(' ').trim();
 
-      // Deduplicate overlapping interim/final text
       if (combinedInterim && combinedFinal && (combinedFinal.includes(combinedInterim) || combinedInterim.includes(combinedFinal))) {
         combinedInterim = '';
       }
@@ -509,84 +493,65 @@ export function createSpeechEngine({
       const cleanInterim = correctUrduAgriPhonetics(combinedInterim);
 
       if (cleanFinal) {
-        transcriptRef = cleanFinal; // REPLACE (never append)
+        transcriptRef = cleanFinal;
         onFinalWord?.(transcriptRef);
         if (onResult) onResult(transcriptRef);
       }
       if (onInterim) onInterim(cleanInterim);
 
-      // Reset the 3.5s silence countdown on every audio packet received
       resetSilenceTimer(recognition);
     };
 
     recognition.onerror = (e) => {
       clearSilenceTimer();
       console.warn('[DehatiAI] Speech engine error:', e.error, '| lang:', recognition.lang);
+      if (stopped) return;
+
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         stopped = true;
         onError?.('permission_denied');
       } else if (e.error === 'language-not-supported') {
-        // ── Pakistani Language Fallback Chain ──────────────────────────────
-        // ur-PK → ur-IN → hi-IN → en-US
-        // Many Android devices ship without Urdu language packs, try fallbacks.
         const fallbackChain = ['ur-IN', 'hi-IN', 'en-US'];
         const currentIdx = fallbackChain.indexOf(recognition.lang);
-        const nextLang = currentIdx === -1
-          ? fallbackChain[0]                   // was ur-PK, try ur-IN first
-          : fallbackChain[currentIdx + 1];      // advance one step
-        if (nextLang) {
+        const nextLang = currentIdx === -1 ? fallbackChain[0] : fallbackChain[currentIdx + 1];
+        if (nextLang && !stopped) {
           console.warn(`[DehatiAI] Language not supported: ${recognition.lang} — retrying with ${nextLang}`);
           try {
             const fallbackRec = createRecognition(nextLang);
             recognitionInstance.current = fallbackRec;
-            fallbackRec._stopped = () => { stopped = true; clearSilenceTimer(); };
             fallbackRec.start();
             return;
-          } catch {
-            // fallthrough to full error
-          }
+          } catch {}
         }
-        console.error('[DehatiAI] All language fallbacks exhausted');
+        stopped = true;
         onError?.('language-not-supported');
-      } else if (e.error === 'network') {
-        onError?.('network');
+      } else if (e.error === 'no-speech') {
+        // User didn't talk — handled in onend
       } else if (e.error === 'aborted') {
-        // Ignore — intentional abort(), not a real error
-      } else if (e.error === 'audio-capture') {
-        // Fired when mic device is locked (e.g. track closed too recently)
-        // Auto-retry once after 400ms to let hardware settle
-        setTimeout(() => {
-          if (!stopped) {
-            try {
-              const retryRec = createRecognition();
-              recognitionInstance.current = retryRec;
-              retryRec._stopped = () => { stopped = true; clearSilenceTimer(); };
-              retryRec.start();
-            } catch { onError?.('audio-capture'); }
-          }
-        }, 400);
+        // Intentional abort
       } else {
-        onError?.(e.error || 'unknown');
+        console.warn('[DehatiAI] General speech error:', e.error);
       }
     };
 
     recognition.onend = () => {
-      if (stopped || singlePass) { clearSilenceTimer(); return; }
+      clearSilenceTimer();
+      if (stopped || singlePass) return;
+
       if (!gotSpeech) emptyEnds++;
       if (emptyEnds >= MAX_EMPTY) {
         stopped = true;
-        clearSilenceTimer();
-        onError?.('ios_limit');
+        onError?.('no_speech');
         return;
       }
-      // Auto-restart for ruralMode on Android/iOS (continuous=false)
-      // 150ms gap prevents InvalidStateError from stale recognition session
-      setTimeout(() => {
+
+      // Auto-restart loop with timer tracking
+      clearRestartTimer();
+      restartTimer = setTimeout(() => {
         if (!stopped && !singlePass) {
           try {
             const next = createRecognition();
             recognitionInstance.current = next;
-            next._stopped = () => { stopped = true; clearSilenceTimer(); };
             next.start();
           } catch (restartErr) {
             console.warn('[DehatiAI] Restart error:', restartErr.message);
@@ -602,38 +567,40 @@ export function createSpeechEngine({
 
   return {
     start: () => {
-      // Reset all state for fresh session
       transcriptRef = '';
       stopped       = false;
       gotSpeech     = false;
       emptyEnds     = 0;
       isProcessing  = false;
 
-      // Abort any previous lingering recognition to prevent InvalidStateError
+      clearSilenceTimer();
+      clearRestartTimer();
+
       const existing = recognitionInstance.current;
       if (existing) {
+        existing.onresult = null;
+        existing.onerror  = null;
+        existing.onend    = null;
+        existing.onstart  = null;
         try { existing.abort(); } catch {}
       }
 
       const rec = createRecognition();
       recognitionInstance.current = rec;
-      rec._stopped = () => { stopped = true; clearSilenceTimer(); };
 
-      // Synchronous start — 0ms latency, zero async delay
       try {
         rec.start();
       } catch (err) {
         if (err.name === 'InvalidStateError') {
-          setTimeout(() => {
+          clearRestartTimer();
+          restartTimer = setTimeout(() => {
             if (!stopped) {
               try { rec.start(); } catch (retryErr) {
-                console.error('[DehatiAI] Start retry failed:', retryErr.message);
                 onError?.('unknown');
               }
             }
           }, 250);
         } else {
-          console.error('[DehatiAI] Start error:', err.message);
           onError?.('unknown');
         }
       }
@@ -642,10 +609,16 @@ export function createSpeechEngine({
     stop: () => {
       stopped = true;
       clearSilenceTimer();
-      try { recognitionInstance.current?._stopped?.(); } catch {}
-      // Use abort() not stop() — abort() terminates in 0ms.
-      // stop() on Android Chrome waits for buffer flush and can freeze indefinitely.
-      try { recognitionInstance.current?.abort(); } catch {}
+      clearRestartTimer();
+      if (recognitionInstance.current) {
+        const rec = recognitionInstance.current;
+        rec.onresult = null;
+        rec.onerror  = null;
+        rec.onend    = null;
+        rec.onstart  = null;
+        try { rec.abort(); } catch {}
+        recognitionInstance.current = null;
+      }
       return correctUrduAgriPhonetics(transcriptRef.trim());
     },
 
@@ -653,8 +626,16 @@ export function createSpeechEngine({
       stopped = true;
       isProcessing = false;
       clearSilenceTimer();
-      try { recognitionInstance.current?._stopped?.(); } catch {}
-      try { recognitionInstance.current?.abort(); } catch {}
+      clearRestartTimer();
+      if (recognitionInstance.current) {
+        const rec = recognitionInstance.current;
+        rec.onresult = null;
+        rec.onerror  = null;
+        rec.onend    = null;
+        rec.onstart  = null;
+        try { rec.abort(); } catch {}
+        recognitionInstance.current = null;
+      }
       transcriptRef = '';
     },
 
