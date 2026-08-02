@@ -536,7 +536,17 @@ export function createSpeechEngine({
 
     recognition.onend = () => {
       clearSilenceTimer();
-      if (stopped || singlePass) return;
+      if (stopped) return;
+
+      if (transcriptRef && transcriptRef.trim()) {
+        stopped = true;
+        const clean = correctUrduAgriPhonetics(transcriptRef.trim());
+        onStopped?.(clean);
+        if (clean && onResult) onResult(clean);
+        return;
+      }
+
+      if (singlePass) return;
 
       if (!gotSpeech) emptyEnds++;
       if (emptyEnds >= MAX_EMPTY) {

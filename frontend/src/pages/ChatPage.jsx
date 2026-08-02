@@ -506,17 +506,19 @@ export default function ChatPage() {
 
       onInterim: (text) => {
         // Live transcription: stream what the farmer is speaking into UI in real-time
-        if (!isProcessingRef.current) {
+        if (!isProcessingRef.current && text) {
           setInterimText(text);
+          setInput(text);
           setIsListening(true);
         }
       },
 
       onFinalWord: (text) => {
         // Called each time a final result arrives — REPLACE state, never append
-        if (!isProcessingRef.current) {
+        if (!isProcessingRef.current && text) {
           setFinalSpeech(text);
           setInterimText('');
+          setInput(text);
           setIsListening(true);
         }
       },
