@@ -953,7 +953,8 @@ export default function ChatPage() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100%', width: '100%', maxWidth: '100%', flex: 1,
+      height: 'calc(100dvh - var(--header-height, 60px) - 60px)',
+      maxWidth: 430, margin: '0 auto',
       background: '#ece5dd',
       position: 'relative', overflow: 'hidden'
     }}>
