@@ -644,6 +644,17 @@ async function deleteEmergencyAlert(id) {
   try { await pool.query(`DELETE FROM emergency_alerts WHERE id=$1`, [id]); return true; } catch { return false; }
 }
 
+async function updateEmergencyAlertStatus(id, active) {
+  if (!pool) return null;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE emergency_alerts SET active=$1 WHERE id=$2 RETURNING *`,
+      [!!active, id]
+    );
+    return rows[0] || null;
+  } catch (err) { console.warn('updateEmergencyAlertStatus error:', err.message); return null; }
+}
+
 async function exportAllData() {
   if (!pool) return { users: [], prices: [], chatLogs: [], emergencyAlerts: [], exportedAt: new Date().toISOString() };
   try {
@@ -672,7 +683,7 @@ module.exports = {
   setPriceDB, getPricesDB, deletePriceDB,
   saveChatLog, getChatLogs, getUserChatHistory,
   getCacheFromDB, setCacheInDB,
-  logAIUsage, getAIUsageStats,
+  logAIUsage, getAIUsage, getAIUsageStats: getAIUsage,
   createEmergencyAlert, getEmergencyAlerts, updateEmergencyAlertStatus, deleteEmergencyAlert,
   exportAllData, purgeChatLogs
 };
