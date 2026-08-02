@@ -29,8 +29,13 @@ const LANGS = {
   en: 'en-US'
 };
 
-const isIOS = typeof navigator !== 'undefined' &&
+const isIOS     = typeof navigator !== 'undefined' &&
   /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+// Android Chrome: continuous=true causes Google Speech Services audio deadlock
+// (onresult never fires). Must force continuous=false on Android.
+const isAndroid = typeof navigator !== 'undefined' &&
+  /Android/i.test(navigator.userAgent);
 
 export function getSRLang(langKey) {
   return LANGS[langKey] || 'ur-PK';
@@ -429,11 +434,14 @@ export function createSpeechEngine({
       recognition.interimResults = false;
     } else if (ruralMode) {
       // Rural Mode: live interim + 3.5s silence auto-stop — for ChatPage
-      recognition.continuous     = !isIOS;
+      // ANDROID FIX: continuous=true on Android Chrome deadlocks Google Speech
+      // Services so onresult never fires. Force continuous=false on Android.
+      // onend auto-restarts recognition to maintain the session.
+      recognition.continuous     = !isIOS && !isAndroid;
       recognition.interimResults = true;
     } else {
       // Legacy continuous mode
-      recognition.continuous     = !isIOS;
+      recognition.continuous     = !isIOS && !isAndroid;
       recognition.interimResults = true;
     }
 
@@ -511,24 +519,50 @@ export function createSpeechEngine({
 
     recognition.onerror = (e) => {
       clearSilenceTimer();
-      console.warn('[DehatiAI] Speech engine error:', e.error);
+      console.warn('[DehatiAI] Speech engine error:', e.error, '| lang:', recognition.lang);
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         stopped = true;
         onError?.('permission_denied');
-      } else if (e.error === 'language-not-supported' && srLang === 'ur-PK') {
-        console.warn('[DehatiAI] ur-PK not supported on device — trying ur-IN / hi-IN fallback');
-        try {
-          const fallbackRec = createRecognition('ur-IN');
-          recognitionInstance.current = fallbackRec;
-          fallbackRec.start();
-          return;
-        } catch {
-          onError?.('language-not-supported');
+      } else if (e.error === 'language-not-supported') {
+        // ── Pakistani Language Fallback Chain ──────────────────────────────
+        // ur-PK → ur-IN → hi-IN → en-US
+        // Many Android devices ship without Urdu language packs, try fallbacks.
+        const fallbackChain = ['ur-IN', 'hi-IN', 'en-US'];
+        const currentIdx = fallbackChain.indexOf(recognition.lang);
+        const nextLang = currentIdx === -1
+          ? fallbackChain[0]                   // was ur-PK, try ur-IN first
+          : fallbackChain[currentIdx + 1];      // advance one step
+        if (nextLang) {
+          console.warn(`[DehatiAI] Language not supported: ${recognition.lang} — retrying with ${nextLang}`);
+          try {
+            const fallbackRec = createRecognition(nextLang);
+            recognitionInstance.current = fallbackRec;
+            fallbackRec._stopped = () => { stopped = true; clearSilenceTimer(); };
+            fallbackRec.start();
+            return;
+          } catch {
+            // fallthrough to full error
+          }
         }
+        console.error('[DehatiAI] All language fallbacks exhausted');
+        onError?.('language-not-supported');
       } else if (e.error === 'network') {
         onError?.('network');
       } else if (e.error === 'aborted') {
-        // Ignore — intentional abort/stop, not an error
+        // Ignore — intentional abort(), not a real error
+      } else if (e.error === 'audio-capture') {
+        // Fired when mic device is locked (e.g. track closed too recently)
+        // Auto-retry once after 400ms to let hardware settle
+        setTimeout(() => {
+          if (!stopped) {
+            try {
+              const retryRec = createRecognition();
+              recognitionInstance.current = retryRec;
+              retryRec._stopped = () => { stopped = true; clearSilenceTimer(); };
+              retryRec.start();
+            } catch { onError?.('audio-capture'); }
+          }
+        }, 400);
       } else {
         onError?.(e.error || 'unknown');
       }
@@ -613,7 +647,9 @@ export function createSpeechEngine({
       stopped = true;
       clearSilenceTimer();
       try { recognitionInstance.current?._stopped?.(); } catch {}
-      try { recognitionInstance.current?.stop(); } catch {}
+      // Use abort() not stop() — abort() terminates in 0ms.
+      // stop() on Android Chrome waits for buffer flush and can freeze indefinitely.
+      try { recognitionInstance.current?.abort(); } catch {}
       return correctUrduAgriPhonetics(transcriptRef.trim());
     },
 
@@ -622,7 +658,7 @@ export function createSpeechEngine({
       isProcessing = false;
       clearSilenceTimer();
       try { recognitionInstance.current?._stopped?.(); } catch {}
-      try { recognitionInstance.current?.stop(); } catch {}
+      try { recognitionInstance.current?.abort(); } catch {}
       transcriptRef = '';
     },
 
@@ -637,11 +673,8 @@ export function createSpeechEngine({
 export async function speakText(text, langKey = 'ur', rate = 0.85) {
   if (!window.speechSynthesis || !text) return false;
 
-  if (window.speechSynthesis.speaking) {
-    window.speechSynthesis.cancel();
-    // Brief 50ms pause to allow Web Speech API engine to clear queue before starting new utterance
-    await new Promise(r => setTimeout(r, 50));
-  }
+  // Cancel any playing utterance synchronously — no await, keeps gesture token valid
+  window.speechSynthesis.cancel();
 
   const normalized = normalizeUrduForSpeech(text);
   if (!normalized) return false;
@@ -652,9 +685,13 @@ export async function speakText(text, langKey = 'ur', rate = 0.85) {
   utt.pitch    = 1.0;
   utt.volume   = 1.0;
 
-  const voices = await waitForVoices();
-  const voice  = selectUrduVoice(voices, langKey);
-  if (voice) utt.voice = voice;
+  // Synchronous voice lookup — do NOT await here to keep Android gesture token.
+  // If getVoices() returns empty, omit voice assignment and use system default.
+  const voices = window.speechSynthesis.getVoices();
+  if (voices && voices.length > 0) {
+    const voice = selectUrduVoice(voices, langKey);
+    if (voice) utt.voice = voice;
+  }
 
   window.speechSynthesis.speak(utt);
   return true;

@@ -416,7 +416,6 @@ export default function ChatPage() {
       time: new Date()
     }
   ]);
-  const [input, setInput]               = useState('');
   const [interimText, setInterimText]   = useState(''); // live speech transcript
   const [finalSpeech, setFinalSpeech]   = useState(''); // finalized speech words
   const [language, setLanguage]         = useState('ur');
@@ -475,10 +474,10 @@ export default function ChatPage() {
     warmUp();
   }, []);
 
-  // Cleanup on unmount — Stop speech engine before unmounting
+  // Cleanup on unmount — abort (not stop) to avoid Android buffer-flush hang
   useEffect(() => {
     return () => {
-      try { speechEngineRef.current?.stop(); } catch {}
+      try { speechEngineRef.current?.abort?.() || speechEngineRef.current?.reset?.(); } catch {}
       try { abortRef.current?.abort(); } catch {}
     };
   }, []);
@@ -499,8 +498,8 @@ export default function ChatPage() {
     setInterimText('');
     isProcessingRef.current = false;
 
-    // Stop any previous engine cleanly before starting new session
-    try { speechEngineRef.current?.stop(); } catch {}
+    // Abort previous engine immediately (abort=0ms, stop=buffer wait on Android)
+    try { speechEngineRef.current?.reset(); } catch {}
 
     const engine = createSpeechEngine({
       langKey: language,
@@ -532,6 +531,7 @@ export default function ChatPage() {
         setInterimText('');
         if (finalText) {
           setFinalSpeech(finalText);
+          setInput(finalText);
         }
         // Release debounce lock after 300ms
         setTimeout(() => { isProcessingRef.current = false; }, 300);
@@ -542,7 +542,16 @@ export default function ChatPage() {
         isProcessingRef.current = false;
         if (errType === 'permission_denied') {
           setShowMicOverlay(false);
-          alert('مائیک کی اجازت دیں (Settings → Microphone → Allow)');
+          // Explicit Urdu guidance — exact path differs by browser/device
+          alert(
+            'مائیک کی اجازت دیں:\n' +
+            '• ایڈریس بار میں 🔒 تالے کے نشان پر ٹیپ کریں\n' +
+            '• Microphone → Allow کریں\n' +
+            '• صفحہ دوبارہ لوڈ کریں'
+          );
+        } else if (errType === 'audio-capture') {
+          setShowMicOverlay(false);
+          alert('مائیک دستیاب نہیں — براہ کرم دوبارہ کوشش کریں');
         } else if (errType === 'ios_limit') {
           setIosError(true);
         }
@@ -555,6 +564,7 @@ export default function ChatPage() {
 
 
   const stopListening = useCallback(() => {
+    // abort() terminates immediately; stop() can freeze on Android Chrome
     try { speechEngineRef.current?.stop(); } catch {}
     setIsListening(false);
   }, []);
@@ -566,7 +576,7 @@ export default function ChatPage() {
 
     const rawText = finalSpeech.trim() || interimText.trim();
     const text = correctUrduAgriPhonetics(rawText);
-    try { speechEngineRef.current?.stop(); } catch {}
+    try { speechEngineRef.current?.stop(); } catch {}  // abort is faster but stop() returns final text
     setShowMicOverlay(false);
     setFinalSpeech('');
     setInterimText('');
@@ -580,7 +590,8 @@ export default function ChatPage() {
   }, [finalSpeech, interimText]);
 
   const cancelMic = useCallback(() => {
-    try { speechEngineRef.current?.stop(); } catch {}
+    // abort() not stop() — stop() can hang on Android Chrome waiting for buffer flush
+    try { speechEngineRef.current?.reset(); } catch {}
     setIsListening(false);
     setShowMicOverlay(false);
     setFinalSpeech('');
@@ -590,7 +601,8 @@ export default function ChatPage() {
   const retryMic = useCallback(() => {
     setIsListening(false);
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    try { speechEngineRef.current?.stop(); } catch {}
+    // abort() not stop() to prevent Android Chrome buffer-flush freeze on retry
+    try { speechEngineRef.current?.reset(); } catch {}
     setFinalSpeech('');
     setInterimText('');
     setTimeout(() => {
@@ -857,7 +869,7 @@ export default function ChatPage() {
     }
   }, [isOffline]);
 
-  const displayInput = input + (interimText ? (input ? ' ' : '') + interimText : '');
+  const displayInput = (input + ' ' + finalSpeech + ' ' + interimText).trim();
   const showMicOnly  = !input.trim() && !isListening;
 
   const currentQuickReplies = QUICK_REPLIES[language] || QUICK_REPLIES.ur;
@@ -1178,13 +1190,18 @@ export default function ChatPage() {
             🎙️ سن رہا ہوں
           </div>
           <Waveform />
-          {input && (
+          {(displayInput || interimText || finalSpeech) ? (
             <div style={{
-              flex: 1, color: 'rgba(255,255,255,.9)', fontSize: '.8rem',
+              flex: 1, color: 'rgba(255,255,255,.95)', fontSize: '.85rem', fontWeight: 600,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              direction: 'rtl', fontFamily: '"Noto Nastaliq Urdu", serif'
+              direction: getDir(displayInput || interimText || finalSpeech),
+              fontFamily: getFont(displayInput || interimText || finalSpeech)
             }}>
-              {input}
+              {displayInput || interimText || finalSpeech}
+            </div>
+          ) : (
+            <div style={{ flex: 1, color: 'rgba(255,255,255,.7)', fontSize: '.8rem', fontStyle: 'italic' }}>
+              {language === 'en' ? 'Speak now...' : 'بولیں، میں سن رہا ہوں...'}
             </div>
           )}
           <button onClick={toggleSpeech} style={{

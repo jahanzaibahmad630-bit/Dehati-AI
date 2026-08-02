@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { normalizeUrduForSpeech, waitForVoices, selectUrduVoice, getSRLang } from '../../utils/speech';
+import { normalizeUrduForSpeech, selectUrduVoice, getSRLang } from '../../utils/speech';
+
 
 /**
  * AudioPlayer — Natural Urdu TTS with Android Compliance + Animated Sound Wave
@@ -75,14 +76,16 @@ export default function AudioPlayer({
 
     setIsPending(true);
 
-    // Synchronous voice selection — 0ms gesture delay for Android autoplay policy
-    try {
-      const voices = window.speechSynthesis.getVoices() || [];
-      if (voices.length > 0) {
-        const voice = selectUrduVoice(voices, langKey);
-        if (voice) utt.voice = voice;
-      }
-    } catch {}
+    // ANDROID CHROME COMPLIANCE: Do NOT await anything after the onClick event.
+    // Any await (even waitForVoices) breaks Android's autoplay gesture token
+    // and causes speechSynthesis.speak() to silently fail.
+    // Synchronous getVoices() returns the cached list if already loaded,
+    // or empty [] on first call — in that case, omit utt.voice and use system default.
+    const voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length > 0) {
+      const voice = selectUrduVoice(voices, langKey);
+      if (voice) utt.voice = voice;
+    }
 
     window.speechSynthesis.cancel(); // Clear any stale utterances
     window.speechSynthesis.speak(utt);
