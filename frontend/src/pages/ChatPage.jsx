@@ -468,13 +468,7 @@ export default function ChatPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Pre-warm mic on mount — caches permission so first tap is instant (<100ms)
-  useEffect(() => {
-    const warmUp = async () => {
-      try { await import('../utils/speech').then(m => m.requestHardwareMic()); } catch {}
-    };
-    warmUp();
-  }, []);
+
 
   // Cleanup on unmount — abort (not stop) to avoid Android buffer-flush hang
   useEffect(() => {
@@ -566,8 +560,7 @@ export default function ChatPage() {
 
 
   const stopListening = useCallback(() => {
-    // abort() terminates immediately; stop() can freeze on Android Chrome
-    try { speechEngineRef.current?.stop(); } catch {}
+    try { speechEngineRef.current?.reset(); } catch {}
     setIsListening(false);
   }, []);
 
@@ -578,7 +571,7 @@ export default function ChatPage() {
 
     const rawText = finalSpeech.trim() || interimText.trim();
     const text = correctUrduAgriPhonetics(rawText);
-    try { speechEngineRef.current?.stop(); } catch {}  // abort is faster but stop() returns final text
+    try { speechEngineRef.current?.reset(); } catch {}
     setShowMicOverlay(false);
     setFinalSpeech('');
     setInterimText('');

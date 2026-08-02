@@ -600,14 +600,7 @@ export function createSpeechEngine({
   const recognitionInstance = { current: null };
 
   return {
-    start: async () => {
-      // Pre-warm hardware mic (cached after first call — instant on 2nd+ tap)
-      const micResult = await requestHardwareMic();
-      if (micResult === 'denied') {
-        onError?.('permission_denied');
-        return;
-      }
-
+    start: () => {
       // Reset all state for fresh session
       transcriptRef = '';
       stopped       = false;
@@ -625,15 +618,17 @@ export function createSpeechEngine({
       recognitionInstance.current = rec;
       rec._stopped = () => { stopped = true; clearSilenceTimer(); };
 
-      // Defensive start — on InvalidStateError, wait 250ms and retry once
+      // Synchronous start — 0ms latency, zero async delay
       try {
         rec.start();
       } catch (err) {
         if (err.name === 'InvalidStateError') {
           setTimeout(() => {
-            try { rec.start(); } catch (retryErr) {
-              console.error('[DehatiAI] Start retry failed:', retryErr.message);
-              onError?.('unknown');
+            if (!stopped) {
+              try { rec.start(); } catch (retryErr) {
+                console.error('[DehatiAI] Start retry failed:', retryErr.message);
+                onError?.('unknown');
+              }
             }
           }, 250);
         } else {
