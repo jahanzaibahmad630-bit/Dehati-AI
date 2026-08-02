@@ -576,22 +576,24 @@ export function createSpeechEngine({
     },
 
     stop() {
-      // Explicit user stop — call onStopped with accumulated transcript
+      // Gentle user stop: flush final speech buffer, trigger stop audio cue
       stopped      = true;
       isProcessing = true;
       clearSilenceTimer();
       clearRestartTimer();
       if (recognitionInstance.current) {
-        stripHandlers(recognitionInstance.current);
-        try { recognitionInstance.current.abort(); } catch {}
-        recognitionInstance.current = null;
+        const rec = recognitionInstance.current;
+        try { rec.stop(); } catch { try { rec.abort(); } catch {} }
+        setTimeout(() => {
+          stripHandlers(rec);
+          if (recognitionInstance.current === rec) recognitionInstance.current = null;
+        }, 150);
       }
       const clean = correctUrduAgriPhonetics(transcriptRef.trim());
-      // Delay onStopped slightly so state updates propagate cleanly
       setTimeout(() => {
         onStopped?.(clean);
         isProcessing = false;
-      }, 50);
+      }, 100);
       return clean;
     },
 
@@ -642,4 +644,57 @@ export async function speakText(text, langKey = 'ur', rate = 0.85) {
 
   window.speechSynthesis.speak(utt);
   return true;
+}
+
+/**
+ * playAudioCue — Synthetic, zero-asset Web Audio API audio feedback for voice start/stop.
+ * @param {'start' | 'stop' | 'error'} type
+ */
+export function playAudioCue(type = 'start') {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    const now = ctx.currentTime;
+
+    if (type === 'start') {
+      // Pleasant double-chime ascending (C5 523Hz -> G5 784Hz)
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.08);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.16);
+    } else if (type === 'stop') {
+      // Soft descending chime (G5 784Hz -> C5 523Hz)
+      osc.frequency.setValueAtTime(783.99, now);
+      osc.frequency.exponentialRampToValueAtTime(523.25, now + 0.08);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.16);
+    } else if (type === 'error') {
+      // Low subtle error buzz (E4 329Hz)
+      osc.frequency.setValueAtTime(329.63, now);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    }
+  } catch (e) {
+    // Non-fatal if audio context is restricted
+  }
 }

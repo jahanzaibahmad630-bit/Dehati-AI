@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useOffline } from '../hooks/useOffline';
 import { useAuth } from '../context/AuthContext';
 import { getDir, getFont, getAlign } from '../utils/textDir';
-import { createSpeechEngine, correctUrduAgriPhonetics } from '../utils/speech';
+import { createSpeechEngine, correctUrduAgriPhonetics, playAudioCue } from '../utils/speech';
 import { searchOffline, saveAIAnswer, queueQuestion, getOfflineQueue, removeFromQueue } from '../services/offlineDB';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import AudioPlayer from '../components/ui/AudioPlayer';
@@ -97,23 +97,68 @@ function Waveform() {
 
 // ── WhatsApp-style full-screen mic overlay ─────────────────────────────────────
 function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCancel, onRetry, iosError }) {
-  const hasText = (finalText + interimText).trim().length > 0;
+  const currentText = (finalText || interimText || '').trim();
+  const hasText     = currentText.length > 0;
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 999,
-      background: 'rgba(0,0,0,0.85)',
+      background: 'rgba(11, 19, 12, 0.92)',
+      backdropFilter: 'blur(12px)',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      animation: 'overlayFadeIn 0.2s ease-out'
+      animation: 'overlayFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+      padding: '24px 16px'
     }}>
 
-      {/* Transcript box / iOS error */}
+      {/* Top Status Badge */}
       <div style={{
-        width: '80%', maxWidth: 340,
-        background: iosError ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.08)',
-        borderRadius: 16, padding: '16px 18px',
-        minHeight: 72, marginBottom: 32,
-        border: iosError ? '1px solid rgba(220,38,38,0.4)' : '1px solid rgba(255,255,255,0.15)',
+        background: isListening
+          ? 'rgba(220, 38, 38, 0.2)'
+          : hasText
+            ? 'rgba(16, 185, 129, 0.2)'
+            : 'rgba(255, 255, 255, 0.1)',
+        border: `1px solid ${isListening ? 'rgba(220, 38, 38, 0.4)' : hasText ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255, 255, 255, 0.2)'}`,
+        color: isListening ? '#fca5a5' : hasText ? '#6ee7b7' : 'rgba(255,255,255,0.7)',
+        borderRadius: 20, padding: '6px 16px',
+        fontSize: '.82rem', fontWeight: 600,
+        marginBottom: 24,
+        display: 'flex', alignItems: 'center', gap: 8,
+        direction: 'rtl', fontFamily: '"Noto Nastaliq Urdu", serif'
+      }}>
+        {isListening ? (
+          <>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'statusPulse 1s infinite' }} />
+            آواز ریکارڈ ہو رہی ہے... بولیں
+          </>
+        ) : hasText ? (
+          <>
+            <span style={{ fontSize: '1rem' }}>✓</span>
+            آواز محفوظ ہو گئی! نیچے سے 'بھیجیں' پر کلک کریں
+          </>
+        ) : (
+          'آواز ریکارڈ کرنے کے لیے مائیک پر ٹیپ کریں'
+        )}
+      </div>
+
+      {/* Transcript Display Box */}
+      <div style={{
+        width: '88%', maxWidth: 360,
+        background: iosError
+          ? 'rgba(220,38,38,0.15)'
+          : hasText
+            ? 'rgba(16, 185, 129, 0.08)'
+            : 'rgba(255,255,255,0.06)',
+        borderRadius: 20, padding: '20px 22px',
+        minHeight: 90, maxHeight: 160, overflowY: 'auto',
+        marginBottom: 32,
+        border: iosError
+          ? '1px solid rgba(220,38,38,0.4)'
+          : hasText
+            ? '1px solid rgba(16,185,129,0.3)'
+            : '1px solid rgba(255,255,255,0.15)',
+        boxShadow: hasText ? '0 8px 32px rgba(16,185,129,0.12)' : 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         textAlign: 'center'
       }}>
         {iosError ? (
@@ -121,89 +166,94 @@ function MicOverlay({ isListening, interimText, finalText, onStop, onSend, onCan
             📱 آئی فون پر آواز کی سہولت
             <br/>
             <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '.8rem' }}>
-              Chrome for Android میں مکمل کام کرتی ہے۔
-              <br/>ابھی ٹائپ کریں یا Android Chrome استعمال کریں۔
+              Android Chrome میں مکمل آواز سپورٹ فعال ہے۔
             </span>
           </div>
-        ) : (finalText || interimText) ? (
+        ) : hasText ? (
           <div style={{
-            color: 'white', fontSize: '1rem', lineHeight: 1.8,
-            fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl'
+            color: '#ffffff', fontSize: '1.1rem', lineHeight: 1.9,
+            fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl',
+            wordBreak: 'break-word'
           }}>
-            {(finalText || interimText).trim()}
+            {currentText}
           </div>
         ) : (
-          <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '.85rem' }}>
-            {isListening ? 'بول رہے ہیں...' : 'تیار...'}
+          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '.9rem', direction: 'rtl', fontFamily: '"Noto Nastaliq Urdu", serif' }}>
+            {isListening ? 'DehatiAI آپ کا سوال سن رہا ہے...' : 'کچھ بولیں...'}
           </div>
         )}
       </div>
 
-      {/* Ripple mic button */}
-      <div style={{ position: 'relative', width: 90, height: 90, marginBottom: 32 }}>
-        {/* Ripple rings — only when listening */}
-        {isListening && [1,2,3].map(i => (
+      {/* Mic Button & Pulse Rings */}
+      <div style={{ position: 'relative', width: 96, height: 96, marginBottom: 32 }}>
+        {isListening && [1, 2, 3].map(i => (
           <div key={i} style={{
             position: 'absolute', inset: 0,
             borderRadius: '50%',
-            border: '2px solid rgba(220,38,38,0.5)',
+            border: '2px solid rgba(239, 68, 68, 0.45)',
             animation: `ripple 1.8s ease-out infinite`,
-            animationDelay: `${(i-1)*0.6}s`
+            animationDelay: `${(i - 1) * 0.5}s`
           }} />
         ))}
         <button
           onClick={isListening ? onStop : onRetry}
+          title={isListening ? 'روکیں' : 'دوبارہ بولیں'}
           style={{
-            width: 90, height: 90, borderRadius: '50%', border: 'none',
+            width: 96, height: 96, borderRadius: '50%', border: 'none',
             background: iosError
               ? 'linear-gradient(135deg,#6b7280,#4b5563)'
               : isListening
-                ? 'linear-gradient(135deg,#dc2626,#b91c1c)'
-                : 'linear-gradient(135deg,#2e5a27,#4a7c40)',
-            color: 'white', fontSize: '2.2rem',
+                ? 'linear-gradient(135deg,#ef4444,#dc2626)'
+                : 'linear-gradient(135deg,#10b981,#059669)',
+            color: 'white', fontSize: '2.4rem',
             cursor: 'pointer', position: 'relative', zIndex: 2,
             boxShadow: isListening
-              ? '0 0 0 6px rgba(220,38,38,.25)'
-              : '0 4px 20px rgba(0,0,0,.4)',
+              ? '0 0 0 8px rgba(239,68,68,.25), 0 8px 25px rgba(220,38,38,.4)'
+              : '0 8px 25px rgba(16,185,129,.35)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all .25s'
+            transition: 'all .25s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
         >
           {iosError ? '❌' : isListening ? '⏹' : '🎤'}
         </button>
       </div>
 
-      {/* Waveform (only when listening) */}
+      {/* Waveform indicator */}
       <div style={{ height: 36, marginBottom: 28, opacity: isListening ? 1 : 0, transition: 'opacity .3s' }}>
         <Waveform />
       </div>
 
-      {/* Bottom actions */}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+      {/* Bottom Action Controls */}
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
         <button onClick={onCancel} style={{
-          background: 'rgba(255,255,255,0.12)', color: 'white',
+          background: 'rgba(255,255,255,0.12)', color: '#f3f4f6',
           border: '1px solid rgba(255,255,255,0.2)',
           borderRadius: 24, padding: '10px 22px',
-          fontSize: '.85rem', fontWeight: 700, cursor: 'pointer'
+          fontSize: '.88rem', fontWeight: 700, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 6,
+          transition: 'all .2s'
         }}>❌ منسوخ</button>
 
-        {/* Retry button for noise corruption */}
         {!isListening && !iosError && (
           <button onClick={onRetry} style={{
-            background: 'rgba(245,158,11,0.15)', color: '#f59e0b',
+            background: 'rgba(245,158,11,0.18)', color: '#fbbf24',
             border: '1px solid rgba(245,158,11,0.4)',
             borderRadius: 24, padding: '10px 22px',
-            fontSize: '.85rem', fontWeight: 700, cursor: 'pointer'
-          }}>🔄 دوبارہ</button>
+            fontSize: '.88rem', fontWeight: 700, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+            transition: 'all .2s'
+          }}>🔄 دوبارہ بولیں</button>
         )}
 
         {hasText && (
           <button onClick={onSend} style={{
-            background: 'linear-gradient(135deg,#2e5a27,#4a7c40)',
+            background: 'linear-gradient(135deg,#10b981,#059669)',
             color: 'white', border: 'none',
-            borderRadius: 24, padding: '10px 28px',
-            fontSize: '.9rem', fontWeight: 800, cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(46,90,39,.5)'
+            borderRadius: 24, padding: '11px 32px',
+            fontSize: '.95rem', fontWeight: 800, cursor: 'pointer',
+            boxShadow: '0 4px 18px rgba(16,185,129,.45)',
+            display: 'flex', alignItems: 'center', gap: 8,
+            transition: 'all .2s'
           }}>بھیجیں ➤</button>
         )}
       </div>
@@ -497,6 +547,9 @@ export default function ChatPage() {
     setInput('');
     isProcessingRef.current = false;
 
+    // Play pleasant upward start chime
+    playAudioCue('start');
+
     // Destroy previous engine — abort() for instant 0ms hardware release
     try { speechEngineRef.current?.reset(); } catch {}
     speechEngineRef.current = null;
@@ -527,9 +580,11 @@ export default function ChatPage() {
         isProcessingRef.current = true;
         setIsListening(false);
         setInterimText('');
+
         if (finalText && finalText.trim()) {
           setFinalSpeech(finalText);
           setInput(finalText);
+          playAudioCue('stop');
           // Overlay stays open — user reviews text and taps بھیجیں
         } else {
           // Nothing was captured — close overlay cleanly
@@ -542,6 +597,7 @@ export default function ChatPage() {
         setIsListening(false);
         isProcessingRef.current = false;
         setShowMicOverlay(false);
+        playAudioCue('error');
 
         if (errType === 'permission_denied') {
           alert(
@@ -570,6 +626,7 @@ export default function ChatPage() {
 
   // Stop recording — called by overlay ⏹ button (keeps overlay open to show text)
   const stopListening = useCallback(() => {
+    playAudioCue('stop');
     try { speechEngineRef.current?.stop(); } catch {}
     setIsListening(false);
   }, []);
@@ -578,6 +635,7 @@ export default function ChatPage() {
   const sendVoiceMessage = useCallback(() => {
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
+    playAudioCue('stop');
 
     // Get best available transcript
     const accumulated = speechEngineRef.current?.getAccumulated?.() || '';
