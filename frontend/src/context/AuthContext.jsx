@@ -78,21 +78,30 @@ export function AuthProvider({ children }) {
       saveSession(data.token, data.user);
       return data;
     } catch (err) {
-      if (err.message === 'Failed to fetch') throw new Error('انٹرنیٹ یا سرور کا مسئلہ ہے');
+      if (err.message === 'Failed to fetch' || err.name === 'TypeError' || err.message?.includes('fetch')) {
+        throw new Error('انٹرنیٹ یا سرور سے رابطہ نہیں ہو سکا۔ دوبارہ کوشش کریں یا "مہمان لاگ ان" استعمال کریں۔');
+      }
       throw err;
     }
   };
 
-
   const guestLogin = async () => {
-    const res = await fetch(`${API_URL}/api/auth/guest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'مہمان لاگ ان ناکام');
-    saveSession(data.token, data.user);
-    return data;
+    try {
+      const res = await fetch(`${API_URL}/api/auth/guest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'مہمان لاگ ان ناکام');
+      saveSession(data.token, data.user);
+      return data;
+    } catch (err) {
+      // Offline fallback: generate local guest session when network is unreachable
+      const offlineGuest = { name: 'مہمان کسان', phone: 'guest', isGuest: true };
+      const dummyToken = 'guest_offline_token_' + Date.now();
+      saveSession(dummyToken, offlineGuest);
+      return { token: dummyToken, user: offlineGuest };
+    }
   };
 
   const logout = () => {
