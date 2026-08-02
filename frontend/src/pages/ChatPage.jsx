@@ -1104,160 +1104,16 @@ export default function ChatPage() {
         />
       )}
 
+      {/* ── Message list container ── */}
       <div style={{
-        background: 'linear-gradient(135deg, #1a3a16, #2e5a27)',
-        padding: '10px 14px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        boxShadow: '0 2px 8px rgba(0,0,0,.2)', flexShrink: 0, zIndex: 10,
-        maxWidth: '100%', overflowX: 'hidden'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <button
-            onClick={() => setShowSidebar(true)}
-            title={language === 'en' ? 'Past conversations' : 'گزشتہ گفتگوئیں'}
-            style={{
-              width: 34, height: 34, borderRadius: 10, border: 'none',
-              background: 'rgba(255,255,255,.15)', color: 'white',
-              cursor: 'pointer', fontSize: '1rem',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0
-            }}
-          >☰</button>
-          <div style={{
-            width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-            background: 'rgba(255,255,255,.15)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.1rem', border: '2px solid rgba(255,255,255,.3)'
-          }}>🌾</div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ color: 'white', fontWeight: 700, fontSize: '.9rem', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>DehatiAI</div>
-            <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '.68rem', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-              {isBusy
-                ? (language === 'en' ? '✍️ Typing...' : '✍️ جواب لکھ رہا ہوں...')
-                : isListening
-                  ? (language === 'en' ? '🎙️ Listening...' : '🎙️ سن رہا ہوں...')
-                  : (language === 'en' ? '🟢 Online' : '🟢 آن لائن')}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: 3, overflowX: 'auto', scrollbarWidth: 'none', maxWidth: 170 }}>
-            {LANGS.map(l => (
-              <button key={l.key} onClick={() => setLanguage(l.key)} style={{
-                padding: '3px 8px', borderRadius: 20, border: 'none', cursor: 'pointer',
-                background: language === l.key ? 'white' : 'rgba(255,255,255,.2)',
-                color: language === l.key ? '#2e5a27' : 'white',
-                fontSize: '.68rem', fontWeight: 700, fontFamily: 'Inter, sans-serif',
-                whiteSpace: 'nowrap', transition: 'all .2s'
-              }}>{l.label}</button>
-            ))}
-          </div>
-          <button onClick={handleClearClick} title={language === 'en' ? 'Clear conversation' : 'نئی گفتگو'} style={{
-            width: 32, height: 32, borderRadius: '50%', border: 'none',
-            background: 'rgba(255,255,255,.15)', color: 'white', cursor: 'pointer',
-            fontSize: '.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-          }}>🗑️</button>
-        </div>
-      </div>
-
-      <div style={{
-        flex: 1, overflowY: 'auto', padding: '12px 12px 0',
-        display: 'flex', flexDirection: 'column',
+        flex: 1, overflowY: 'auto', padding: '16px 14px 8px',
+        display: 'flex', flexDirection: 'column', gap: 12,
         scrollbarWidth: 'thin',
-        scrollbarColor: 'rgba(0,0,0,.2) transparent'
+        scrollbarColor: 'rgba(0,0,0,.15) transparent'
       }}>
         {messages.map((msg, i) => (
           <MessageBubble key={i} msg={msg} isLast={i === messages.length - 1} />
         ))}
-
-        {/* ── Farmer Starter Hub (Fills empty space for new chats) ── */}
-        {messages.length <= 1 && (
-          <div style={{
-            margin: '16px 0', padding: '16px 14px',
-            background: 'rgba(255, 255, 255, 0.85)',
-            borderRadius: 20, border: '1.5px solid rgba(46, 90, 39, 0.2)',
-            boxShadow: '0 4px 16px rgba(46,90,39,0.08)',
-            animation: 'msgFadeIn 0.3s ease-out'
-          }}>
-            <div style={{
-              color: '#162410', fontSize: '.9rem', fontWeight: 800,
-              marginBottom: 14, textAlign: 'center', direction: 'rtl',
-              fontFamily: '"Noto Nastaliq Urdu", serif'
-            }}>
-              💡 کسان بھائیو! کوئی بھی سوال پوچھیں یا کٹہرے پر کلک کریں:
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <button
-                onClick={() => sendMessage('گندم کی فصل میں یوریا کھاد اور پانی کب دیں؟')}
-                disabled={isBusy}
-                style={{
-                  background: 'linear-gradient(135deg, #e8f5e3, #c5e3be)',
-                  border: '1px solid #9ecf94', borderRadius: 14,
-                  padding: '12px 10px', color: '#162410', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                  fontSize: '.8rem', fontWeight: 700, fontFamily: '"Noto Nastaliq Urdu", serif',
-                  direction: 'rtl', boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                  transition: 'transform 0.15s'
-                }}
-              >
-                <span style={{ fontSize: '1.5rem' }}>🌾</span>
-                <span>کھاد اور پانی</span>
-              </button>
-
-              <button
-                onClick={() => sendMessage('فصل میں بیماری اور سنڈی کا علاج کیا ہے؟')}
-                disabled={isBusy}
-                style={{
-                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                  border: '1px solid #f59e0b', borderRadius: 14,
-                  padding: '12px 10px', color: '#78350f', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                  fontSize: '.8rem', fontWeight: 700, fontFamily: '"Noto Nastaliq Urdu", serif',
-                  direction: 'rtl', boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                  transition: 'transform 0.15s'
-                }}
-              >
-                <span style={{ fontSize: '1.5rem' }}>🐛</span>
-                <span>بیماری کا علاج</span>
-              </button>
-
-              <button
-                onClick={() => sendMessage('آج اور اگلے ۵ دن کے موسم کی کیا صورتحال ہے؟')}
-                disabled={isBusy}
-                style={{
-                  background: 'linear-gradient(135deg, #e0f2fe, #bae6fd)',
-                  border: '1px solid #38bdf8', borderRadius: 14,
-                  padding: '12px 10px', color: '#0c4a6e', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                  fontSize: '.8rem', fontWeight: 700, fontFamily: '"Noto Nastaliq Urdu", serif',
-                  direction: 'rtl', boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                  transition: 'transform 0.15s'
-                }}
-              >
-                <span style={{ fontSize: '1.5rem' }}>🌦️</span>
-                <span>موسم اور بارش</span>
-              </button>
-
-              <button
-                onClick={() => sendMessage('سرکاری کسان کارڈ اور ZTBL قرضہ کیسے حاصل کریں؟')}
-                disabled={isBusy}
-                style={{
-                  background: 'linear-gradient(135deg, #fbc02d15, #fbc02d35)',
-                  border: '1px solid #fbc02d', borderRadius: 14,
-                  padding: '12px 10px', color: '#7a5c30', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                  fontSize: '.8rem', fontWeight: 700, fontFamily: '"Noto Nastaliq Urdu", serif',
-                  direction: 'rtl', boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                  transition: 'transform 0.15s'
-                }}
-              >
-                <span style={{ fontSize: '1.5rem' }}>💳</span>
-                <span>کسان کارڈ و قرضہ</span>
-              </button>
-            </div>
-          </div>
-        )}
 
         {isListening && interimText && (
           <div style={{
@@ -1276,26 +1132,28 @@ export default function ChatPage() {
           </div>
         )}
 
-        <div ref={bottomRef} style={{ height: 8 }} />
+        <div ref={bottomRef} style={{ height: 4 }} />
       </div>
 
+      {/* ── Floating Quick Reply Chips (Right above Input Bar) ── */}
       {showQuickReplies && (
         <div style={{
-          padding: '6px 10px',
+          padding: '4px 10px 8px',
           background: 'transparent',
           flexShrink: 0,
           overflowX: 'auto',
           scrollbarWidth: 'none',
-          maxWidth: '100%'
+          maxWidth: '100%',
+          direction: 'rtl'
         }}>
-          <div style={{ display: 'flex', gap: 6, width: 'max-content' }}>
+          <div style={{ display: 'flex', gap: 8, width: 'max-content' }}>
             {currentQuickReplies.map((r, i) => (
               <button key={i} onClick={() => sendMessage(r)} disabled={isBusy} style={{
-                padding: '5px 12px', borderRadius: 20, border: '1.5px solid #2e5a27',
-                background: 'white', color: '#2e5a27', fontSize: '.76rem',
-                fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                padding: '6px 14px', borderRadius: 20, border: '1.5px solid #2e5a27',
+                background: 'white', color: '#2e5a27', fontSize: '.8rem',
+                fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
                 fontFamily: language === 'en' ? 'Inter, sans-serif' : '"Noto Nastaliq Urdu", serif',
-                boxShadow: '0 1px 4px rgba(0,0,0,.08)',
+                boxShadow: '0 1px 4px rgba(0,0,0,.06)',
                 opacity: isBusy ? 0.5 : 1, transition: 'all .15s',
                 direction: 'rtl'
               }}>{r}</button>
@@ -1324,7 +1182,7 @@ export default function ChatPage() {
 
       {/* ── Stop generating button ── */}
       {isBusy && (
-        <div style={{ padding: '6px 12px', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+        <div style={{ padding: '4px 12px', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
           <button
             onClick={stopGenerating}
             style={{
@@ -1376,10 +1234,10 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* ── Input bar ── */}
+      {/* ── Bottom Input Bar (Exactly Matching Reference Image) ── */}
       <div style={{
-        padding: '8px 10px',
-        paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
+        padding: '8px 12px 10px',
+        paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
         background: '#ece5dd',
         flexShrink: 0,
         display: 'flex', alignItems: 'center', gap: 8,
@@ -1387,24 +1245,24 @@ export default function ChatPage() {
         boxSizing: 'border-box',
         width: '100%'
       }}>
-        {/* Mic button — Left side (WhatsApp style) */}
+        {/* Mic button — Left side (Dark Green Circle with Mic icon) */}
         <button
           id="chat-mic-btn"
           onClick={toggleSpeech}
           disabled={isBusy}
           aria-label={isListening ? 'آواز بند کریں' : 'آواز سے لکھیں'}
           style={{
-            width: 44, minWidth: 44, height: 44, borderRadius: '50%', border: 'none',
+            width: 48, minWidth: 48, height: 48, borderRadius: '50%', border: 'none',
             background: isListening
               ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-              : 'linear-gradient(135deg, #10b981, #059669)',
-            color: 'white', fontSize: '1.25rem',
+              : 'linear-gradient(135deg, #1e3a16, #2e5a27)',
+            color: 'white', fontSize: '1.3rem',
             cursor: isBusy ? 'not-allowed' : 'pointer',
             flexShrink: 0,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: isListening
               ? '0 0 0 4px rgba(239,68,68,.3), 0 4px 12px rgba(239,68,68,.4)'
-              : '0 2px 8px rgba(16,185,129,.35)',
+              : '0 3px 10px rgba(30,58,22,.4)',
             animation: isListening ? 'micPulse 1.2s ease-in-out infinite' : 'none',
             transition: 'all .25s',
             opacity: isBusy ? 0.5 : 1,
@@ -1414,7 +1272,7 @@ export default function ChatPage() {
           {isListening ? '⏹' : '🎤'}
         </button>
 
-        {/* Text input — direction auto-switches as user types */}
+        {/* Text input box — Center (Rounded white input box with placeholder) */}
         <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
           <textarea
             ref={inputRef}
@@ -1429,14 +1287,14 @@ export default function ChatPage() {
             dir={getDir(isListening ? displayInput : input)}
             lang={getDir(isListening ? displayInput : input) === 'rtl' ? 'ur' : 'en'}
             style={{
-              width: '100%', padding: '12px 14px',
+              width: '100%', padding: '12px 16px',
               borderRadius: 24, border: 'none',
               background: 'white',
               fontSize: '.9rem', resize: 'none', outline: 'none',
               fontFamily: getFont(isListening ? displayInput : input),
               textAlign: getAlign(isListening ? displayInput : input),
               maxHeight: 120, overflowY: 'auto',
-              boxShadow: '0 1px 4px rgba(0,0,0,.1)',
+              boxShadow: '0 2px 6px rgba(0,0,0,.08)',
               color: isListening ? '#6b7280' : '#111827',
               lineHeight: 1.5,
               boxSizing: 'border-box',
@@ -1450,22 +1308,23 @@ export default function ChatPage() {
           />
         </div>
 
-        {/* Send button — Right side */}
+        {/* Send button — Right side (Circular send button) */}
         <button
           id="chat-send-btn"
           onClick={() => sendMessage()}
           disabled={(!input.trim() && !interimText) || isBusy}
           aria-label="بھیجیں"
           style={{
-            width: 44, minWidth: 44, height: 44, borderRadius: '50%', border: 'none',
-            background: input.trim() || interimText
-              ? 'linear-gradient(135deg, #10b981, #059669)'
-              : '#d1d5db',
-            color: 'white', fontSize: '1.1rem',
+            width: 48, minWidth: 48, height: 48, borderRadius: '50%', border: 'none',
+            background: (input.trim() || interimText)
+              ? 'linear-gradient(135deg, #2e5a27, #1e3a16)'
+              : '#e5e7eb',
+            color: (input.trim() || interimText) ? 'white' : '#9ca3af',
+            fontSize: '1.2rem',
             cursor: input.trim() ? 'pointer' : 'not-allowed',
             flexShrink: 0,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: input.trim() ? '0 2px 8px rgba(16,185,129,.35)' : 'none',
+            boxShadow: (input.trim() || interimText) ? '0 3px 10px rgba(30,58,22,.35)' : 'none',
             transition: 'all .2s'
           }}
         >
