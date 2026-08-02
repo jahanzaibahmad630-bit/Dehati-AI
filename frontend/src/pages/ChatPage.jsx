@@ -953,10 +953,16 @@ export default function ChatPage() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: 'calc(100dvh - var(--header-height, 60px) - 60px)',
-      maxWidth: 430, margin: '0 auto',
+      position: 'fixed',
+      top: 'var(--header-height, 60px)',
+      bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: '100%',
+      maxWidth: 430,
       background: '#ece5dd',
-      position: 'relative', overflow: 'hidden'
+      overflow: 'hidden',
+      zIndex: 10
     }}>
 
       {/* ── Clear Confirmation Modal ── */}
