@@ -20,11 +20,11 @@ import Profile from '../components/tools/Profile';
 const SHEET_TOOLS = [
   { id: 'market',     icon: '📈', name: 'مارکیٹ قیمتیں', component: MarketPrices,         badge: 'قیمتیں' },
   { id: 'animal',     icon: '🐄', name: 'جانور صحت',      component: AnimalHealthAdvisor  },
-  { id: 'fertilizer', icon: '🌱', name: 'کھاد سفارش',     component: FertilizerRecommender },
-  { id: 'spray',      icon: '💧', name: 'سپرے مقدار',     component: SprayDoseCalc        },
-  { id: 'profit',     icon: '💰', name: 'منافع حساب',     component: ProfitEstimator      },
-  { id: 'seed',       icon: '🌾', name: 'بیج مقدار',      component: SeedRateCalc         },
-  { id: 'tubewell',   icon: '⚡', name: 'ٹیوب ویل خرچ',  component: TubeWellCost         },
+  { id: 'fertilizer', icon: '🧪', name: 'NPK کھاد',       component: FertilizerRecommender, badge: '⚡ اسمارٹ' },
+  { id: 'spray',      icon: '🌤️', name: 'سپرے موسم',     component: SprayDoseCalc,          badge: '⚡ اسمارٹ' },
+  { id: 'profit',     icon: '📊', name: 'ROI منافع',      component: ProfitEstimator,        badge: '⚡ اسمارٹ' },
+  { id: 'seed',       icon: '🌱', name: 'ورائٹی بیج',     component: SeedRateCalc,           badge: '⚡ اسمارٹ' },
+  { id: 'tubewell',   icon: '☀️', name: 'سولر موازنہ',   component: TubeWellCost,           badge: '⚡ اسمارٹ' },
   { id: 'land',       icon: '🗺️', name: 'زمین تبدیلی',   component: LandConverter        },
   { id: 'loan',       icon: '🏦', name: 'قرضہ قسط',       component: LoanEMICalc          },
   { id: 'breakeven',  icon: '⚖️', name: 'نقصان حد',       component: BreakevenCalc        },
@@ -33,6 +33,7 @@ const SHEET_TOOLS = [
   { id: 'livestock',  icon: '🐮', name: 'دانہ حساب',      component: LivestockFeedCalc    },
   { id: 'profile',    icon: '👤', name: 'میری پروفائل',   component: Profile              },
 ];
+
 
 // Tools that navigate to dedicated pages
 const NAV_TOOLS = [
@@ -118,14 +119,15 @@ export default function MorePage() {
                 className="tool-card"
                 onClick={() => setActiveTool(t.id)}
                 id={`tool-${t.id}`}
-                style={{ position: 'relative' }}
+                style={{ position: 'relative', ...(t.badge?.startsWith('⚡') ? { borderColor: 'rgba(202,138,4,.4)', background: 'linear-gradient(135deg, #fffdf7, #fffbeb)' } : {}) }}
               >
                 {t.badge && (
                   <span style={{
                     position: 'absolute', top: '.4rem', left: '.4rem',
-                    background: 'var(--green-700)', color: 'white',
-                    fontSize: '.58rem', fontWeight: 800, padding: '.1rem .35rem',
-                    borderRadius: 'var(--radius-full)'
+                    background: t.badge.startsWith('⚡') ? 'linear-gradient(135deg, #713f12, #ca8a04)' : 'var(--green-700)',
+                    color: 'white',
+                    fontSize: '.55rem', fontWeight: 800, padding: '.1rem .35rem',
+                    borderRadius: 'var(--radius-full)', whiteSpace: 'nowrap'
                   }}>{t.badge}</span>
                 )}
                 <div className="tool-icon">{t.icon}</div>
