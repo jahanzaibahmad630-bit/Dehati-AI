@@ -628,16 +628,17 @@ function openDB() {
 }
 
 async function seedFAQ(db) {
+  const ALL_ENTRIES = [...FAQ_DATA, ...UAF_RAG_DATA];
   return new Promise((resolve) => {
     const tx = db.transaction('faq', 'readonly');
     const store = tx.objectStore('faq');
     const countReq = store.count();
     countReq.onsuccess = () => {
       // Re-seed if count differs or empty to keep latest FAQ synced
-      if (countReq.result < FAQ_DATA.length) {
+      if (countReq.result < ALL_ENTRIES.length) {
         const tx2 = db.transaction('faq', 'readwrite');
         const faqStore = tx2.objectStore('faq');
-        FAQ_DATA.forEach(entry => faqStore.put(entry));
+        ALL_ENTRIES.forEach(entry => faqStore.put(entry));
         tx2.oncomplete = resolve;
         tx2.onerror = resolve;
       } else {
@@ -712,7 +713,7 @@ async function pruneAICache(db) {
 }
 
 /**
- * Search offline: User AI cache first, then 110-item FAQ database.
+ * Search offline: User AI cache first, then 116-item FAQ database.
  */
 export async function searchOffline(query) {
   const qTokens = tokenize(query);
@@ -727,7 +728,7 @@ export async function searchOffline(query) {
       return { found: true, source: 'cache', ...cacheResult };
     }
 
-    // 2. Local 110 FAQ Database
+    // 2. Local 116 FAQ Database
     const faqResult = await searchFAQ(db, qTokens);
     if (faqResult.score >= 0.25) {
       return { found: true, source: 'faq', ...faqResult };
@@ -736,7 +737,8 @@ export async function searchOffline(query) {
     return { found: false };
   } catch (err) {
     console.warn('searchOffline error, falling back to in-memory FAQ:', err);
-    const best = FAQ_DATA
+    const ALL_ENTRIES = [...FAQ_DATA, ...UAF_RAG_DATA];
+    const best = ALL_ENTRIES
       .map(entry => ({ entry, score: similarity(qTokens, entry) }))
       .sort((a, b) => b.score - a.score)[0];
 
