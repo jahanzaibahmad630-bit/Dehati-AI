@@ -13,6 +13,23 @@ const QUEUE_KEY  = 'dehati_offline_queue';
 // PILLAR 1: 110 Pre-packaged Urdu Farming Q&A Pairs (100% Offline Access)
 // ─────────────────────────────────────────────────────────────────────────────
 export const FAQ_DATA = [
+  // ── 0. منڈی و فصل فروخت (Mandi & Crop Selling — Roman Urdu & Urdu Entries) ─
+  {
+    id: 'm1', tags: ['fasl', 'bechon', 'bechna', 'bechun', 'mandi', 'rate', 'rates', 'price', 'sell', 'sale', 'فصل', 'بیچوں', 'بیچنا', 'فروخت', 'منڈی', 'ریٹ'],
+    q: 'فصل کب بیچوں اور منڈی کا ریٹ کیسے چیک کروں؟ / Fasl kb bechon / Fasl bechna hai?',
+    a: '📊 فصل فروخت کرنے کا بہترین وقت و منڈی گائیڈ:\n• ملتان، فیصل آباد، سرگودھا اور رحیم یار خان منڈی کے ریٹ ایپ میں "موسم و منڈی" ٹیب میں دیکھیں۔\n• اگر اگلے 2 دنوں میں بارش یا تیز ہوا کی پیشگوئی ہو تو نمی اور کٹوتی سے بچنے کے لیے مال فوری فروخت کریں۔\n• اگر موسم صاف ہے اور منڈی میں شارٹج ہے تو 3–5 دن انتظار کر کے ریٹ کا موازنہ کر کے بیچیں۔\n• سرکاری زراعت ہیلپ لائن: 0800-15000 / 0800-17000'
+  },
+  {
+    id: 'm2', tags: ['gandam', 'rate', 'wheat', 'price', 'bechon', 'mandi', 'گندم', 'ریٹ', 'منڈی', 'قیمت'],
+    q: 'گندم کا ریٹ کیا ہے اور کب بیچوں؟ / Gandam rate / Gandam kb bechon?',
+    a: '🌾 گندم کی منڈی صورتحال:\n• اوسط منڈی ریٹ: ₨3,180 تا ₨3,220 فی 40 کلو (پنجاب منڈیاں)\n• نمی 12٪ سے کم ہو تو گودام میں ذخیرہ کریں، 14 دن بعد ریٹ میں 10٪ تک اضافہ ممکن ہے۔\n• تازہ ترین ضلع وار ریٹ کے لیے "موسم و منڈی" دیکھیں۔'
+  },
+  {
+    id: 'm3', tags: ['kapas', 'cotton', 'rate', 'price', 'bechon', 'mandi', 'کپاس', 'ریٹ', 'منڈی'],
+    q: 'کپاس کا ریٹ کیا ہے اور کہاں بیچوں؟ / Kapas rate / Kapas kb bechon?',
+    a: '🌿 کپاس منڈی صورتحال:\n• اوسط منڈی ریٹ: ₨8,500 تا ₨8,600 فی 40 کلو (ملتان و رحیم یار خان)\n• اچھی کوالٹی اور سوکھی کپاس کے لیے فیصل آباد منڈی میں بہتر ریٹ ملتا ہے۔'
+  },
+
   // ── 1. گندم (Wheat — 12 Entries) ─────────────────────────────────────────
   {
     id: 'w1', tags: ['گندم','پانی','آبپاشی','wheat','water'],
@@ -649,28 +666,64 @@ async function seedFAQ(db) {
   });
 }
 
-// Tokenize text for Urdu & English fuzzy matching
+// Roman Urdu, Urdu & English stop words filter for high-precision matching
+const STOP_WORDS = new Set([
+  'kb', 'kab', 'ka', 'ki', 'ke', 'ko', 'me', 'mein', 'par', 'pr', 'se', 'si', 'ne', 'to', 'bhi',
+  'kya', 'hai', 'hain', 'ho', 'hyn', 'bhai', 'bhaiya', 'mera', 'meri', 'mere', 'apna', 'apni',
+  'is', 'the', 'a', 'an', 'in', 'on', 'at', 'for', 'to', 'of', 'and', 'or', 'with', 'by'
+]);
+
+// Tokenize text for Urdu, Roman Urdu & English fuzzy matching
 function tokenize(str) {
   if (!str) return [];
   return str
     .toLowerCase()
-    .replace(/[،؟!؟.,:;\(\)\[\]"']/g, ' ')
+    .replace(/[،؟!؟.,:;\(\)\[\]"'`\-]/g, ' ')
     .split(/\s+/)
-    .filter(w => w.length > 1);
+    .filter(w => w.length > 1 && !STOP_WORDS.has(w));
 }
 
+// Intent Keywords for Hard Context Disambiguation
+const SELLING_INTENTS = ['bechon', 'bechna', 'bechun', 'sale', 'sell', 'mandi', 'rate', 'rates', 'price', 'بیچوں', 'بیچنا', 'فروخت', 'منڈی', 'ریٹ'];
+const WATER_INTENTS   = ['pani', 'irrigation', 'پانی', 'آبپاشی', 'سیراب'];
+const FERTILIZER_INTENTS = ['khad', 'dap', 'urea', 'sop', 'fertilizer', 'کھاد', 'یوریا', 'زنک'];
+const DISEASE_INTENTS = ['bimari', 'bipari', 'dawai', 'spray', 'keeda', 'keede', 'disease', 'pesticide', 'بیماری', 'دوا', 'سپرے', 'کیڑا'];
+
 function similarity(queryTokens, entry) {
-  const entryTokens = tokenize(entry.q + ' ' + entry.tags.join(' '));
+  const entryText = (entry.q + ' ' + entry.tags.join(' ')).toLowerCase();
+  const entryTokens = tokenize(entryText);
   if (queryTokens.length === 0 || entryTokens.length === 0) return 0;
 
-  let matches = 0;
+  let totalScore = 0;
+  const isQuerySelling = queryTokens.some(qt => SELLING_INTENTS.includes(qt));
+  const isQueryWater   = queryTokens.some(qt => WATER_INTENTS.includes(qt));
+  const isQueryKhad    = queryTokens.some(qt => FERTILIZER_INTENTS.includes(qt));
+  const isQueryDisease = queryTokens.some(qt => DISEASE_INTENTS.includes(qt));
+
+  const isEntrySelling = entry.tags.some(t => SELLING_INTENTS.includes(t.toLowerCase()));
+  const isEntryWater   = entry.tags.some(t => WATER_INTENTS.includes(t.toLowerCase()));
+  const isEntryKhad    = entry.tags.some(t => FERTILIZER_INTENTS.includes(t.toLowerCase()));
+  const isEntryDisease = entry.tags.some(t => DISEASE_INTENTS.includes(t.toLowerCase()));
+
+  // Penalize mismatching core intent
+  if (isQuerySelling && !isEntrySelling) return 0;
+  if (isQueryWater && !isEntryWater && isEntrySelling) return 0;
+
   queryTokens.forEach(qt => {
-    if (entryTokens.some(et => et.includes(qt) || qt.includes(et))) {
-      matches += 1;
+    if (entryTokens.includes(qt)) {
+      totalScore += 1.5; // Exact word match
+    } else if (entryTokens.some(et => et.includes(qt) || qt.includes(et))) {
+      totalScore += 0.8; // Substring match
     }
   });
 
-  return matches / Math.max(queryTokens.length, 1);
+  // Intent Bonus
+  if (isQuerySelling && isEntrySelling) totalScore += 1.0;
+  if (isQueryWater && isEntryWater) totalScore += 1.0;
+  if (isQueryKhad && isEntryKhad) totalScore += 1.0;
+  if (isQueryDisease && isEntryDisease) totalScore += 1.0;
+
+  return totalScore / Math.max(queryTokens.length, 1);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
