@@ -731,54 +731,56 @@ export default function DiseasePage() {
               )}
             </div>
 
-            {/* ORGANIC / DESI REMEDIES — Wheat Gold Card */}
+            {/* ORGANIC / DESI REMEDIES — High-contrast Amber Gold Card */}
             {result.organic_alternative && (
               <div style={{
-                background: 'rgba(245, 158, 11, 0.08)',
-                border: '1px solid rgba(245, 158, 11, 0.4)',
-                borderRadius: 14, padding: '1rem', direction: 'rtl'
+                background: '#fffbeb',
+                border: '1.5px solid #fde68a',
+                borderRadius: 14, padding: '1rem', direction: 'rtl',
+                boxShadow: '0 1px 4px rgba(245,158,11,0.08)'
               }}>
-                <div style={{ fontWeight: 800, fontSize: '.95rem', color: '#f59e0b', marginBottom: '.4rem' }}>
+                <div style={{ fontWeight: 800, fontSize: '.95rem', color: '#92400e', marginBottom: '.4rem' }}>
                   🌿 کم خرچ دیسی علاج (Organic Remedy)
                 </div>
-                <div style={{ fontSize: '.88rem', color: '#fef3c7', lineHeight: 1.7 }}>
+                <div style={{ fontSize: '.88rem', color: '#78350f', lineHeight: 1.7, fontWeight: 600 }}>
                   {result.organic_alternative}
                 </div>
               </div>
             )}
 
-            {/* Prevention */}
+            {/* Prevention — High-contrast Green Card */}
             {result.prevention && (
-              <div style={{ background: '#1E3A1E', border: '1px solid #3a7232', borderRadius: 14, padding: '1rem', direction: 'rtl' }}>
-                <div style={{ fontWeight: 700, fontSize: '.85rem', color: '#94a3b8', marginBottom: '.3rem' }}>
+              <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 14, padding: '1rem', direction: 'rtl' }}>
+                <div style={{ fontWeight: 800, fontSize: '.9rem', color: '#14532d', marginBottom: '.3rem' }}>
                   🛡️ آئندہ کے لیے احتیاطی تدابیر
                 </div>
-                <div style={{ fontSize: '.85rem', color: '#cbd5e1', lineHeight: 1.6 }}>
+                <div style={{ fontSize: '.85rem', color: '#166534', lineHeight: 1.7, fontWeight: 600 }}>
                   {result.prevention}
                 </div>
               </div>
             )}
 
-            {/* Government Helpline */}
+            {/* Government Helpline — High-contrast Cyan Card */}
             <a
               href="tel:0800-17000"
               style={{ textDecoration: 'none' }}
+              id="disease-helpline-link"
             >
               <div style={{
-                background: 'rgba(6,182,212,0.08)', border: '1.5px solid #06b6d4',
+                background: '#ecfeff', border: '1.5px solid #06b6d4',
                 borderRadius: 14, padding: '.85rem 1rem', direction: 'rtl',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between'
               }}>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: '.9rem', color: '#06b6d4' }}>
+                  <div style={{ fontWeight: 800, fontSize: '.9rem', color: '#0e7490' }}>
                     📞 سرکاری زرعی ہیلپ لائن — دوسری رائے کے لیے
                   </div>
-                  <div style={{ fontSize: '.8rem', color: '#94a3b8', marginTop: 2 }}>
+                  <div style={{ fontSize: '.78rem', color: '#155e75', marginTop: 2 }}>
                     محکمہ زراعت پنجاب • مفت ٹول فری • 24/7
                   </div>
                 </div>
                 <span style={{
-                  background: '#06b6d4', color: '#000', padding: '4px 12px',
+                  background: '#0891b2', color: '#ffffff', padding: '6px 14px',
                   borderRadius: 20, fontWeight: 900, fontSize: '.88rem', fontFamily: 'Inter, sans-serif'
                 }}>
                   0800-17000
