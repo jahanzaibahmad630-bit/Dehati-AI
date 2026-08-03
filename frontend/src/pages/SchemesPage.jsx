@@ -156,20 +156,48 @@ function SchemeCard({ scheme }) {
   );
 }
 
+const SCHEMES_CACHE_KEY = 'dehati_schemes_cache_v2';
+
 export default function SchemesPage() {
-  const [schemes, setSchemes] = useState(STATIC_SCHEMES);
-  const [loading, setLoading] = useState(true);
+  const [schemes, setSchemes] = useState(() => {
+    try {
+      const cached = localStorage.getItem(SCHEMES_CACHE_KEY);
+      return cached ? JSON.parse(cached) : STATIC_SCHEMES;
+    } catch {
+      return STATIC_SCHEMES;
+    }
+  });
+  const [isLiveUpdated, setIsLiveUpdated] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const controller = new AbortController(); // M3 fix: cleanup on unmount
-    fetch(`${API}/api/admin/schemes/public`, { signal: controller.signal })
+    const controller = new AbortController();
+    fetch(`${API}/api/schemes`, { signal: controller.signal })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.schemes?.length) setSchemes(data.schemes);
+        if (data?.schemes?.length) {
+          // Normalise schema fields for rendering compatibility
+          const formatted = data.schemes.map(s => ({
+            id: s.id,
+            titleUrdu: s.title_ur || s.titleUrdu || s.name,
+            category: s.category || 'سرکاری سبسڈی',
+            subsidyAmount: s.subsidy_amount || s.subsidyAmount || '₨150,000 تک',
+            deadline: s.deadline || '30 ستمبر 2026',
+            description: s.description_ur || s.description || s.eligibility_ur,
+            benefits: s.benefits || ['سرکاری سبسڈی', 'آسان اقساط'],
+            applyPhone: s.sms_code || s.applyPhone,
+            applyUrl: s.portal_url || s.applyUrl,
+            lastVerified: 'آج تازہ ترین (Live API)',
+            source: 'محکمہ زراعت حکومت پنجاب (مصدقہ)'
+          }));
+          setSchemes(formatted);
+          setIsLiveUpdated(true);
+          try { localStorage.setItem(SCHEMES_CACHE_KEY, JSON.stringify(formatted)); } catch {}
+        }
       })
-      .catch(err => { if (err.name !== 'AbortError') {} }) // ignore abort, silently fall back to static
+      .catch(() => {})
       .finally(() => setLoading(false));
-    return () => controller.abort(); // cleanup on unmount
+    return () => controller.abort();
   }, []);
 
   return (

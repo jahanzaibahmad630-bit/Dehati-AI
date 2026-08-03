@@ -13,10 +13,11 @@ process.on('unhandledRejection', (reason) => {
   console.error('⚠️  Unhandled Rejection (non-fatal):', reason?.message || reason);
 });
 
-const authRoutes   = require('./routes/auth');
-const aiRoutes     = require('./routes/ai');
+const authRoutes    = require('./routes/auth');
+const aiRoutes      = require('./routes/ai');
 const weatherRoutes = require('./routes/weather');
-const adminRoutes  = require('./routes/admin');
+const adminRoutes   = require('./routes/admin');
+const schemesRoutes = require('./routes/schemes');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -107,6 +108,7 @@ app.use('/api/auth',    authRoutes);
 app.use('/api/ai',      aiRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/admin',   adminRoutes);
+app.use('/api/schemes', schemesRoutes);
 
 // 404
 app.use((req, res) => {
