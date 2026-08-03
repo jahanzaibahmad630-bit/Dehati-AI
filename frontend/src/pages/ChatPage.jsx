@@ -8,7 +8,7 @@ import { searchOffline, saveAIAnswer, queueQuestion, getOfflineQueue, removeFrom
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import AudioPlayer from '../components/ui/AudioPlayer';
 
-const CHAT_HISTORY_KEY = 'dehati_chat_history';
+const CHAT_HISTORY_KEY = 'dehati_chat_history_v2';
 const MAX_SESSIONS = 30;  // Keep up to 30 past sessions in localStorage
 
 import { API_URL } from '../config';
@@ -505,14 +505,8 @@ export default function ChatPage() {
   const [netError, setNetError]   = useState('');   // network/server error message
 
 
-  // Auto-save session on unmount or page exit
-  useEffect(() => {
-    return () => {
-      if (messagesRef.current && messagesRef.current.length > 1) {
-        saveChatSession(messagesRef.current);
-      }
-    };
-  }, [saveChatSession]);
+  // NOTE: unmount auto-save useEffect is placed AFTER messagesRef is declared below
+  //       to prevent forward-reference bug (messagesRef used before it is assigned).
 
   const bottomRef       = useRef(null);
   const inputRef        = useRef(null);
@@ -526,6 +520,15 @@ export default function ChatPage() {
   // doesn't need 'messages' in its dep array (prevents stale closures)
   const messagesRef = useRef(messages);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  // Auto-save on unmount / page navigation — placed here so messagesRef is guaranteed to exist
+  useEffect(() => {
+    return () => {
+      if (messagesRef.current && messagesRef.current.length > 1) {
+        saveChatSession(messagesRef.current);
+      }
+    };
+  }, [saveChatSession]);
 
   // Bug fix: ref to always call latest sendMessage from voice/auto-send handlers
   const sendMessageRef = useRef(null);
@@ -907,6 +910,8 @@ export default function ChatPage() {
             setMessages(prev => {
               const copy = [...prev];
               copy[copy.length - 1] = { role: 'assistant', content: reply, streaming: false, time: new Date() };
+              // Save session after fallback reply completes
+              saveChatSession(copy);
               return copy;
             });
             if (reply) saveAIAnswer(msg, reply).catch(() => {});
@@ -1101,26 +1106,47 @@ export default function ChatPage() {
                   {chatHistory.map(session => (
                     <div
                       key={session.id}
-                      onClick={() => loadChatSession(session)}
                       style={{
                         padding: '10px 14px', margin: '2px 8px', borderRadius: 8,
                         background: currentSessionId.current === session.id ? 'rgba(255,255,255,0.15)' : 'transparent',
-                        cursor: 'pointer', transition: 'background .15s',
-                        display: 'flex', flexDirection: 'column', gap: 2,
+                        transition: 'background .15s',
+                        display: 'flex', alignItems: 'flex-start', gap: 6,
                         direction: language === 'en' ? 'ltr' : 'rtl'
                       }}
                     >
-                      <div style={{
-                        color: 'white', fontSize: '.84rem', fontWeight: 600,
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        fontFamily: language === 'en' ? 'Inter, sans-serif' : '"Noto Nastaliq Urdu", serif'
-                      }}>
-                        {session.title || (language === 'en' ? 'Untitled Conversation' : 'غیر عنوان گفتگو')}
+                      {/* Session content — clickable */}
+                      <div
+                        onClick={() => loadSession(session)}
+                        style={{ flex: 1, minWidth: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 2 }}
+                      >
+                        <div style={{
+                          color: 'white', fontSize: '.84rem', fontWeight: 600,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          fontFamily: language === 'en' ? 'Inter, sans-serif' : '"Noto Nastaliq Urdu", serif'
+                        }}>
+                          💬 {session.title || (language === 'en' ? 'Untitled Conversation' : 'غیر عنوان گفتگو')}
+                        </div>
+                        <div style={{ color: '#94a3b8', fontSize: '.7rem', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ fontFamily: 'Inter, sans-serif' }}>{session.messageCount || session.messages?.length || 0} {language === 'en' ? 'msgs' : 'پیغام'}</span>
+                          <span>{formatSessionDate(session.date || session.updatedAt || session.createdAt)}</span>
+                        </div>
                       </div>
-                      <div style={{ color: '#94a3b8', fontSize: '.7rem', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>{session.messages?.length || 0} {language === 'en' ? 'messages' : 'پیغامات'}</span>
-                        <span>{formatSessionDate(session.updatedAt || session.createdAt)}</span>
-                      </div>
+                      {/* Per-session delete button */}
+                      <button
+                        onClick={(e) => deleteSession(session.id, e)}
+                        title={language === 'en' ? 'Delete session' : 'گفتگو حذف کریں'}
+                        style={{
+                          background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.35)',
+                          borderRadius: 6, color: '#fca5a5', cursor: 'pointer',
+                          fontSize: '.7rem', padding: '4px 7px', flexShrink: 0,
+                          lineHeight: 1, marginTop: 2, fontFamily: 'Inter, sans-serif',
+                          transition: 'background .15s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.35)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.15)'}
+                      >
+                        🗑️
+                      </button>
                     </div>
                   ))}
                 </>
@@ -1130,18 +1156,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      {showMicOverlay && (
-        <MicOverlay
-          isListening={isListening}
-          interimText={interimText}
-          finalText={finalSpeech}
-          onStop={stopListening}
-          onSend={sendVoiceMessage}
-          onCancel={cancelMic}
-          onRetry={retryMic}
-          iosError={iosError}
-        />
-      )}
+      {/* MicOverlay is rendered once below the message list — duplicate removed */}
 
       {/* ── Message list container ── */}
       <div style={{
