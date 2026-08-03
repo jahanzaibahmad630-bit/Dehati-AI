@@ -1,7 +1,30 @@
+import { useState, useRef, useEffect } from 'react';
+import imageCompression from 'browser-image-compression';
+import { useOffline } from '../hooks/useOffline';
+import { detectDisease, getDiseaseCatalog } from '../services/api';
 import AnimalHealthAdvisor from '../components/tools/AnimalHealthAdvisor';
 
-// ... inside component:
-// We will add activeTab state and render tabs.
+async function compressImage(file, maxSizeMB = 0.4) {
+  try {
+    const options = { maxSizeMB, maxWidthOrHeight: 1024, useWebWorker: true };
+    return await imageCompression(file, options);
+  } catch {
+    return file;
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = reader.result;
+      const base64 = typeof res === 'string' ? res.split(',')[1] : '';
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 const CROPS = [
   'گندم', 'چاول / دھان', 'کپاس', 'گنا', 'مکئی', 'آلو', 'ٹماٹر',
