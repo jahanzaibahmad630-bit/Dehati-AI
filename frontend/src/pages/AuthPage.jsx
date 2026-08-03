@@ -212,7 +212,7 @@ export default function AuthPage() {
             👤 مہمان کی طرح جاری رکھیں
           </button>
 
-          <p style={{ textAlign: 'center', fontSize: '.72rem', color: 'var(--text-light)', marginTop: '.75rem', direction: 'rtl' }}>
+          <p style={{ textAlign: 'center', fontSize: '.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '.75rem', direction: 'rtl' }}>
             مہمان موڈ میں پروفائل محفوظ نہیں ہوگا
           </p>
         </div>
