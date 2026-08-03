@@ -4,6 +4,7 @@ const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { aiLimiter, diseaseLimiter } = require('../middleware/rateLimit');
 const db                    = require('../lib/db');
 const aiCache               = require('../lib/aiCache');
+const livestockDb           = require('../lib/livestockDatabase.json');
 
 const router = express.Router();
 
@@ -796,26 +797,52 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
   }
 });
 // ——— POST /api/ai/animal ———————————————————————————————————————————————————
-router.post('/animal', aiLimiter, authenticateToken, async (req, res) => {
+router.post('/animal', aiLimiter, optionalAuth, async (req, res) => {
   try {
     const { animalType, symptoms, question } = req.body;
     if (!animalType && !symptoms && !question)
       return res.status(400).json({ error: 'جانور کی قسم یا علامات ضروری ہیں' });
     if (!claude) return res.json({ answer: '⚠️ AI سروس دستیاب نہیں' });
 
-    const prompt = `جانور: ${animalType || 'نامعلوم'}
+    // Find relevant diseases from livestockDatabase for context alignment
+    const allDiseases = [
+      ...(livestockDb.cattle_buffalo || []),
+      ...(livestockDb.goat_sheep || []),
+      ...(livestockDb.poultry || [])
+    ];
+    
+    const queryStr = `${animalType || ''} ${symptoms || ''} ${question || ''}`.toLowerCase();
+    const matchedContext = allDiseases
+      .filter(d => 
+        queryStr.includes(d.disease_name.toLowerCase()) || 
+        d.symptoms.split('،').some(s => queryStr.includes(s.trim().toLowerCase()))
+      )
+      .slice(0, 3)
+      .map(d => `• بیماری: ${d.disease_name} | علامات: ${d.symptoms} | دوا/برانڈز: ${d.common_brands_pakistan} | بچاؤ/ویکسین: ${d.prevention_vaccine}`)
+      .join('\n');
+
+    const systemPrompt = `آپ پنجاب پاکستان کے تجربہ کار سینئر ویٹرنری فزیشن اور مویشی ماہر ہیں۔
+سرکاری پاکستان ویٹرنری ڈائریکٹری (Punjab Livestock & DRAP) کا حوالہ حسبِ ذیل ہے:
+${matchedContext || 'تمام ادویات DRAP پاکستان کی رجسٹرڈ لسٹ کے مطابق تجویز کریں۔'}
+
+رہنمائی کی ہدایات:
+1. ہمیشہ پاکستان میں دستیاب DRAP رجسٹرڈ برانڈز (مثلاً الفامائسن-ایل اے، ٹیرامائسن، اینروویٹ، بیرینل، میلونیکس، بیوٹالیکس، ماسٹیلیپ، لاسوٹا، ایچ ایس ویکسین) کی نشاندہی کریں۔
+2. خوراک کے لیے ہمیشہ "ویٹرنری ڈاکٹر سے وزن کے حساب سے خوراک کی تصدیق" کا واضح مشورہ دیں۔
+3. خونی بخار (HS)، منہ کھر (FMD)، اینتھریکس یا برڈ فلو جیسی خطرناک بیماری میں فوری حکومتی لائیو اسٹاک حکام کو اطلاع کی ہدایت کریں۔`;
+
+    const prompt = `جانور کی قسم: ${animalType || 'نامعلوم'}
 علامات: ${symptoms || 'نامعلوم'}
-اضافی معلومات: ${question || 'کوئی نہیں'}
+مزید تفصیلات: ${question || 'کوئی نہیں'}
 
-پاکستانی جانوروں کے ڈاکٹر کی طرح بتائیں:
-1. ممکنہ بیماری یا مسئلہ
-2. گھر پر فوری علاج (آسانی سے ملنے والی دوا)
-3. کیا کھانا پلانا ہے یا نہیں
-4. کیا فوری ڈاکٹر ضروری ہے؟ (ہاں/نہیں اور وجہ)
+پاکستانی جانوروں کے ڈاکٹر کی طرح درج ذیل 4 پوائنٹس میں جواب دیں:
+1. 🩺 ممکنہ بیماری یا مسئلہ
+2. 💊 گھر پر فوری علاج و DRAP رجسٹرڈ برانڈز
+3. 🛡️ بچاؤ اور ویکسینیشن شیڈول
+4. ⚠️ کیا فوری ویٹرنری ڈاکٹر ضروری ہے؟ (ہاں/نہیں اور وجہ)
 
-مختصر، واضح اردو میں — فی پوائنٹ ایک جملہ کافی ہے`;
+مختصر، جامع اور آسان اردو زبان میں جواب دیں۔`;
 
-    const text = await claudeAsk(prompt, buildFarmingSystem(), 600, 0.5);
+    const text = await claudeAsk(prompt, systemPrompt, 700, 0.4);
 
     // Log to Questions tab: prefix with tool name
     if (text) {

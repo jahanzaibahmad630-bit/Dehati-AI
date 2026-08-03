@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
-import AIDisclaimer from '../components/ui/AIDisclaimer';
-import AudioPlayer from '../components/ui/AudioPlayer';
-import { detectDisease, getDiseaseCatalog, compressImage, fileToBase64 } from '../services/api';
-import { useOffline } from '../hooks/useOffline';
+import AnimalHealthAdvisor from '../components/tools/AnimalHealthAdvisor';
+
+// ... inside component:
+// We will add activeTab state and render tabs.
 
 const CROPS = [
   'گندم', 'چاول / دھان', 'کپاس', 'گنا', 'مکئی', 'آلو', 'ٹماٹر',
@@ -64,6 +63,7 @@ function getRomanUrdu(diseaseEn, diseaseUr) {
 }
 
 export default function DiseasePage() {
+  const [mainTab, setMainTab]     = useState('crops'); // 'crops' or 'livestock'
   const [image, setImage]         = useState(null);
   const [imageUrl, setImageUrl]   = useState('');
   const [crop, setCrop]           = useState('');
@@ -202,18 +202,68 @@ export default function DiseasePage() {
     <div className="page">
       <div className="page-content">
 
-        {/* Header */}
-        <div style={{
-          background: 'linear-gradient(135deg, #162410 0%, #264D24 100%)',
-          borderRadius: 'var(--radius-xl)', padding: '1.25rem',
-          color: 'white', textAlign: 'center', border: '1px solid #3a7232'
-        }}>
-          <div style={{ fontSize: '2.5rem' }}>🔬</div>
-          <h2 style={{ color: 'white', fontSize: '1.25rem', margin: '.3rem 0', fontWeight: 800 }}>فصل کی بیماری کا لیف اسکینر</h2>
-          <p style={{ color: '#94a3b8', fontSize: '.8rem', margin: 0 }}>
-            306 بیماریوں کا انڈیکس + پاکستانی زرعی ادویات کی مکمل ڈائریکٹری
-          </p>
+        {/* ── Main Category Switcher Tab ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem', marginBottom: '.5rem', direction: 'rtl' }}>
+          <button
+            onClick={() => setMainTab('crops')}
+            style={{
+              padding: '.75rem',
+              borderRadius: '16px',
+              border: mainTab === 'crops' ? '2px solid #2e5a27' : '1px solid rgba(0,0,0,0.1)',
+              background: mainTab === 'crops' ? 'linear-gradient(135deg, #162410, #2e5a27)' : 'white',
+              color: mainTab === 'crops' ? 'white' : '#1f2937',
+              fontSize: '.9rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              boxShadow: mainTab === 'crops' ? '0 4px 12px rgba(46,90,39,0.25)' : 'none',
+              fontFamily: '"Noto Nastaliq Urdu", serif'
+            }}
+            id="tab-crops-disease"
+          >
+            <span>🌿</span>
+            <span>فصلوں کی بیماریاں</span>
+          </button>
+
+          <button
+            onClick={() => setMainTab('livestock')}
+            style={{
+              padding: '.75rem',
+              borderRadius: '16px',
+              border: mainTab === 'livestock' ? '2px solid #2e5a27' : '1px solid rgba(0,0,0,0.1)',
+              background: mainTab === 'livestock' ? 'linear-gradient(135deg, #162410, #2e5a27)' : 'white',
+              color: mainTab === 'livestock' ? 'white' : '#1f2937',
+              fontSize: '.9rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              boxShadow: mainTab === 'livestock' ? '0 4px 12px rgba(46,90,39,0.25)' : 'none',
+              fontFamily: '"Noto Nastaliq Urdu", serif'
+            }}
+            id="tab-livestock-disease"
+          >
+            <span>🐄</span>
+            <span>مویشیوں کا علاج</span>
+          </button>
         </div>
+
+        {/* ── Render Livestock Health Advisor if mainTab is livestock ── */}
+        {mainTab === 'livestock' ? (
+          <AnimalHealthAdvisor />
+        ) : (
+          <>
+            {/* Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #162410 0%, #264D24 100%)',
+              borderRadius: 'var(--radius-xl)', padding: '1.25rem',
+              color: 'white', textAlign: 'center', border: '1px solid #3a7232'
+            }}>
+              <div style={{ fontSize: '2.5rem' }}>🔬</div>
+              <h2 style={{ color: 'white', fontSize: '1.25rem', margin: '.3rem 0', fontWeight: 800 }}>فصل کی بیماری کا لیف اسکینر</h2>
+              <p style={{ color: '#94a3b8', fontSize: '.8rem', margin: 0 }}>
+                306 بیماریوں کا انڈیکس + پاکستانی زرعی ادویات کی مکمل ڈائریکٹری
+              </p>
+            </div>
 
         {/* Manual 306 Disease Search Filter Bar */}
         <div className="card" style={{ background: '#1E3A1E', border: '1px solid #3a7232', borderRadius: 14 }}>
@@ -700,8 +750,10 @@ export default function DiseasePage() {
                 📷 نئی اسکیننگ
               </button>
             </div>
-
           </div>
+        )}
+
+          </>
         )}
 
       </div>
