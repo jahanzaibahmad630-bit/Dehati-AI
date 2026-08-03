@@ -290,17 +290,17 @@ export default function AnimalHealthAdvisor() {
         )}
       </div>
 
-      {/* ── 5. Claude 3.5 Hybrid AI Fallback Section ── */}
+      {/* ── 5. DehatiAI Hybrid AI Fallback Section ── */}
       <div style={{ background: 'linear-gradient(135deg, #1e3a16, #2e5a27)', padding: '1.1rem', borderRadius: '18px', color: 'white', boxShadow: '0 4px 16px rgba(46,90,39,0.3)', marginTop: '.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.6rem' }}>
           <div style={{ fontWeight: 800, fontSize: '.95rem', color: '#fbc02d', fontFamily: '"Noto Nastaliq Urdu", serif' }}>
-            🤖 AI ویٹرنری ڈاکٹر (کلاڈ 3.5 ہائبرڈ)
+            🤖 DehatiAI ویٹرنری ڈاکٹر (AI ہائبرڈ)
           </div>
           <AIDisclaimer small />
         </div>
         
         <p style={{ fontSize: '.78rem', color: 'rgba(255,255,255,0.85)', margin: '0 0 .75rem', lineHeight: '1.5' }}>
-          اگر آپ کو مخصوص علامات کے بارے میں مزید گہرائی سے معلوم کرنا ہے تو AI ڈاکٹر سے لائیو سوال پوچھیں:
+          اگر آپ کو مخصوص علامات کے بارے میں مزید گہرائی سے معلوم کرنا ہے تو DehatiAI سے لائیو سوال پوچھیں:
         </p>
 
         <textarea
@@ -324,7 +324,7 @@ export default function AnimalHealthAdvisor() {
           }}
           id="livestock-ai-ask-btn"
         >
-          {aiLoading ? '🔍 کلاڈ AI تجزہ کر رہا ہے...' : '✨ Claude AI سے لائیو مشورہ لیں'}
+          {aiLoading ? '🔍 DehatiAI تجویز کر رہا ہے...' : '✨ DehatiAI سے لائیو مشورہ لیں'}
         </button>
 
         {aiError && (
@@ -336,7 +336,7 @@ export default function AnimalHealthAdvisor() {
         {aiResult && (
           <div style={{ marginTop: '1rem', background: 'white', color: '#1e293b', borderRadius: '14px', padding: '1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
             <div style={{ fontSize: '.82rem', fontWeight: 800, color: '#162410', marginBottom: '.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '.4rem' }}>
-              📋 کلاڈ AI کی ویٹرنری رپورٹ:
+              📋 DehatiAI کی ویٹرنری رپورٹ:
             </div>
             <MarkdownRenderer text={aiResult} />
             <div style={{ marginTop: '.6rem', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '.4rem .65rem', borderRadius: '8px', fontSize: '.7rem', fontWeight: 700 }}>
