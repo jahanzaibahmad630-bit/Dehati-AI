@@ -288,7 +288,7 @@ function TypingDots() {
 }
 
 // ── Message bubble ─────────────────────────────────────────────────────
-function MessageBubble({ msg }) {
+function MessageBubble({ msg, index }) {
   const isUser    = msg.role === 'user';
   const isOffline = msg.offline === true;
 
@@ -368,8 +368,8 @@ function MessageBubble({ msg }) {
           )}
         </div>
 
-        {/* Professional Safety Disclaimer Banner */}
-        {!isUser && !msg.streaming && msg.content && (
+        {/* Professional Safety Disclaimer Banner (Only for AI answers, not initial welcome message) */}
+        {!isUser && !msg.streaming && msg.content && index > 0 && !msg.content.includes('⚠️') && (
           <div style={{
             marginTop: 4,
             background: 'rgba(245, 158, 11, 0.12)',
@@ -1166,7 +1166,7 @@ export default function ChatPage() {
         scrollbarColor: 'rgba(0,0,0,.15) transparent'
       }}>
         {messages.map((msg, i) => (
-          <MessageBubble key={i} msg={msg} isLast={i === messages.length - 1} />
+          <MessageBubble key={i} msg={msg} index={i} isLast={i === messages.length - 1} />
         ))}
 
         {isListening && interimText && (
