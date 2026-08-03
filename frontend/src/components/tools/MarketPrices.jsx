@@ -81,12 +81,13 @@ function PriceRow({ item }) {
 }
 
 export default function MarketPrices() {
-  const [prices, setPrices]       = useState([]);
-  const [filter, setFilter]       = useState('سب');
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
-  const [servedAt, setServedAt]   = useState(null);
-  const [realCount, setRealCount] = useState(0);
+  const [prices, setPrices]             = useState([]);
+  const [filter, setFilter]             = useState('سب');
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
+  const [servedAt, setServedAt]         = useState(null);
+  const [realCount, setRealCount]       = useState(0);
+  const [isOfflineSnapshot, setIsOfflineSnapshot] = useState(false);
 
   const fetchPrices = async () => {
     try {
@@ -97,9 +98,34 @@ export default function MarketPrices() {
       setPrices(data.prices || []);
       setServedAt(data.servedAt || null);
       setRealCount(data.realCount || 0);
+      setIsOfflineSnapshot(false);
+
+      // Save snapshot to localStorage
+      try {
+        localStorage.setItem('dehati_mandi_prices_snapshot', JSON.stringify({
+          prices: data.prices || [],
+          servedAt: data.servedAt || null,
+          realCount: data.realCount || 0,
+          timestamp: Date.now()
+        }));
+      } catch {
+        // Safe storage quota fallback
+      }
     } catch (err) {
       setError('سرور سے ڈیٹا نہیں آیا — پرانا ڈیٹا دکھایا جا رہا ہے');
-      // Don't clear existing prices — keep showing stale data with timestamp
+      // Load from localStorage snapshot if offline or server down
+      try {
+        const raw = localStorage.getItem('dehati_mandi_prices_snapshot');
+        if (raw) {
+          const snap = JSON.parse(raw);
+          setPrices(snap.prices || []);
+          setServedAt(snap.servedAt || null);
+          setRealCount(snap.realCount || 0);
+          setIsOfflineSnapshot(true);
+        }
+      } catch {
+        // Fallback
+      }
     } finally {
       setLoading(false);
     }
@@ -107,7 +133,6 @@ export default function MarketPrices() {
 
   useEffect(() => {
     fetchPrices();
-    // Refresh every 10 minutes — but this hits the real API, not a formula
     const t = setInterval(fetchPrices, 10 * 60 * 1000);
     return () => clearInterval(t);
   }, []);
@@ -117,6 +142,23 @@ export default function MarketPrices() {
 
   return (
     <div>
+      {/* ── Pillar 3: Offline Mandi Snapshot Badge ── */}
+      {isOfflineSnapshot && (
+        <div style={{
+          background: 'linear-gradient(135deg, #162410 0%, #2e5a27 100%)',
+          color: '#fbc02d', padding: '.65rem 1rem', borderRadius: '12px',
+          border: '1px solid #3a7232', fontSize: '.82rem', fontWeight: 800,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl',
+          marginBottom: '.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+        }}>
+          <span>⚡ آف لائن موڈ — آخری محفوظ شدہ منڈی ریٹ</span>
+          <span style={{ fontSize: '.7rem', background: 'rgba(251,192,45,0.2)', color: '#fbc02d', border: '1px solid #fbc02d', padding: '2px 8px', borderRadius: '10px' }}>
+            آف لائن ڈیٹا
+          </span>
+        </div>
+      )}
+
       {/* ── Top disclosure banner ── */}
       <div style={{
         borderRadius: 10, padding: '10px 14px', marginBottom: 12,

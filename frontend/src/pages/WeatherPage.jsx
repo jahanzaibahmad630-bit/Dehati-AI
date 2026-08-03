@@ -217,6 +217,7 @@ export default function WeatherPage() {
   const [weather, setWeather]           = useState(null);
   const [advice, setAdvice]             = useState('');
   const [loading, setLoading]           = useState(false);
+  const [isFromSnapshot, setIsFromSnapshot] = useState(false);
   const [adviceLoading, setAdviceLoading] = useState(false);
   const [error, setError]               = useState('');
   const [selectedCity, setSelectedCity] = useState('');
@@ -224,25 +225,55 @@ export default function WeatherPage() {
   const locPerm = usePermission('geolocation');
   const requestGen = useRef(0);
 
-  // Auto-load last city on mount or when back online
+  // Auto-load last city or offline snapshot on mount
   useEffect(() => {
     const lastCity = localStorage.getItem('dehati_last_city');
-    if (lastCity && !isOffline && !weather) {
+    if (isOffline) {
+      // Load offline snapshot if available
+      try {
+        const raw = localStorage.getItem('dehati_weather_snapshot');
+        if (raw) {
+          const snap = JSON.parse(raw);
+          setWeather(snap.weather);
+          setAdvice(snap.advice);
+          setSelectedCity(snap.city || lastCity || '');
+          setIsFromSnapshot(true);
+        }
+      } catch {
+        // Fallback
+      }
+    } else if (lastCity && !weather) {
       handleCitySelect(lastCity);
     }
   }, [isOffline]); // eslint-disable-line
 
   const fetchWeatherAndAdvice = async (weatherData) => {
     setWeather(weatherData);
+    setIsFromSnapshot(false);
     setAdviceLoading(true);
+    let adviceText = null;
     try {
       const prompt = `موسم: ${weatherData.condition}, درجہ حرارت: ${weatherData.temp}°C, نمی: ${weatherData.humidity}%, ہوا: ${weatherData.windSpeed} km/h\n\nآج کے موسم کے مطابق پنجاب کے کسانوں کے لیے 2-3 عملی مشورے دیں (آبپاشی، سپرے، دھوپ سے بچاؤ وغیرہ)`;
       const data = await askAI(prompt);
-      setAdvice(data?.answer || null);
+      adviceText = data?.answer || null;
+      setAdvice(adviceText);
     } catch {
-      setAdvice('AI مشورہ فی الحال دستیاب نہیں — موسمی کالم کے مطابق احتیاط کریں۔');
+      adviceText = 'AI مشورہ فی الحال دستیاب نہیں — موسمی کالم کے مطابق احتیاط کریں۔';
+      setAdvice(adviceText);
     } finally {
       setAdviceLoading(false);
+    }
+
+    // Save snapshot to localStorage
+    try {
+      localStorage.setItem('dehati_weather_snapshot', JSON.stringify({
+        weather: weatherData,
+        advice: adviceText,
+        city: weatherData.cityName || selectedCity,
+        timestamp: Date.now()
+      }));
+    } catch {
+      // Storage quota safety
     }
   };
 
@@ -302,8 +333,25 @@ export default function WeatherPage() {
         }}>
           <div style={{ fontSize: '2.5rem' }}>🌤️</div>
           <h2 style={{ color: 'white', fontSize: '1.2rem', margin: '.3rem 0' }}>موسم کی معلومات</h2>
-          <p style={{ opacity: .8, fontSize: '.82rem', margin: 0 }}>Open-Meteo • 7 دن کی پیشگوئی • مفت</p>
+          <p style={{ opacity: .8, fontSize: '.82rem', margin: 0 }}>Open-Meteo • 7 دن کی پیشگوئی • 34 اضلاع</p>
         </div>
+
+        {/* ── Pillar 3: Offline Weather Snapshot Badge ── */}
+        {(isOffline || isFromSnapshot) && (
+          <div style={{
+            background: 'linear-gradient(135deg, #162410 0%, #2e5a27 100%)',
+            color: '#fbc02d', padding: '.65rem 1rem', borderRadius: '14px',
+            border: '1px solid #3a7232', fontSize: '.82rem', fontWeight: 800,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <span>⚡ آف لائن موڈ — آخری محفوظ شدہ موسم کا حال</span>
+            <span style={{ fontSize: '.7rem', background: 'rgba(251,192,45,0.2)', color: '#fbc02d', border: '1px solid #fbc02d', padding: '2px 8px', borderRadius: '10px' }}>
+              آف لائن ڈیٹا
+            </span>
+          </div>
+        )}
 
         {/* ── City Selector ── */}
         <div className="card">

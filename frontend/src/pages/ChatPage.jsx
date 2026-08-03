@@ -741,13 +741,14 @@ export default function ChatPage() {
 
       if (result.found) {
         const badge = result.source === 'cache'
-          ? '\n\n---\n📱 *یہ جواب آپ کے پچھلے سوال سے ملا*'
-          : '\n\n---\n📚 *آف لائن ڈیٹا بیس سے جواب*';
+          ? '\n\n---\n⚡ *0ms آف لائن جواب (Local Cache)*'
+          : '\n\n---\n⚡ *0ms آف لائن جواب (110 Local FAQ DB)*';
+        const disclaimer = '\n\n⚠️ *یہ AI تجویز ہے۔ حتمی فیصلے سے قبل مقامی زرعی ماہر یا ویٹرنری ڈاکٹر سے مشورہ کریں۔*';
         setMessages(prev => {
           const copy = [...prev];
           copy[copy.length - 1] = {
             role: 'assistant',
-            content: result.answer + badge,
+            content: result.answer + badge + disclaimer,
             streaming: false, offline: true, time: new Date()
           };
           return copy;
@@ -759,7 +760,7 @@ export default function ChatPage() {
           const copy = [...prev];
           copy[copy.length - 1] = {
             role: 'assistant',
-            content: '📥 سوال محفوظ کر لیا گیا۔\n\nآن لائن ہونے پر یہ سوال خود بخود بھیج دیا جائے گا۔\n\n💡 *ابھی کے لیے: اپنے سوال میں گندم، کپاس، کھاد، پانی جیسے الفاظ ڈالیں — میرے پاس آف لائن جوابات ہو سکتے ہیں۔*',
+            content: '📥 *سوال محفوظ کر لیا گیا (Offline Queue)*\n\nآن لائن ہونے پر یہ سوال خود بخود بھیج دیا جائے گا۔\n\n💡 *ابھی کے لیے: اپنے سوال میں گندم، کپاس، چاول، گنا، کھاد، پانی جیسے الفاظ ڈالیں — میرے پاس 110 آف لائن جوابات موجود ہیں۔*\n\n⚠️ *یہ AI تجویز ہے۔ حتمی فیصلے سے قبل مقامی زرعی ماہر یا ویٹرنری ڈاکٹر سے مشورہ کریں۔*',
             streaming: false, offline: true, time: new Date()
           };
           return copy;

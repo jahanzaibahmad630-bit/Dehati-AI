@@ -80,6 +80,34 @@ export default function AnimalHealthAdvisor() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', direction: 'rtl' }}>
       
+      {/* ── 0ms Offline Veterinary Header Banner ── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #162410 0%, #2e5a27 100%)',
+        borderRadius: '16px', padding: '.85rem 1rem',
+        color: 'white', border: '1px solid #3a7232',
+        boxShadow: '0 4px 12px rgba(46,90,39,0.2)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.4rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+          <span style={{ fontSize: '1.4rem' }}>🩺</span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '.9rem', color: '#fbc02d', fontFamily: '"Noto Nastaliq Urdu", serif' }}>
+              ⚡ 0ms آف لائن ویٹرنری میڈیسن گائیڈ
+            </div>
+            <div style={{ fontSize: '.72rem', color: '#cbd5e1', fontFamily: '"Noto Nastaliq Urdu", serif' }}>
+              33 DRAP رجسٹرڈ پاکستان ادویات و ویکسینیشن شیڈول (100٪ آف لائن)
+            </div>
+          </div>
+        </div>
+        <span style={{
+          background: 'rgba(16,185,129,0.2)', color: '#34d399',
+          border: '1px solid #10b981', padding: '3px 10px', borderRadius: '12px',
+          fontSize: '.7rem', fontWeight: 800
+        }}>
+          ● 0ms Local DB
+        </span>
+      </div>
+
       {/* ── 1. Category Selector Tabs ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.4rem' }}>
         {CATEGORIES.map(cat => {
