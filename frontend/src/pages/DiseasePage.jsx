@@ -3,6 +3,7 @@ import imageCompression from 'browser-image-compression';
 import { useOffline } from '../hooks/useOffline';
 import { detectDisease, getDiseaseCatalog } from '../services/api';
 import AnimalHealthAdvisor from '../components/tools/AnimalHealthAdvisor';
+import AudioPlayer from '../components/ui/AudioPlayer';
 
 async function compressImage(file, maxSizeMB = 0.4) {
   try {
