@@ -205,9 +205,11 @@ function buildFarmingSystem() {
 - گندم اقسام (کلراٹھی/سیم مٹی): اکبر-19، دلکش-20، سبحانی-21 — UAF Soil Science Dept Research 2024
 - کپاس اقسام (گرمی و گلابی سنڈی مزاحم): CKC-1، FH-333 — AARI Faisalabad Advisory Bulletin 2025
 - روغنی اجناس (کم پانی): TS-5 تل، Super Canola کینولا — NARC Islamabad Oilseeds Division 2025
+- اعلیٰ منافع بخش باغات و فصلیں: NARC G1 گارلک (لہسن) — 150-200 من فی ایکڑ | مورنگا (سوہانجنا) — NARC High-Value Crop Protocol
 - سیم و تھور مٹی اصلاح: جپسم 80-mesh 400 کلو فی ایکڑ (pH > 8.5) — UAF Agronomy Dept Protocol
+- کاربن کریڈٹس و فضائی آلودگی بچاؤ: فصل کی باقیات (پرالی) کو نہ جلائیں، بائیوچار (Biochar) اور گرین کریڈٹ اپنائیں۔
 - DRAP رجسٹرڈ ادویات: Nativo 75WG، Ridomil Gold، Confidor 200SL، Indofil M-45
-جواب کے آخر میں یہ سائنسی حوالہ شامل کریں جب متعلقہ ہو: 📚 ماخذ: زرعی یونیورسٹی فیصل آباد (UAF) / NARC اسلام آباد
+جواب کے آخر میں یہ سائنسی حوالہ شامل کریں جب متعلقہ ہو: 📚 ماخذ: زرعی یونیورسٹی فیصل آباد (UAF) / NARC اسلام آباد / AARI
 
 📊 منڈی لائیو قیمتیں و مالیاتی فیصلوں کا انجن (Punjab Mandi Intelligence):
 پنجاب کی غلہ منڈیوں کے تازہ ترین اوسط ریٹ:
