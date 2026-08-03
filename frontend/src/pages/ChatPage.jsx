@@ -505,6 +505,15 @@ export default function ChatPage() {
   const [netError, setNetError]   = useState('');   // network/server error message
 
 
+  // Auto-save session on unmount or page exit
+  useEffect(() => {
+    return () => {
+      if (messagesRef.current && messagesRef.current.length > 1) {
+        saveChatSession(messagesRef.current);
+      }
+    };
+  }, [saveChatSession]);
+
   const bottomRef       = useRef(null);
   const inputRef        = useRef(null);
   const abortRef        = useRef(null);
@@ -852,10 +861,11 @@ export default function ChatPage() {
         throw new Error('stream_empty');
       }
 
-      // Finalize
+      // Finalize and auto-save session history
       setMessages(prev => {
         const copy = [...prev];
         copy[copy.length - 1] = { role: 'assistant', content: fullReply, streaming: false, time: new Date() };
+        saveChatSession(copy);
         return copy;
       });
 
