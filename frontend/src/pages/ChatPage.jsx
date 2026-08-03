@@ -368,6 +368,28 @@ function MessageBubble({ msg }) {
           )}
         </div>
 
+        {/* Professional Safety Disclaimer Banner */}
+        {!isUser && !msg.streaming && msg.content && (
+          <div style={{
+            marginTop: 4,
+            background: 'rgba(245, 158, 11, 0.12)',
+            border: '1px solid rgba(245, 158, 11, 0.35)',
+            borderRadius: 8,
+            padding: '5px 10px',
+            fontSize: '.72rem',
+            color: '#b45309',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            direction: 'rtl',
+            fontFamily: '"Noto Nastaliq Urdu", serif',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+          }}>
+            <span>⚠️</span>
+            <span>یہ AI تجویز ہے۔ حتمی فیصلے اور ادویات کے استعمال سے قبل مستند زرعی ماہر یا ویٹرنری ڈاکٹر سے مشورہ کریں۔</span>
+          </div>
+        )}
 
         {/* Timestamp + Audio Player row */}
         {msg.time && !msg.streaming && (

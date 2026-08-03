@@ -339,8 +339,8 @@ export default function AnimalHealthAdvisor() {
               📋 DehatiAI کی ویٹرنری رپورٹ:
             </div>
             <MarkdownRenderer text={aiResult} />
-            <div style={{ marginTop: '.6rem', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '.4rem .65rem', borderRadius: '8px', fontSize: '.7rem', fontWeight: 700 }}>
-              ⚠️ {livestockDb.meta.disclaimer_general}
+            <div style={{ marginTop: '.6rem', background: '#fffbe8', border: '1px solid #fde047', color: '#b45309', padding: '.5rem .75rem', borderRadius: '8px', fontSize: '.75rem', fontWeight: 700, fontFamily: '"Noto Nastaliq Urdu", serif' }}>
+              ⚠️ یہ AI طبی تجزیہ ہے۔ حتمی علاج اور ادویات کی مقدار طے کرنے سے پہلے متعلقہ ڈسپنسری، ویٹرنری آفیر یا مستند ڈاکٹر سے لازمی مشورہ کریں۔
             </div>
           </div>
         )}
