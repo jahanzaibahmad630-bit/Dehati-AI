@@ -517,7 +517,7 @@ export default function ChatPage() {
       const t = setTimeout(() => sendMessageRef.current?.(q.trim()), 400);
       return () => clearTimeout(t);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [searchParams]);
 
 

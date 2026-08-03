@@ -136,7 +136,7 @@ export async function compressImage(file, maxSizeMB = 0.4) {
     const compressed = await canvasResize(file, 800, 0.82);
     // If already small enough, use canvas result directly
     if (compressed.size <= maxSizeMB * 1024 * 1024) return compressed;
-  } catch (_) {
+  } catch {
     // canvas failed — fall through to library
   }
 

@@ -116,10 +116,7 @@ export default function App() {
       console.log('DehatiAI ready for offline use');
     },
     onRegisteredSW(swUrl, r) {
-      // Check for SW updates every 60 seconds
-      if (r) {
-        setInterval(() => { r.update().catch(() => {}); }, 60 * 60 * 1000); // 1 hour (was 60s — too aggressive)
-      }
+      if (r) { r.update().catch(() => {}); }
     }
   });
 

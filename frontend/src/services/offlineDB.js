@@ -459,7 +459,9 @@ export function removeFromQueue(id) {
   try {
     const queue = getOfflineQueue().filter(q => q.id !== id);
     localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
-  } catch {}
+  } catch {
+    // Ignore storage quota errors
+  }
 }
 
 export function clearOfflineQueue() {

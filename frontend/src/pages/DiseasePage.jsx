@@ -26,6 +26,22 @@ function fileToBase64(file) {
   });
 }
 
+function AIDisclaimer({ small = false }) {
+  return (
+    <span style={{
+      fontSize: small ? '.7rem' : '.78rem',
+      color: '#f59e0b',
+      background: 'rgba(245,158,11,0.1)',
+      border: '1px solid rgba(245,158,11,0.3)',
+      padding: '2px 8px',
+      borderRadius: 12,
+      fontWeight: 600
+    }}>
+      ⚠️ ڈاکٹر سے تصدیق کرائیں
+    </span>
+  );
+}
+
 const CROPS = [
   'گندم', 'چاول / دھان', 'کپاس', 'گنا', 'مکئی', 'آلو', 'ٹماٹر',
   'پیاز', 'مرچ', 'لہسن', 'سرسوں', 'چنا', 'مسور', 'مونگ', 'سبزی (عام)'
