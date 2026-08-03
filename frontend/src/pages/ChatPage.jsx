@@ -1003,6 +1003,60 @@ export default function ChatPage() {
       zIndex: 10
     }}>
 
+      {/* ── Sub Header Bar: History Trigger & New Chat Button ── */}
+      <div style={{
+        background: '#162410',
+        padding: '8px 14px',
+        display: 'flex',
+        justify: 'space-between',
+        alignItems: 'center',
+        color: 'white',
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
+        flexShrink: 0
+      }}>
+        <button
+          id="open-history-sidebar-btn"
+          onClick={() => setShowSidebar(true)}
+          style={{
+            background: 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: 20,
+            padding: '5px 14px',
+            color: '#fbc02d',
+            fontSize: '.78rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontFamily: '"Noto Nastaliq Urdu", serif'
+          }}
+        >
+          <span>📜</span>
+          <span>سابقہ گفتگو ({chatHistory.length})</span>
+        </button>
+
+        <button
+          onClick={confirmClearChat}
+          style={{
+            background: 'rgba(255,255,255,0.12)',
+            border: '1px solid rgba(255,255,255,0.25)',
+            borderRadius: 20,
+            padding: '5px 14px',
+            color: 'white',
+            fontSize: '.78rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontFamily: '"Noto Nastaliq Urdu", serif'
+          }}
+        >
+          <span>✨ نئی گفتگو</span>
+        </button>
+      </div>
+
       {/* ── Clear Confirmation Modal ── */}
       {showClearConfirm && (
         <div style={{
