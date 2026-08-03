@@ -52,6 +52,10 @@ function ProtectedRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/auth" replace />;
 }
 
+import PrivacyPage from './pages/PrivacyPage';
+import ContactPage from './pages/ContactPage';
+import TermsPage from './pages/TermsPage';
+
 function AppShell() {
   const { isAuthenticated } = useAuth();
 
@@ -59,6 +63,9 @@ function AppShell() {
     return (
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
     );
@@ -82,6 +89,9 @@ function AppShell() {
           <Route path="/more"         element={<ProtectedRoute><MorePage /></ProtectedRoute>} />
           <Route path="/crops"        element={<ProtectedRoute><CropsPage /></ProtectedRoute>} />
           <Route path="/price-alert"  element={<ProtectedRoute><PriceAlertPage /></ProtectedRoute>} />
+          <Route path="/privacy"      element={<PrivacyPage />} />
+          <Route path="/contact"      element={<ContactPage />} />
+          <Route path="/terms"        element={<TermsPage />} />
           <Route path="*"             element={<Navigate to="/" replace />} />
         </Routes>
       </main>

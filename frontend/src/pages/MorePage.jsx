@@ -135,7 +135,16 @@ export default function MorePage() {
           </div>
         </div>
 
-        <div style={{ marginTop: '2rem', padding: '1rem', background: '#fee2e2', borderRadius: 'var(--radius-md)', border: '1px solid #f87171', textAlign: 'center' }}>
+        <div style={{ marginTop: '2rem', padding: '1rem', background: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+          <div style={{ color: 'var(--green-800)', fontWeight: 'bold', marginBottom: '0.75rem' }}>قانون و پرائیویسی (E-E-A-T Trust)</div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap', fontSize: '.85rem' }}>
+            <button onClick={() => navigate('/privacy')} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline' }}>🔒 پرائیویسی پالیسی</button>
+            <button onClick={() => navigate('/contact')} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline' }}>📧 رابطہ کریں</button>
+            <button onClick={() => navigate('/terms')} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline' }}>📜 شرائط و ضوابط</button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '1rem', padding: '1rem', background: '#fee2e2', borderRadius: 'var(--radius-md)', border: '1px solid #f87171', textAlign: 'center' }}>
           <div style={{ color: '#b91c1c', fontWeight: 'bold', marginBottom: '0.75rem' }}>اکاؤنٹ کا انتظام</div>
           <button 
             onClick={() => setShowDeleteModal(true)} 
