@@ -120,7 +120,7 @@ router.post('/', async (req, res) => {
       }
     } catch {}
 
-    res.json({ status: 'success', message: 'اسکیم کامیا بی سے محفوظ ہو گئی', scheme });
+    res.json({ status: 'success', message: 'اسکیم کامیابی سے محفوظ ہو گئی', scheme });
   } catch (err) {
     res.status(500).json({ error: 'اسکیم محفوظ کرنے میں ناکامی' });
   }
