@@ -32,8 +32,8 @@ export const FAQ_DATA = [
 
   // ── 1. گندم (Wheat — 12 Entries) ─────────────────────────────────────────
   {
-    id: 'w1', tags: ['گندم','پانی','آبپاشی','wheat','water'],
-    q: 'گندم کو کتنا پانی چاہیے اور کب دیں؟',
+    id: 'w1', tags: ['گندم','پانی','آبپاشی','wheat','water','pani','panni','lgaon','lgao','lagao','lagaon','lagain','lagayein','lagana','dena'],
+    q: 'گندم کو کتنا پانی چاہیے اور کب دیں؟ / Gandam ko pani kab den / pani kblgaon?',
     a: '🌾 گندم کو پوری فصل میں 4–6 مرتبہ پانی چاہیے:\n• پہلا پانی: بیج بونے کے 21 دن بعد (تاجی جڑیں بنتے وقت)\n• دوسرا: 40–45 دن بعد (شاخیں نکلتے وقت)\n• تیسرا: 70–75 دن بعد (بالی بنتے وقت)\n• چوتھا: 90–95 دن بعد (دانہ بنتے وقت)\n• پانچواں: 110–115 دن بعد (دانہ پکتے وقت)\nہر پانی میں 3–4 انچ پانی دیں۔ خوابیدہ حالت میں زیادہ پانی سے پرہیز کریں۔'
   },
   {
@@ -673,21 +673,37 @@ const STOP_WORDS = new Set([
   'is', 'the', 'a', 'an', 'in', 'on', 'at', 'for', 'to', 'of', 'and', 'or', 'with', 'by'
 ]);
 
-// Tokenize text for Urdu, Roman Urdu & English fuzzy matching
+// Tokenize text for Urdu, Roman Urdu & English fuzzy matching with compound word splitting
 function tokenize(str) {
   if (!str) return [];
-  return str
+  const rawTokens = str
     .toLowerCase()
     .replace(/[،؟!؟.,:;\(\)\[\]"'`\-]/g, ' ')
-    .split(/\s+/)
-    .filter(w => w.length > 1 && !STOP_WORDS.has(w));
+    .split(/\s+/);
+
+  const tokens = [];
+  rawTokens.forEach(w => {
+    if (!w || w.length <= 1) return;
+    // Split compound Roman Urdu prefixes (e.g. "kblgaon" -> "kb", "lgaon", "kblgao" -> "kb", "lgao")
+    if (w.startsWith('kb') && w.length > 3) {
+      tokens.push('kb');
+      tokens.push(w.slice(2));
+    } else if (w.startsWith('kab') && w.length > 4) {
+      tokens.push('kab');
+      tokens.push(w.slice(3));
+    } else {
+      tokens.push(w);
+    }
+  });
+
+  return tokens.filter(w => w.length > 1 && !STOP_WORDS.has(w));
 }
 
 // Intent Keywords for Hard Context Disambiguation
-const SELLING_INTENTS = ['bechon', 'bechna', 'bechun', 'sale', 'sell', 'mandi', 'rate', 'rates', 'price', 'بیچوں', 'بیچنا', 'فروخت', 'منڈی', 'ریٹ'];
-const WATER_INTENTS   = ['pani', 'irrigation', 'پانی', 'آبپاشی', 'سیراب'];
-const FERTILIZER_INTENTS = ['khad', 'dap', 'urea', 'sop', 'fertilizer', 'کھاد', 'یوریا', 'زنک'];
-const DISEASE_INTENTS = ['bimari', 'bipari', 'dawai', 'spray', 'keeda', 'keede', 'disease', 'pesticide', 'بیماری', 'دوا', 'سپرے', 'کیڑا'];
+const SELLING_INTENTS    = ['bechon', 'bechna', 'bechun', 'sale', 'sell', 'mandi', 'rate', 'rates', 'price', 'بیچوں', 'بیچنا', 'فروخت', 'منڈی', 'ریٹ'];
+const WATER_INTENTS      = ['pani', 'panni', 'lgaon', 'lgao', 'lagao', 'lagaon', 'lagain', 'lagayein', 'lagana', 'dena', 'dene', 'den', 'irrigation', 'پانی', 'آبپاشی', 'سیراب'];
+const FERTILIZER_INTENTS = ['khad', 'dap', 'urea', 'sop', 'fertilizer', 'dalen', 'dalna', 'dalun', 'کھاد', 'یوریا', 'زنک'];
+const DISEASE_INTENTS    = ['bimari', 'bipari', 'dawai', 'spray', 'keeda', 'keede', 'disease', 'pesticide', 'بیماری', 'دوا', 'سپرے', 'کیڑا'];
 
 function similarity(queryTokens, entry) {
   const entryText = (entry.q + ' ' + entry.tags.join(' ')).toLowerCase();
