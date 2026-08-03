@@ -49,7 +49,7 @@ function enhancePrompt(keywords) {
 # SYSTEM ROLE & CONTEXT
 You are the Lead Systems Architect building "DehatiAI" (دیہاتی AI).
 Target Focus: ${domainContext}
-Input Keywords: "${keywords}"
+Input Enhancer: "${keywords}"
 
 # OBJECTIVE & REQUIREMENTS
 - Implement, audit, or optimize the target functionality for Pakistani farmers in Punjab.
