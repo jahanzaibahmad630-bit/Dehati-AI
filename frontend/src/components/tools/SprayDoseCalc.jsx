@@ -267,11 +267,63 @@ const ORCHARDS = {
   },
 };
 
+// ─── 4. AARI TANK-MIX INCOMPATIBILITY & PHYTOTOXICITY MATRIX ──────────────────
+const INCOMPATIBLE_MIXES = [
+  {
+    c1: 'Copper Oxychloride (کاپڑ آکسی کلورائیڈ)',
+    c2: 'Mancozeb / Carbendazim (مینکوزیب یا بینلیٹ)',
+    status: 'سخت ممنوع (PROHIBITED)',
+    color: '#dc2626',
+    reason: 'کیمیکلز آپس میں مل کر پھٹ جاتے ہیں اور رسوب بن جاتا ہے جس سے نوزل بند ہوتی ہے اور پتے جھلس جاتے ہیں۔',
+    buffer: '5 تا 7 دن کا وقفہ رکھیں'
+  },
+  {
+    c1: 'Sulphur 80% WP (سلفر پھپھوندی کش)',
+    c2: 'EC آئل بیسڈ سپرے (Lambda / Profenofos EC)',
+    status: 'شدید گرمی (&gt;35°C) میں ممنوع',
+    color: '#dc2626',
+    reason: 'سلفر اور تیل مل کر تیزابی سلفائیڈیشن کرتے ہیں جس سے کپاس، باغات اور سبزیوں کا پتا مکمل جل جاتا ہے۔',
+    buffer: '14 دن کا وقفہ لازمی ہے'
+  },
+  {
+    c1: 'Captan / Captafol (کیپٹان پھپھوندی کش)',
+    c2: 'کوئی بھی آئل اسپرے (EC Formulations)',
+    status: 'سخت ممنوع (30 دن کا وقفہ)',
+    color: '#dc2626',
+    reason: 'کیپٹان اور تیل کا ملاپ پودے کے خلیات جلا دیتا ہے۔ 30 دن تک دوسرا سپرے نہ کریں۔',
+    buffer: '30 دن کا وقفہ لازمی ہے'
+  },
+  {
+    c1: 'دو EC زہریں ایک ساتھ (Lambda EC + Profenofos EC)',
+    c2: 'EC + EC ملاپ',
+    status: 'سخت نقصان دہ (PROHIBITED)',
+    color: '#dc2626',
+    reason: 'تیل اور سالوینٹ کی زیادتی سے پودے پر کیمیکل جھلسن آتی ہے۔ ہمیشہ EC کے ساتھ WP یا WDG ملائیں۔',
+    buffer: 'ایک EC اور دوسرا پاؤڈر ملائیں'
+  },
+  {
+    c1: 'Glyphosate (راؤنڈ اپ گھاس مار)',
+    c2: 'Mancozeb / زنک کھاد',
+    status: 'سخت ممنوع (Precipitation)',
+    color: '#dc2626',
+    reason: 'گلائفوسیٹ دھاتوں کے ساتھ مل کر بے اثر ہو جاتا ہے اور نوزلیں چوک ہو جاتی ہیں۔',
+    buffer: 'ہمیشہ اکیلا سپرے کریں'
+  },
+  {
+    c1: 'چونے والی اسپرے (Bordeaux / Lime Sulphur)',
+    c2: 'آرگینو فاسفیٹ (Chlorpyrifos / Profenofos)',
+    status: 'بے اثر (Inactivation)',
+    color: '#d97706',
+    reason: 'ہائی الکلائن پی ایچ (pH) کیڑے مار زہر کو 10 منٹ میں ختم کر دیتا ہے۔',
+    buffer: 'الگ الگ سپرے کریں'
+  }
+];
+
 const TANK_SIZES = [15, 16, 20, 25, 100, 400];
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
 export default function SprayDoseCalc() {
-  const [activeTab, setActiveTab] = useState('pests'); // 'pests' | 'weeds' | 'orchards'
+  const [activeTab, setActiveTab] = useState('pests'); // 'pests' | 'weeds' | 'orchards' | 'mixes'
   const [selectedItem, setSelectedItem] = useState('');
   const [tankSize, setTankSize] = useState(20);
   const [district, setDistrict] = useState('');
@@ -353,47 +405,109 @@ export default function SprayDoseCalc() {
         </div>
       </div>
 
-      {/* ── Category Tabs: Pests vs Weeds vs Orchards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: 6, marginBottom: 12 }}>
+      {/* ── Category Tabs: Pests vs Weeds vs Orchards vs Tank-Mix Safety ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 12 }}>
         <button
           onClick={() => { setActiveTab('pests'); setSelectedItem(''); setResult(null); }}
           style={{
-            padding: '8px 4px', borderRadius: 10,
+            padding: '8px 2px', borderRadius: 8,
             border: `2px solid ${activeTab === 'pests' ? '#0284c7' : '#e2e8f0'}`,
             background: activeTab === 'pests' ? '#e0f2fe' : 'white',
             color: activeTab === 'pests' ? '#0369a1' : '#64748b',
-            fontWeight: 800, fontSize: '.78rem', cursor: 'pointer', ...nas
+            fontWeight: 800, fontSize: '.72rem', cursor: 'pointer', ...nas
           }}
         >
-          🐛 کیڑے و بیماریاں
+          🐛 کیڑے
         </button>
         <button
           onClick={() => { setActiveTab('weeds'); setSelectedItem(''); setResult(null); }}
           style={{
-            padding: '8px 4px', borderRadius: 10,
+            padding: '8px 2px', borderRadius: 8,
             border: `2px solid ${activeTab === 'weeds' ? '#15803d' : '#e2e8f0'}`,
             background: activeTab === 'weeds' ? '#dcfce7' : 'white',
             color: activeTab === 'weeds' ? '#15803d' : '#64748b',
-            fontWeight: 800, fontSize: '.78rem', cursor: 'pointer', ...nas
+            fontWeight: 800, fontSize: '.72rem', cursor: 'pointer', ...nas
           }}
         >
-          🌿 جڑی بوٹی کش (AARI)
+          🌿 جڑی بوٹیاں
         </button>
         <button
           onClick={() => { setActiveTab('orchards'); setSelectedItem(''); setResult(null); }}
           style={{
-            padding: '8px 4px', borderRadius: 10,
+            padding: '8px 2px', borderRadius: 8,
             border: `2px solid ${activeTab === 'orchards' ? '#d97706' : '#e2e8f0'}`,
             background: activeTab === 'orchards' ? '#fef3c7' : 'white',
             color: activeTab === 'orchards' ? '#b45309' : '#64748b',
-            fontWeight: 800, fontSize: '.78rem', cursor: 'pointer', ...nas
+            fontWeight: 800, fontSize: '.72rem', cursor: 'pointer', ...nas
           }}
         >
-          🥭 باغات: آم و کینو (MRS/CRI)
+          🥭 باغات
+        </button>
+        <button
+          onClick={() => { setActiveTab('mixes'); setSelectedItem(''); setResult(null); }}
+          style={{
+            padding: '8px 2px', borderRadius: 8,
+            border: `2px solid ${activeTab === 'mixes' ? '#dc2626' : '#e2e8f0'}`,
+            background: activeTab === 'mixes' ? '#fef2f2' : 'white',
+            color: activeTab === 'mixes' ? '#dc2626' : '#64748b',
+            fontWeight: 800, fontSize: '.72rem', cursor: 'pointer', ...nas
+          }}
+        >
+          🧪 ٹینک مکس
         </button>
       </div>
 
-      <div className="form-group">
+      {/* ── TANK-MIX INCOMPATIBILITY & SAFETY VIEW ── */}
+      {activeTab === 'mixes' ? (
+        <div>
+          {/* Header */}
+          <div style={{ background: 'linear-gradient(135deg, #991b1b, #dc2626)', borderRadius: 12, padding: '0.75rem 1rem', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+            <div style={{ fontSize: '1.4rem' }}>⛔</div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>AARI و پیسٹ وارننگ ٹینک مکس ممانعت میٹرکس</div>
+              <div style={{ color: '#fecaca', fontSize: '0.7rem', marginTop: 2 }}>
+                کیمیکلز کے غلط ملاپ اور پودوں کے جھلسنے سے بچاؤ کا سرکاری گائیڈ
+              </div>
+            </div>
+          </div>
+
+          {/* Sprayer Decontamination Rule */}
+          <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
+            <div style={{ fontWeight: 800, color: '#92400e', fontSize: '.82rem', marginBottom: 4 }}>
+              🚿 جڑی بوٹی مار سپرے پمپ کی دھلائی کا لازمی اصول (Triple-Rinse):
+            </div>
+            <div style={{ fontSize: '.7rem', color: '#78350f', lineHeight: 1.6 }}>
+              اگر سپرے مشین میں پہلے گندم کی جڑی بوٹی مار زہر (Buctril-M, 2,4-D, Topik) یا کپاس کی جڑی بوٹی کش استعمال ہوئی ہے تو اسے بغیر دھوئے کپاس یا سبزیوں پر ہرگز نہ چلائیں! زہر کے ذرات سے کپاس کے پتے طوطے کے پر جیسے مڑ جاتے ہیں اور پودا مر جاتا ہے۔<br />
+              <strong>دھونے کا طریقہ:</strong> ٹینک میں 1% گھریلو امونیا یا 2% کپڑے دھونے والا سوڈا (Washing Soda) ملا کر 15 منٹ چلائیں اور 12 گھنٹے نوزلوں سمیت بھگوئے رکھیں۔ پھر تازہ پانی سے 2 بار دھوئیں۔
+            </div>
+          </div>
+
+          {/* Prohibited Combinations Cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+            {INCOMPATIBLE_MIXES.map((m, i) => (
+              <div key={i} style={{ background: 'white', border: '1.5px solid #fca5a5', borderRadius: 10, padding: '10px', borderRight: `4px solid ${m.color}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <div style={{ fontWeight: 800, color: '#991b1b', fontSize: '.82rem' }}>
+                    {m.c1} + {m.c2}
+                  </div>
+                  <span style={{ background: '#fee2e2', color: '#991b1b', padding: '1px 8px', borderRadius: 8, fontSize: '.65rem', fontWeight: 800 }}>
+                    {m.status}
+                  </span>
+                </div>
+                <div style={{ fontSize: '.7rem', color: '#334155', lineHeight: 1.4 }}>
+                  ⚠️ <strong>نقصان:</strong> {m.reason}
+                </div>
+                <div style={{ fontSize: '.68rem', color: '#15803d', fontWeight: 700, marginTop: 3 }}>
+                  ⏱️ <strong>سرکاری اصول:</strong> {m.buffer}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <InstitutionalBadge type="pest" helpline="0800-17000" />
+        </div>
+      ) : (
+        <div className="form-group">
         {/* Selector */}
         <div>
           <label className="input-label" style={{ fontWeight: 700, marginBottom: 6, display: 'block' }}>
@@ -672,6 +786,7 @@ export default function SprayDoseCalc() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

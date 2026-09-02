@@ -107,8 +107,9 @@ const PUNJAB_VACCINE_CALENDAR = [
 const SYMPTOM_TAGS = ['بخار', 'سوجن', 'اسہال', 'کھانسی', 'رال بہنا', 'لنگڑاپن', 'خون', 'وزن میں کمی', 'کمزوری', 'چھالے'];
 
 export default function AnimalHealthAdvisor() {
-  const [mainView, setMainView] = useState('clinic'); // 'clinic' | 'breeding'
+  const [mainView, setMainView] = useState('clinic'); // 'clinic' | 'breeding' | 'emergency'
   const [heatTime, setHeatTime] = useState('morning');
+  const [isPregnant, setIsPregnant] = useState(false);
   const [activeCategory, setActiveCategory] = useState('cattle_buffalo');
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -205,31 +206,43 @@ export default function AnimalHealthAdvisor() {
         </span>
       </div>
 
-      {/* ── Top Mode Switcher: Clinic vs Breeding ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      {/* ── Top Mode Switcher: Clinic vs Breeding vs Emergency ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.1fr', gap: 6 }}>
         <button
           onClick={() => setMainView('clinic')}
           style={{
-            padding: '8px', borderRadius: 10,
+            padding: '8px 4px', borderRadius: 10,
             border: `2px solid ${mainView === 'clinic' ? '#166534' : '#e2e8f0'}`,
             background: mainView === 'clinic' ? '#f0fdf4' : 'white',
             color: mainView === 'clinic' ? '#166534' : '#64748b',
-            fontWeight: 800, fontSize: '.85rem', cursor: 'pointer', fontFamily: '"Noto Nastaliq Urdu", serif'
+            fontWeight: 800, fontSize: '.78rem', cursor: 'pointer', fontFamily: '"Noto Nastaliq Urdu", serif'
           }}
         >
-          🩺 امراض و DRAP علاج
+          🩺 DRAP کلینک
         </button>
         <button
           onClick={() => setMainView('breeding')}
           style={{
-            padding: '8px', borderRadius: 10,
+            padding: '8px 4px', borderRadius: 10,
             border: `2px solid ${mainView === 'breeding' ? '#0369a1' : '#e2e8f0'}`,
             background: mainView === 'breeding' ? '#e0f2fe' : 'white',
             color: mainView === 'breeding' ? '#0369a1' : '#64748b',
-            fontWeight: 800, fontSize: '.85rem', cursor: 'pointer', fontFamily: '"Noto Nastaliq Urdu", serif'
+            fontWeight: 800, fontSize: '.78rem', cursor: 'pointer', fontFamily: '"Noto Nastaliq Urdu", serif'
           }}
         >
-          🧬 افزائش نسل و تخم کاری (SPU)
+          🧬 افزائش و ویکسین
+        </button>
+        <button
+          onClick={() => setMainView('emergency')}
+          style={{
+            padding: '8px 4px', borderRadius: 10,
+            border: `2px solid ${mainView === 'emergency' ? '#dc2626' : '#e2e8f0'}`,
+            background: mainView === 'emergency' ? '#fef2f2' : 'white',
+            color: mainView === 'emergency' ? '#dc2626' : '#64748b',
+            fontWeight: 800, fontSize: '.78rem', cursor: 'pointer', fontFamily: '"Noto Nastaliq Urdu", serif'
+          }}
+        >
+          🚨 ہنگامی فرسٹ ایڈ
         </button>
       </div>
 
@@ -372,6 +385,39 @@ export default function AnimalHealthAdvisor() {
       {/* ── CLINIC VIEW ── */}
       {mainView === 'clinic' && (
         <>
+          {/* ── DRAP Pregnancy Safety Firewall ── */}
+          <div style={{ background: isPregnant ? '#fef2f2' : '#f8fafc', border: `1.5px solid ${isPregnant ? '#ef4444' : '#cbd5e1'}`, borderRadius: 12, padding: '10px 14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 800, color: isPregnant ? '#b91c1c' : '#334155', fontSize: '.85rem' }}>
+                🤰 کیا جانور گابھن / حاملہ ہے؟
+              </span>
+              <button
+                onClick={() => setIsPregnant(p => !p)}
+                style={{
+                  padding: '4px 12px', borderRadius: 20,
+                  border: `1.5px solid ${isPregnant ? '#dc2626' : '#94a3b8'}`,
+                  background: isPregnant ? '#dc2626' : 'white',
+                  color: isPregnant ? 'white' : '#64748b',
+                  fontWeight: 800, fontSize: '.75rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif'
+                }}
+              >
+                {isPregnant ? '⚠️ جی ہاں (حاملہ ہے)' : 'نہیں / غیر حاملہ'}
+              </button>
+            </div>
+
+            {isPregnant && (
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #fca5a5', fontSize: '.72rem', color: '#991b1b', lineHeight: 1.6 }}>
+                ⛔ <strong>حاملہ جانور کیلئے سخت ممنوع ادویات (اسقاطِ حمل کا خطرہ):</strong><br />
+                1. <strong>ڈیکسامیتھاسون / بیٹامیتھاسون (Dexamethasone):</strong> ہرگز نہ لگائیں! آخری سہ ماہی میں فوری بچہ گرا (Abortion) دیتا ہے۔<br />
+                2. <strong>ڈالمازن / پی جی ایف (PGF2-alpha / Dalmazin):</strong> بچہ دانی سکیڑ کر حمل ختم کر دیتا ہے۔<br />
+                3. <strong>ہائی ڈوز آکسی ٹیٹراسائکلین (&gt;20mg/kg):</strong> بچے کی ہڈیوں کیلئے زہریلا ہے۔<br />
+                <span style={{ color: '#15803d', fontWeight: 700 }}>
+                  ✅ بخار اور سوجن میں محفوظ متبادل: پیراسیٹامول (Paracetamol 10-15 mg/kg)، میلوکسیکام (Meloxicam 0.5 mg/kg)، یا کیٹوپروفین (Ketoprofen 2 mg/kg)۔
+                </span>
+              </div>
+            )}
+          </div>
+
           {/* ── 1. Category Selector Tabs ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.4rem' }}>
         {CATEGORIES.map(cat => {
@@ -641,6 +687,63 @@ export default function AnimalHealthAdvisor() {
         )}
       </div>
       </>
+      )}
+
+      {/* ── EMERGENCY FIRST-AID VIEW ── */}
+      {mainView === 'emergency' && (
+        <div>
+          {/* Header */}
+          <div style={{ background: 'linear-gradient(135deg, #991b1b, #dc2626)', borderRadius: 14, padding: '0.85rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'white' }}>
+            <div style={{ fontSize: '1.6rem' }}>🚨</div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>فارم ایمرجنسی و ابتدائی طبی امداد (First-Aid)</div>
+              <div style={{ color: '#fecaca', fontSize: '0.72rem', marginTop: 2 }}>
+                محکمہ صحت و لائیوسٹاک پنجاب (UVAS) مصدقہ لائف سیونگ پروٹوکول
+              </div>
+            </div>
+          </div>
+
+          {/* 1. Human Pesticide Poisoning */}
+          <div style={{ background: 'white', border: '1.5px solid #fca5a5', borderRadius: 12, padding: '12px', marginBottom: 12 }}>
+            <div style={{ fontWeight: 800, color: '#dc2626', fontSize: '.9rem', marginBottom: 6 }}>
+              ☣️ سپرے زہر کا انسانی اثر (Acute Pesticide Poisoning):
+            </div>
+            <div style={{ fontSize: '.72rem', color: '#7f1d1d', lineHeight: 1.6, marginBottom: 8 }}>
+              اگر کسان سپرے کے دوران بے ہوش ہو جائے، منہ سے جھاگ آئے یا زہر نگل لے:
+            </div>
+            <div style={{ background: '#fef2f2', borderRadius: 8, padding: '8px 10px', fontSize: '.72rem', color: '#991b1b', lineHeight: 1.6, marginBottom: 8 }}>
+              1. <strong>کپڑے فوری اتاریں:</strong> زہر آلود کپڑے فوری اتار کر جسم کو صابن اور کھلے پانی سے دھوئیں تاکہ جلد سے مزید زہر جذب نہ ہو۔<br />
+              2. <strong>قے ہرگز نہ کروائیں:</strong> اگر زہر پیا ہو تو زبردستی قے نہ کروائیں کیونکہ زہر سانس کی نالی میں جانے سے پھیپھڑے پھٹ سکتے ہیں۔<br />
+              3. <strong>ہسپتال کا سرکاری تریاق (Antidote):</strong> ہسپتال پہنچ کر ڈاکٹر کو زہر کا نام بتائیں — <strong>ایٹروپین سلفیٹ (Atropine Sulfate 2–5 mg IV)</strong> اور <strong>پرالیڈوکسائم (2-PAM 1–2 g IV)</strong> فوری لگوائیں۔
+            </div>
+            <a href="tel:1122" style={{ display: 'block', textAlign: 'center', background: '#dc2626', color: 'white', padding: '8px', borderRadius: 8, textDecoration: 'none', fontWeight: 800, fontSize: '.82rem', fontFamily: 'Inter, sans-serif' }}>
+              📞 ریسکیو 1122 کو فوری کال کریں
+            </a>
+          </div>
+
+          {/* 2. Cattle Acute Bloat (Aafra) */}
+          <div style={{ background: 'white', border: '1.5px solid #fed7aa', borderRadius: 12, padding: '12px', marginBottom: 12 }}>
+            <div style={{ fontWeight: 800, color: '#c2410c', fontSize: '.9rem', marginBottom: 6 }}>
+              🐃 گائے / بھینس میں شدید اپھارہ (Acute Frothy Bloat / آفرا):
+            </div>
+            <div style={{ fontSize: '.72rem', color: '#7c2d12', lineHeight: 1.6, marginBottom: 8 }}>
+              برسیم یا لوسرن کھانے سے پیٹ میں جھاگ دار گیس بن جاتی ہے جس سے جانور کا دم گھٹ کر 2 گھنٹے میں موت واقع ہو سکتی ہے۔
+            </div>
+            
+            <div style={{ background: '#fffbeb', borderRadius: 8, padding: '8px 10px', fontSize: '.72rem', color: '#9a3412', lineHeight: 1.6, marginBottom: 8 }}>
+              💊 <strong>ڈاکٹر کے آنے تک فوری گھریلو نسخہ (UVAS فارمولا):</strong><br />
+              • <strong>سرسوں یا سورج مکھی کا میٹھا تیل:</strong> 250 تا 500 ملی لیٹر<br />
+              • <strong>خالص تارپین کا تیل (Turpentine Oil):</strong> 30 تا 60 ملی لیٹر<br />
+              دونوں کو ملا کر بوتل یا نال کے ذریعے جانور کے منہ میں پلائیں۔ یہ جھاگ کو ختم کر کے گیس خارج کرواتا ہے۔<br />
+              • جانور کو آہستہ آہستہ پیدل چلائیں۔
+            </div>
+
+            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 10px', fontSize: '.72rem', color: '#334155', lineHeight: 1.5 }}>
+              ⚠️ <strong>شدید ہنگامی صورت میں پیٹ پنکچر (Trocarization):</strong><br />
+              اگر جانور گر جائے اور سانس رک رہا ہو تو <strong>بائیں کوکھ (Left Flank)</strong> میں آخری پسلی اور کولہے کی ہڈی کے درمیان (ریڑھ کی ہڈی سے 15 سینٹی میٹر نیچے) صاف ٹروکار یا موٹی سوئی (14–16G) داخل کر کے گیس آہستہ آہستہ نکالیں۔
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

@@ -466,6 +466,17 @@ export default function FertilizerRecommender() {
               );
             })}
 
+            {/* ── SFRI Nutrient Antagonism & Volatilization Safety Gates ── */}
+            <div style={{ background: '#fef2f2', border: '1.5px solid #ef4444', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
+              <div style={{ fontWeight: 800, color: '#b91c1c', fontSize: '.85rem', marginBottom: 4 }}>
+                ⛔ SFRI لاہور لازمی کھاد سیفٹی اصول (بڑے مالی نقصان سے بچیں):
+              </div>
+              <div style={{ fontSize: '.72rem', color: '#991b1b', lineHeight: 1.6 }}>
+                1. <strong>ڈی اے پی (DAP) اور زنک کا تضاد:</strong> زنک سلفیٹ اور DAP کو کبھی ایک ساتھ مکس نہ کریں! فاسفورس زنک کو منجمد کر کے ناقابلِ حل زنک فاسفیٹ [Zn₃(PO₄)₂] بنا دیتا ہے اور دونوں کھادیں ضائع ہو جاتی ہیں۔ <strong>کم از کم 10 تا 14 دن کا وقفہ لازمی رکھیں۔</strong><br />
+                2. <strong>شدید گرمی (35°C+) میں یوریا کا ضیاع:</strong> کھڑے پانی یا کھلی دھوپ میں دوپہر کے وقت یوریا کا چھٹا دینے سے <strong>20% تا 40% نائٹروجن گیس بن کر اڑ جاتی ہے</strong>۔ یوریا ہمیشہ شام کے وقت تر وتر میں دیں یا مٹی میں دبائیں۔
+              </div>
+            </div>
+
             {/* Total Cost & Subsidy Card */}
             <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
