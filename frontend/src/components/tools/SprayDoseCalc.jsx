@@ -42,7 +42,7 @@ const DISTRICTS = {
   'راولپنڈی':   { lat: 33.5651, lon: 73.0169 },
 };
 
-// ─── Official Pest Warning Directorate Punjab & CCRI Multan Directory 2024-2026 ─
+// ─── 1. PESTS & INSECTS DIRECTORY (Pest Warning Punjab & CCRI Multan) ────────
 const PESTS = {
   'گلابی سنڈی (Pink Bollworm)': {
     icon: '🐛', crop: 'کپاس (Cotton)',
@@ -63,7 +63,6 @@ const PESTS = {
       { name: 'Cyantraniliprole + Diafenthiuron', brand: 'Cyazypyr Mix + Diafenthiuron (FMC + Bayer)', dose: 300, unit: 'ملی لیٹر', phi: 7, note: 'شدید حملے کی صورت میں فوری نوک ڈاؤن' },
       { name: 'Flonicamid 50% WG', brand: 'Teppeki (ISK / Kanzo / 4B)', dose: 80, unit: 'گرام', phi: 4, note: 'رس چوسنا فوری بند — محفوظ کیمیائی گروپ' },
       { name: 'Pyriproxyfen 10% EC', brand: 'Admiral (Syngenta Pakistan) / Ali Akbar', dose: 450, unit: 'ملی لیٹر', phi: 7, note: 'آئی جی آر — اگلی نسل کی پیداوار روکتا ہے' },
-      { name: 'Pyrifluquinazon 20% WG', brand: 'Afinto (Bayer Pakistan)', dose: 200, unit: 'گرام', phi: 4, note: 'نئی کیمسٹری — رس چوسنے والے کیڑوں کا خاتمہ' },
     ]
   },
   'سست تیلا / امرا (Jassid)': {
@@ -109,8 +108,8 @@ const PESTS = {
     waterPerAcre: 100, bestTime: 'صبح 8 تا 11 بجے',
     products: [
       { name: 'Thiamethoxam 25% WG', brand: 'Actara (Syngenta Pakistan) / 4B', dose: 20, unit: 'گرام', phi: 8, note: 'صرف 20 گرام فی ایکڑ — سستے داموں فوری خاتمہ' },
-      { name: 'Pymetrozine 50% WG', brand: 'Chess (Syngenta Pakistan)', dose: 70, unit: 'گرام', phi: 4, note: 'دوست کیڑوں (لیڈی برڈ وغیرہ) کے لیے بالکل محفوظ' },
-      { name: 'Dinotefuran 20% SG', brand: 'Starkle (ISK / Ali Akbar Group)', dose: 90, unit: 'گرام', phi: 7, note: 'دانے بھرنے کے وقت محفوظ اور موثر' },
+      { name: 'Pymetrozine 50% WG', brand: 'Chess (Syngenta Pakistan)', dose: 70, unit: 'گرام', phi: 4, note: 'دوست کیڑوں کے لیے محفوظ' },
+      { name: 'Dinotefuran 20% SG', brand: 'Starkle (ISK / Ali Akbar Group)', dose: 90, unit: 'گرام', phi: 7, note: 'دانے بھرنے کے وقت محفوظ' },
     ]
   },
   'چاول کا جھلساؤ (Rice Blast)': {
@@ -119,7 +118,7 @@ const PESTS = {
     waterPerAcre: 100, bestTime: 'صبح 6 تا 9 بجے',
     products: [
       { name: 'Tricyclazole 75% WP', brand: 'Beam (Syngenta) / Ali Akbar Group', dose: 225, unit: 'گرام', phi: 21, note: 'گوب کے وقت احتیاطی سپرے سے گردن توڑ کا خطرہ ختم' },
-      { name: 'Azoxystrobin 25% SC', brand: 'Amistar (Syngenta Pakistan) / 4B', dose: 225, unit: 'ملی لیٹر', phi: 14, note: 'جھلساؤ اور بھورے داغ دونوں میں یکساں مفید' },
+      { name: 'Azoxystrobin 25% SC', brand: 'Amistar (Syngenta Pakistan) / 4B', dose: 225, unit: 'ملی لیٹر', phi: 14, note: 'جھلساؤ اور بھورے داغ دونوں میں مفید' },
     ]
   },
   'پتہ لپیٹ سنڈی (Leaf Folder)': {
@@ -145,8 +144,8 @@ const PESTS = {
     etl: 'نم آلود سرد موسم میں پتوں پر پانی بھرے کالے داغ اور سفید پھپھوندی',
     waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
     products: [
-      { name: 'Metalaxyl-M + Mancozeb 68% WP', brand: 'Ridomil Gold (Syngenta Pakistan)', dose: 450, unit: 'گرام', phi: 7, note: 'پہلی علامت نظر آتے ہی فوری سپرے — 7 دن کا وقفہ' },
-      { name: 'Cymoxanil + Famoxadone SC', brand: 'Curzate M8 (مقامی رجسٹرڈ)', dose: 275, unit: 'ملی لیٹر', phi: 4, note: 'بارش کے بعد سسٹمک علاج — تیز عمل' },
+      { name: 'Metalaxyl-M + Mancozeb 68% WP', brand: 'Ridomil Gold (Syngenta Pakistan)', dose: 450, unit: 'گرام', phi: 7, note: 'پہلی علامت نظر آتے ہی فوری سپرے' },
+      { name: 'Cymoxanil + Famoxadone SC', brand: 'Curzate M8 (مقامی رجسٹرڈ)', dose: 275, unit: 'ملی لیٹر', phi: 4, note: 'بارش کے بعد سسٹمک علاج' },
       { name: 'Fluopicolide + Propamocarb SC', brand: 'Previcur Energy (Bayer Pakistan)', dose: 225, unit: 'ملی لیٹر', phi: 3, note: 'ٹماٹر کے لیے محفوظ ترین — صرف 3 دن PHI' },
     ]
   },
@@ -155,27 +154,88 @@ const PESTS = {
     etl: 'پرانے پتوں پر دائرہ نما بھورے نشانات (Target spots)',
     waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
     products: [
-      { name: 'Mancozeb 75% WP', brand: 'Dithane M-45 (Corteva) / Indofil M-45', dose: 900, unit: 'گرام', phi: 8, note: 'حفاظتی سپرے — پودے کی سطح پر حفاظتی تہہ بناتا ہے' },
+      { name: 'Mancozeb 75% WP', brand: 'Dithane M-45 (Corteva) / Indofil M-45', dose: 900, unit: 'گرام', phi: 8, note: 'حفاظتی سپرے — پودے پر حفاظتی تہہ بناتا ہے' },
+    ]
+  },
+};
+
+// ─── 2. OFFICIAL PUNJAB WEED CONTROL & HERBICIDE MATRIX (AARI Faisalabad) ────
+const WEEDS = {
+  'گندم: دمبی سٹی و جنگلی جئی (Narrow-leaf)': {
+    icon: '🌾', crop: 'گندم (Wheat)',
+    etl: 'پہلے پانی کے بعد وتر حالت (30-35 دن) — 2 سے 6 پتے کا مرحلہ',
+    waterPerAcre: 100, bestTime: 'صبح 9 بجے تا دوپہر 1 بجے (دھوپ میں)',
+    products: [
+      { name: 'Clodinafop-propargyl 15% WP', brand: 'Topik (Syngenta) / Skipper / Clodino', dose: 160, unit: 'گرام', phi: 30, note: 'دمبی سٹی کا حتمی خاتمہ۔ چوڑے پتے والی دوا کے ساتھ ٹینک مکس نہ کریں (7 دن کا وقفہ رکھیں)۔' },
+      { name: 'Pinoxaden 5% EC', brand: 'Axial (Syngenta Pakistan) / Ali Akbar', dose: 360, unit: 'ملی لیٹر', phi: 30, note: 'جنگلی جئی اور دمبی سٹی دونوں پر موثر۔ منظور شدہ ایڈجوینٹ لازمی ملائیں۔' },
+    ]
+  },
+  'گندم: باتھو، لیہلی، شاہترہ (Broad-leaf)': {
+    icon: '🍀', crop: 'گندم (Wheat)',
+    etl: 'پہلے پانی کے بعد (25-35 دن) — چوڑے پتے والی جڑی بوٹیوں کا 2-5 پتے کا مرحلہ',
+    waterPerAcre: 100, bestTime: 'صبح 9 تا دوپہر 1 بجے (ہوا بند ہونے پر)',
+    products: [
+      { name: 'Bromoxynil + MCPA 40% EC', brand: 'Buctril-M (Bayer/Syngenta) / 4B / Kanzo', dose: 500, unit: 'ملی لیٹر', phi: 25, note: 'باتھو، لیہلی، شاہترہ، کنڈیاری کا صفایا۔ ہوا میں سپرے نہ کریں (قریبی سرسوں/سبزی کا نقصان ہو سکتا ہے)۔' },
+      { name: 'Metsulfuron-methyl 20% WDG', brand: 'Ally (Corteva) / Kanzo / Ali Akbar', dose: 12, unit: 'گرام', phi: 10, note: 'صرف 10-12 گرام فی ایکڑ۔ سرفیکٹنٹ ملائیں۔ دباؤ والی فصل پر نہ کریں۔' },
+    ]
+  },
+  'گندم: مجموعی کنٹرول (Narrow + Broad Spectrum)': {
+    icon: '🌿', crop: 'گندم (Wheat)',
+    etl: 'دونوں اقسام کی جڑی بوٹیاں موجود ہوں — پہلا پانی 30-35 دن بعد',
+    waterPerAcre: 100, bestTime: 'صبح 10 بجے تا 2 بجے',
+    products: [
+      { name: 'Iodosulfuron + Mesosulfuron 6WG', brand: 'Atlantis Super (Bayer Pakistan)', dose: 100, unit: 'گرام', phi: 30, note: 'صرف عام روٹی والی گندم (Bread Wheat) کے لیے۔ ڈیوڈم (پاستا) گندم پر نہ کریں۔ باکس والا بائیو پاور لازمی ملائیں۔' },
+      { name: 'Pyroxsulam + Fluroxypyr SG', brand: 'Broadway (Corteva Pakistan)', dose: 140, unit: 'گرام', phi: 30, note: '140 گرام فی ایکڑ — چوڑے اور باریک پتے والی جڑی بوٹیوں کا بیک وقت کنٹرول۔' },
+      { name: 'Clodinafop + Metsulfuron Mix', brand: 'Total (Kanzo) / Ali Akbar Group', dose: 170, unit: 'گرام', phi: 30, note: '160g Clodinafop + 10g Metsulfuron پری مکس فارمولیشن۔' },
+    ]
+  },
+  'کپاس: کاشت کے فوراً بعد (Pre-emergence)': {
+    icon: '🌱', crop: 'کپاس (Cotton)',
+    etl: 'کاشت کے فوراً بعد — اگاؤ سے قبل (0 تا 2 دن اندر اندر)',
+    waterPerAcre: 100, bestTime: 'شام کے وقت (پہلی آبپاشی کے فوراً بعد)',
+    products: [
+      { name: 'Pendimethalin 33% EC', brand: 'Stomp (Bayer Pakistan) / 4B / ICI', dose: 1200, unit: 'ملی لیٹر', phi: 60, note: 'کاشت کے فوراً بعد وتر حالت پر چھڑکاؤ کریں۔ بیج کے اگاؤ سے پہلے جڑی بوٹی کے بیج کو مارتا ہے۔' },
+      { name: 'S-Metolachlor 96% EC', brand: 'Dual Gold (Syngenta Pakistan)', dose: 800, unit: 'ملی لیٹر', phi: 60, note: '800 مل فی ایکڑ — گھاس نما جڑی بوٹیوں کو اگنے نہیں دیتا۔' },
+    ]
+  },
+  'کپاس: اگاؤ کے بعد گھاس و اٹسٹ (Post-emergence)': {
+    icon: '🌿', crop: 'کپاس (Cotton)',
+    etl: 'کپاس 15-25 دن کی ہو اور گھاس نما جڑی بوٹیاں 2-4 پتے پر ہوں',
+    waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
+    products: [
+      { name: 'Haloxyfop-R-methyl 10.8% EC', brand: 'Gallant Super (Corteva) / Kanzo', dose: 350, unit: 'ملی لیٹر', phi: 45, note: 'صرف گھاس نما جڑی بوٹیوں پر اثر کرتا ہے۔ کپاس کے پودے کو کوئی نقصان نہیں پہنچاتا۔' },
+      { name: 'Quizalofop-p-ethyl 5% EC', brand: 'Targa Super / Quick Super', dose: 400, unit: 'ملی لیٹر', phi: 45, note: 'اٹسٹ (Biscopra) اور ندی گھاس کے خلاف انتہائی موثر۔' },
+    ]
+  },
+  'چاول: ڈھیلا، گھاس و جڑی بوٹیاں (Rice Belt)': {
+    icon: '🍚', crop: 'چاول باسمتی (Rice)',
+    etl: 'پنیری منتقلی کے 15 تا 20 دن بعد — کھیت میں 2 تا 5 سینٹی میٹر ہلکا کھڑا پانی ہو',
+    waterPerAcre: 100, bestTime: 'صبح کے وقت',
+    products: [
+      { name: 'Bispyribac-sodium 20% WP', brand: 'Nominee Gold (Syngenta) / Ali Akbar', dose: 100, unit: 'ملی لیٹر', phi: 70, note: 'سپرے کے بعد 3-5 دن تک کھیت میں ہلکا پانی کھڑا رکھیں تاکہ ڈھیلا اور گھاس مکمل تلف ہوں۔' },
+      { name: 'Pyrazosulfuron-ethyl 10% WP', brand: 'مقامی رجسٹرڈ فارمولیشن', dose: 220, unit: 'گرام', phi: 60, note: 'چوڑے پتے اور ڈھیلے کی جڑوں پر براہ راست اثر۔' },
     ]
   },
 };
 
 const TANK_SIZES = [15, 16, 20, 25, 100, 400];
-const DISCLAIMER = '⚠️ تمام ادویات کی مقداریں محکمہ آفات نباتات و مالیاتی معیار کیڑے مار ادویات پنجاب (Pest Warning & Quality Control) اور CCRI ملتان 2024-2026 ایڈوائزری کے مطابق ہیں۔ سپرے کے بعد درج شدہ PHI (ممنوعہ دن) کا احترام لازمی کریں۔ تصدیق: 0800-17000';
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
 export default function SprayDoseCalc() {
-  const [pest, setPest] = useState('');
+  const [activeTab, setActiveTab] = useState('pests'); // 'pests' | 'weeds'
+  const [selectedItem, setSelectedItem] = useState('');
   const [tankSize, setTankSize] = useState(20);
   const [district, setDistrict] = useState('');
   const [acres, setAcres] = useState('1');
+  const [nozzleType, setNozzleType] = useState('tjet'); // 'tjet' | 'floodjet'
   const [weather, setWeather] = useState(null);
   const [wxLoading, setWxLoading] = useState(false);
   const [result, setResult] = useState(null);
   const { isOffline } = useOffline();
 
-  // Soil profile — affects spray efficacy (pH, EC)
   const [soilData] = useState(() => { try { return getSavedSoilProfile(); } catch { return null; } });
+
+  const activeCatalog = activeTab === 'pests' ? PESTS : WEEDS;
 
   const fetchWeather = useCallback(async (dist) => {
     const coords = DISTRICTS[dist];
@@ -202,23 +262,22 @@ export default function SprayDoseCalc() {
   }, []);
 
   const calculate = () => {
-    const pestData = PESTS[pest];
-    if (!pestData) return;
+    const itemData = activeCatalog[selectedItem];
+    if (!itemData) return;
     const a = parseFloat(acres) || 1;
     const tank = parseFloat(tankSize);
 
-    // Standard water volume per acre is 100L in Punjab
-    const waterVol = pestData.waterPerAcre || 100;
-    const products = pestData.products.map(p => {
-      // Dose per tank: (dose_per_acre / waterVol) * tankSize
+    const waterVol = itemData.waterPerAcre || 100;
+    const products = itemData.products.map(p => {
       const dosePerTank = ((p.dose / waterVol) * tank).toFixed(1);
       const totalQuantity = (p.dose * a).toFixed(0);
       return { ...p, dosePerTank, totalQuantity };
     });
 
     setResult({
-      pest,
-      pestData,
+      type: activeTab,
+      name: selectedItem,
+      itemData,
       products,
       a,
       tank,
@@ -226,8 +285,10 @@ export default function SprayDoseCalc() {
     });
   };
 
+  // Weather safety gates
+  const isWindyForWeed = activeTab === 'weeds' && weather && weather.wind > 10;
   const safeSpray = weather && weather.wind !== null
-    ? (weather.wind < 15 && weather.rain < 20)
+    ? (activeTab === 'weeds' ? (weather.wind <= 10 && weather.rain < 20) : (weather.wind < 15 && weather.rain < 20))
     : null;
 
   return (
@@ -236,27 +297,99 @@ export default function SprayDoseCalc() {
       <div style={{ background: 'linear-gradient(135deg, #0c4a6e, #075985)', borderRadius: 14, padding: '0.85rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'white' }}>
         <div style={{ fontSize: '1.6rem' }}>💧</div>
         <div>
-          <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>اسمارٹ سپرے و کیڑے مار کیلکولیٹر</div>
-          <div style={{ color: '#bae6fd', fontSize: '0.72rem', marginTop: 2 }}>محکمہ پیسٹ وارننگ پنجاب + CCRI ملتان مصدقہ ڈائریکٹری</div>
+          <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>اسمارٹ سپرے و کیڑے/جڑی بوٹی کیلکولیٹر</div>
+          <div style={{ color: '#bae6fd', fontSize: '0.72rem', marginTop: 2 }}>
+            محکمہ آفات نباتات و ایوب ریسرچ (AARI) فیصل آباد مصدقہ ڈائریکٹری 2024–2026
+          </div>
         </div>
       </div>
 
+      {/* ── Category Tabs: Pests vs Weeds ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
+        <button
+          onClick={() => { setActiveTab('pests'); setSelectedItem(''); setResult(null); }}
+          style={{
+            padding: '8px', borderRadius: 10,
+            border: `2px solid ${activeTab === 'pests' ? '#0284c7' : '#e2e8f0'}`,
+            background: activeTab === 'pests' ? '#e0f2fe' : 'white',
+            color: activeTab === 'pests' ? '#0369a1' : '#64748b',
+            fontWeight: 800, fontSize: '.85rem', cursor: 'pointer', ...nas
+          }}
+        >
+          🐛 کیڑے مکوڑے و بیماریاں
+        </button>
+        <button
+          onClick={() => { setActiveTab('weeds'); setSelectedItem(''); setResult(null); }}
+          style={{
+            padding: '8px', borderRadius: 10,
+            border: `2px solid ${activeTab === 'weeds' ? '#15803d' : '#e2e8f0'}`,
+            background: activeTab === 'weeds' ? '#dcfce7' : 'white',
+            color: activeTab === 'weeds' ? '#15803d' : '#64748b',
+            fontWeight: 800, fontSize: '.85rem', cursor: 'pointer', ...nas
+          }}
+        >
+          🌿 جڑی بوٹیاں و جڑی بوٹی کش (AARI)
+        </button>
+      </div>
+
       <div className="form-group">
-        {/* Pest Selection */}
+        {/* Selector */}
         <div>
-          <label className="input-label" style={{ fontWeight: 700, marginBottom: 6, display: 'block' }}>کیڑا یا بیماری منتخب کریں:</label>
-          <select className="input" value={pest} id="spray-pest"
-            onChange={e => { setPest(e.target.value); setResult(null); }}
+          <label className="input-label" style={{ fontWeight: 700, marginBottom: 6, display: 'block' }}>
+            {activeTab === 'pests' ? 'کیڑا یا بیماری منتخب کریں:' : 'جڑی بوٹی یا مرحلہ منتخب کریں:'}
+          </label>
+          <select className="input" value={selectedItem} id="spray-pest"
+            onChange={e => { setSelectedItem(e.target.value); setResult(null); }}
             style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: 8, border: '1.5px solid #d1d5db', background: 'white', fontWeight: 700, fontSize: '0.85rem', ...nas }}
           >
             <option value="">-- فہرست سے منتخب کریں --</option>
-            {Object.entries(PESTS).map(([name, d]) => (
+            {Object.entries(activeCatalog).map(([name, d]) => (
               <option key={name} value={name}>{d.icon} {name} ({d.crop})</option>
             ))}
           </select>
-          {pest && PESTS[pest] && (
-            <div style={{ fontSize: '0.72rem', color: '#0369a1', marginTop: 4, fontWeight: 700 }}>
-              فصل: {PESTS[pest].crop} | پانی: {PESTS[pest].waterPerAcre} لیٹر / ایکڑ
+          {selectedItem && activeCatalog[selectedItem] && (
+            <div style={{ fontSize: '0.72rem', color: activeTab === 'pests' ? '#0369a1' : '#15803d', marginTop: 4, fontWeight: 700 }}>
+              فصل: {activeCatalog[selectedItem].crop} | پانی: {activeCatalog[selectedItem].waterPerAcre} لیٹر / ایکڑ
+            </div>
+          )}
+        </div>
+
+        {/* Nozzle Selection Gate (Punjab Mandatory Rule) */}
+        <div style={{ marginTop: 10 }}>
+          <label className="input-label" style={{ fontWeight: 700, marginBottom: 4, display: 'block' }}>
+            نوزل کی قسم (محکمہ زراعت پنجاب قانون):
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            <button
+              onClick={() => setNozzleType('tjet')}
+              style={{
+                padding: '6px 8px', borderRadius: 8,
+                border: `2px solid ${nozzleType === 'tjet' ? '#15803d' : '#cbd5e1'}`,
+                background: nozzleType === 'tjet' ? '#f0fdf4' : 'white',
+                color: nozzleType === 'tjet' ? '#15803d' : '#475569',
+                fontSize: '.75rem', fontWeight: 800, cursor: 'pointer', ...nas
+              }}
+            >
+              ✅ T-Jet / فلیٹ فین (قانونی و محفوظ)
+            </button>
+            <button
+              onClick={() => setNozzleType('floodjet')}
+              style={{
+                padding: '6px 8px', borderRadius: 8,
+                border: `2px solid ${nozzleType === 'floodjet' ? '#dc2626' : '#cbd5e1'}`,
+                background: nozzleType === 'floodjet' ? '#fef2f2' : 'white',
+                color: nozzleType === 'floodjet' ? '#dc2626' : '#475569',
+                fontSize: '.75rem', fontWeight: 800, cursor: 'pointer', ...nas
+              }}
+            >
+              ⚠️ Floodjet / کٹ نوزل
+            </button>
+          </div>
+
+          {/* Hard Nozzle Prohibition Warning */}
+          {nozzleType === 'floodjet' && (
+            <div style={{ marginTop: 6, background: '#fee2e2', border: '1.5px solid #ef4444', borderRadius: 8, padding: '8px 10px', fontSize: '.72rem', color: '#991b1b', lineHeight: 1.5 }}>
+              ⛔ <strong>محکمہ زراعت پنجاب انتباہ:</strong> کٹ نوزل (Floodjet) جڑی بوٹی مار ادویات کے لیے <strong>سختی سے ممنوع</strong> ہے! اس سے موٹے قطرے گرتے ہیں، دوا ناہموار لگتی ہے جس سے گندم جل جاتی ہے اور قریبی سرسوں/سبزی کا نقصان ہوتا ہے۔ فوراً <strong>T-Jet یا فلیٹ فین نوزل</strong> استعمال کریں۔
             </div>
           )}
         </div>
@@ -331,7 +464,11 @@ export default function SprayDoseCalc() {
               {safeSpray !== null && (
                 <div style={{ flex: 1, textAlign: 'right' }}>
                   <div style={{ fontSize: '0.75rem', color: safeSpray ? '#15803d' : '#dc2626', fontWeight: 700 }}>
-                    {safeSpray ? `بہترین وقت: ${PESTS[pest]?.bestTime || 'صبح 7-10 بجے یا شام'}` : 'ہوا تیز یا بارش متوقع ہے — کل صبح تک انتظار کریں'}
+                    {safeSpray
+                      ? `بہترین وقت: ${activeCatalog[selectedItem]?.bestTime || 'صبح 8 تا 11 بجے'}`
+                      : (isWindyForWeed
+                          ? 'ہوا 10 km/h سے تیز ہے — جڑی بوٹی کش دوا اڑ کر قریبی فصلیں جلا دے گی!'
+                          : 'ہوا تیز یا بارش متوقع ہے — کل صبح تک انتظار کریں')}
                   </div>
                 </div>
               )}
@@ -341,8 +478,8 @@ export default function SprayDoseCalc() {
 
         {/* Calculate Button */}
         <button className="btn btn-primary btn-full" id="spray-calc-btn"
-          onClick={calculate} disabled={!pest}
-          style={{ width: '100%', marginTop: 12, fontSize: '0.95rem', padding: '0.8rem', background: 'linear-gradient(135deg, #0c4a6e, #0369a1)', color: 'white', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', ...nas }}
+          onClick={calculate} disabled={!selectedItem}
+          style={{ width: '100%', marginTop: 12, fontSize: '0.95rem', padding: '0.8rem', background: activeTab === 'pests' ? 'linear-gradient(135deg, #0c4a6e, #0369a1)' : 'linear-gradient(135deg, #14532d, #16a34a)', color: 'white', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', ...nas }}
         >
           💧 مصدقہ سپرے نسخہ حساب لگائیں
         </button>
@@ -351,52 +488,47 @@ export default function SprayDoseCalc() {
         {result && (
           <div className="animate-fade-in-up" style={{ marginTop: 14 }}>
             {/* Summary */}
-            <div style={{ background: '#f0f9ff', border: '1.5px solid #7dd3fc', borderRadius: 12, padding: '0.85rem', marginBottom: 10, textAlign: 'center' }}>
-              <div style={{ fontSize: '0.92rem', color: '#0369a1', fontWeight: 800 }}>
-                {result.pestData.icon} {result.pest} — رقبہ: {result.a} ایکڑ
+            <div style={{ background: activeTab === 'pests' ? '#f0f9ff' : '#f0fdf4', border: `1.5px solid ${activeTab === 'pests' ? '#7dd3fc' : '#86efac'}`, borderRadius: 12, padding: '0.85rem', marginBottom: 10, textAlign: 'center' }}>
+              <div style={{ fontSize: '0.92rem', color: activeTab === 'pests' ? '#0369a1' : '#14532d', fontWeight: 800 }}>
+                {result.itemData.icon} {result.name} — رقبہ: {result.a} ایکڑ
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: 4 }}>
-                ٹینک کا سائز: {result.tank} لیٹر | کل درکار ٹینکس: <strong>{result.totalTanks} ٹینک</strong>
+              <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: 4 }}>
+                ٹینکی سائز: {result.tank} لیٹر | کل درکار ٹینکس: <strong>{result.totalTanks} ٹینک</strong> | نوزل: <strong>{nozzleType === 'tjet' ? 'T-Jet (فلیٹ فین)' : 'کٹ نوزل (وارننگ)'}</strong>
               </div>
             </div>
 
-            {/* Pest Warning ETL Card */}
-            {result.pestData.etl && (
-              <div style={{ background: '#fef3c7', border: '1.5px solid #f59e0b', borderRadius: 10, padding: '8px 12px', marginBottom: 10, direction: 'rtl' }}>
-                <div style={{ fontWeight: 800, fontSize: '.72rem', color: '#92400e' }}>
-                  ⚠️ نقصان کی معاشی حد (Pest Warning ETL):
-                </div>
-                <div style={{ fontSize: '.78rem', color: '#78350f', marginTop: 3, fontWeight: 700, lineHeight: 1.5 }}>
-                  {result.pestData.etl}
-                </div>
-                <div style={{ fontSize: '.68rem', color: '#b45309', marginTop: 3 }}>
-                  💡 نوٹ: کیمیائی سپرے صرف تب کریں جب کیڑوں کی تعداد اس حد سے تجاوز کرے۔ ورنہ دوست کیڑوں کا نقصان ہوتا ہے۔
-                </div>
+            {/* ETL / Application Window Box */}
+            <div style={{ background: '#fef3c7', border: '1.5px solid #f59e0b', borderRadius: 10, padding: '8px 12px', marginBottom: 10, direction: 'rtl' }}>
+              <div style={{ fontWeight: 800, fontSize: '.72rem', color: '#92400e' }}>
+                {activeTab === 'pests' ? '⚠️ نقصان کی معاشی حد (Pest Warning ETL):' : '⏱️ سپرے کا درست ترین مرحلہ (AARI Spray Window):'}
               </div>
-            )}
+              <div style={{ fontSize: '.78rem', color: '#78350f', marginTop: 3, fontWeight: 700, lineHeight: 1.5 }}>
+                {result.itemData.etl}
+              </div>
+            </div>
 
-            {/* Soil Profile Context */}
+            {/* Soil Context Note */}
             {soilData && (() => {
               const ph = parseFloat(soilData.pH || soilData.ph || 7.5);
               const ec = parseFloat(soilData.ec || 1.5);
               const tips = [];
-              if (ph > 8.0) tips.push('آپ کی زمین کا pH ' + ph + ' ہے (الکالائن) — سپرے کے پانی میں تھوڑا سرکہ یا بائیو پاور ملائیں تاکہ دوائی کا اثر 100% ہو۔');
-              if (ec > 4.0) tips.push('EC ' + ec + ' dS/m — نمکین مٹی پر پودے کمزور ہوتے ہیں، پانی کی مقدار 100 کے بجائے 120 لیٹر فی ایکڑ رکھیں۔');
+              if (ph > 8.0) tips.push('زمین کا pH ' + ph + ' ہے (الکالائن) — پانی میں سرکہ یا بائیو پاور ملائیں تاکہ دوائی کا اثر مکمل ہو۔');
+              if (ec > 4.0) tips.push('EC ' + ec + ' dS/m — نمکین مٹی پر پودے کمزور ہوتے ہیں، پانی 100 کے بجائے 120 لیٹر فی ایکڑ رکھیں۔');
               if (!tips.length) return null;
               return (
                 <div style={{ background: '#ecfdf5', border: '1.5px solid #6ee7b7', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
-                  <div style={{ fontWeight: 800, fontSize: '.72rem', color: '#065f46', marginBottom: 2 }}>🌱 آپ کی مٹی پروفائل — سپرے رہنمائی:</div>
+                  <div style={{ fontWeight: 800, fontSize: '.72rem', color: '#065f46', marginBottom: 2 }}>🌱 مٹی رپورٹ رہنمائی:</div>
                   {tips.map((t, idx) => <div key={idx} style={{ fontSize: '.72rem', color: '#047857', lineHeight: 1.5 }}>• {t}</div>)}
                 </div>
               );
             })()}
 
-            {/* Products List */}
+            {/* Product Cards */}
             {result.products.map((p, i) => {
               const phiColor = p.phi <= 5 ? '#15803d' : p.phi <= 14 ? '#d97706' : '#dc2626';
               const phiBg = p.phi <= 5 ? '#f0fdf4' : p.phi <= 14 ? '#fffbeb' : '#fef2f2';
               return (
-                <div key={i} style={{ background: 'white', border: '1.5px solid #e0f2fe', borderRadius: 12, padding: '0.85rem', marginBottom: 10, borderRight: `4px solid ${i === 0 ? '#0369a1' : '#64748b'}` }}>
+                <div key={i} style={{ background: 'white', border: '1.5px solid #e0f2fe', borderRadius: 12, padding: '0.85rem', marginBottom: 10, borderRight: `4px solid ${i === 0 ? (activeTab === 'pests' ? '#0369a1' : '#15803d') : '#64748b'}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6 }}>
                     <div>
                       <div style={{ fontWeight: 800, color: '#0c4a6e', fontSize: '0.9rem' }}>
@@ -410,7 +542,7 @@ export default function SprayDoseCalc() {
                     <div style={{ background: phiBg, border: `1.5px solid ${phiColor}`, borderRadius: 16, padding: '3px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span style={{ fontSize: '.68rem' }}>⏳</span>
                       <span style={{ fontSize: '.7rem', fontWeight: 800, color: phiColor, fontFamily: 'Inter, sans-serif' }}>
-                        PHI: {p.phi} دن (کٹائی سے قبل ممنوع)
+                        PHI: {p.phi} دن
                       </span>
                     </div>
                   </div>
@@ -426,7 +558,7 @@ export default function SprayDoseCalc() {
                     </div>
 
                     <div style={{ background: '#f8fafc', borderRadius: 8, padding: '0.6rem', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: '0.68rem', color: '#6b7280' }}>کل مقدار ({result.a} ایکڑ)</div>
+                      <div style={{ fontSize: '0.68rem', color: '#6b7280' }}>کل درکار مقدار ({result.a} ایکڑ)</div>
                       <div style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', fontFamily: 'Inter' }} dir="ltr">
                         {p.totalQuantity}
                       </div>
@@ -435,37 +567,35 @@ export default function SprayDoseCalc() {
                   </div>
 
                   <div style={{ fontSize: '0.72rem', color: '#475569', marginTop: 8, lineHeight: 1.5 }}>
-                    📝 <strong>طریقہ استعمال:</strong> {p.note}
+                    📝 <strong>طریقہ و احتیاط:</strong> {p.note}
                   </div>
                 </div>
               );
             })}
 
-            {/* Institutional Badge & Disclaimer */}
+            {/* Institutional Badge */}
             <div style={{ marginTop: 8 }}>
               <InstitutionalBadge type="pest" helpline="0800-17000" />
-            </div>
-            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '0.65rem 0.8rem', fontSize: '0.72rem', color: '#92400e', marginTop: 8 }}>
-              {DISCLAIMER}
             </div>
 
             {/* WhatsApp Share Prescription */}
             <button onClick={() => {
               const lines = [
-                '💧 *DehatiAI مصدقہ سپرے نسخہ*',
-                `کیڑا/بیماری: ${result.pest} (${result.pestData.crop})`,
+                activeTab === 'pests' ? '💧 *DehatiAI مصدقہ کیڑے مار نسخہ*' : '🌿 *DehatiAI مصدقہ جڑی بوٹی کش نسخہ (AARI)*',
+                `ہدف: ${result.name} (${result.itemData.crop})`,
                 `رقبہ: ${result.a} ایکڑ | ٹینک سائز: ${result.tank} لیٹر | کل ٹینکس: ${result.totalTanks}`,
-                `⚠️ معاشی حد (ETL): ${result.pestData.etl}`,
+                `نوزل: ${nozzleType === 'tjet' ? 'T-Jet / Flat-Fan' : 'Floodjet'}`,
+                `مرحلہ/معاشی حد: ${result.itemData.etl}`,
                 '━━━━━━━━━━━━━━━━━',
                 ...result.products.map((p, i) =>
                   `${i === 0 ? '✅ اولین تجویز' : '🔄 متبادل'}: ${p.name}` +
                   `\nبرانڈ: ${p.brand}` +
-                  `\nفی ٹینک خوراک: ${p.dosePerTank} ${p.unit} | کل درکار: ${p.totalQuantity} ${p.unit}` +
+                  `\nفی ${result.tank}L ٹینک: ${p.dosePerTank} ${p.unit} | کل ایکڑ: ${p.totalQuantity} ${p.unit}` +
                   `\n⏳ PHI: ${p.phi} دن | ${p.note}`
                 ),
                 '━━━━━━━━━━━━━━━━━',
-                `بہترین وقت: ${result.pestData.bestTime}`,
-                '📚 ماخذ: محکمہ آفات نباتات پنجاب + CCRI ملتان',
+                `بہترین وقت: ${result.itemData.bestTime}`,
+                '📚 ماخذ: محکمہ آفات نباتات پنجاب + AARI فیصل آباد',
                 '📞 تصدیق کیلئے: 0800-17000 | 🌐 dehati-ai.vercel.app',
               ];
               window.open('https://wa.me/?text=' + encodeURIComponent(lines.join('\n')), '_blank');
