@@ -42,115 +42,139 @@ const DISTRICTS = {
   'راولپنڈی':   { lat: 33.5651, lon: 73.0169 },
 };
 
-// ─── Pest/Disease pesticide database ────────────────────────────────────────
+// ─── Official Pest Warning Directorate Punjab & CCRI Multan Directory 2024-2026 ─
 const PESTS = {
   'گلابی سنڈی (Pink Bollworm)': {
-    icon: '🐛', crop: 'کپاس',
+    icon: '🐛', crop: 'کپاس (Cotton)',
+    etl: '≥5 سنڈیاں فی 100 ٹنڈے (5% نقصان) یا 5 پروانے فی ٹریپ مسلسل 3 راتیں',
+    waterPerAcre: 100, bestTime: 'شام 5 تا 7 بجے',
     products: [
-      { name: 'Emamectin Benzoate 1.9% EC', dose: 250, tankMl: true, note: 'شام کو چھڑکاؤ — 80 لیٹر / ایکڑ' },
-      { name: 'Spinosad 48% SC', dose: 100, tankMl: true, note: 'مقدار: 100 مل / ایکڑ' },
-    ],
-    waterPerAcre: 80, bestTime: 'شام 5-7 بجے'
+      { name: 'Spinetoram 11.7% SC', brand: 'Radiant (Corteva) / FMC United', dose: 100, unit: 'ملی لیٹر', phi: 7, note: 'جدید سسٹمک سنڈی کش — فوری اثر' },
+      { name: 'Chlorantraniliprole + Lambda Mix', brand: 'Coragen + Karate Mix (FMC + Syngenta)', dose: 160, unit: 'ملی لیٹر', phi: 7, note: 'انڈے اور چھوٹی سنڈی دونوں کا خاتمہ' },
+      { name: 'Gamma-cyhalothrin 10% EC', brand: 'Dominex (ICI Pakistan / 4B)', dose: 100, unit: 'ملی لیٹر', phi: 7, note: 'تیز تر رابطہ زہر' },
+    ]
   },
   'سفید مکھی (Whitefly)': {
-    icon: '🪰', crop: 'کپاس',
+    icon: '🪰', crop: 'کپاس (Cotton)',
+    etl: '≥5 بالغ یا بچے فی پتہ (Pest Warning Threshold)',
+    waterPerAcre: 100, bestTime: 'صبح 6-9 بجے یا شام 5-7 بجے',
     products: [
-      { name: 'Imidacloprid 200 SL', dose: 200, tankMl: true, note: '200 مل / ایکڑ' },
-      { name: 'Acetamiprid 20 SP', dose: 150, tankMl: true, note: 'متبادل — 150 گرام / ایکڑ' },
-    ],
-    waterPerAcre: 80, bestTime: 'صبح 6-9 بجے یا شام 5-7 بجے'
+      { name: 'Spirotetramat 125ml + Biopower 250ml', brand: 'Movento + Biopower (Bayer Pakistan)', dose: 125, unit: 'ملی لیٹر', phi: 7, note: 'سفید مکھی کے بچوں اور انڈوں پر دو طرفہ سسٹمک اثر' },
+      { name: 'Cyantraniliprole + Diafenthiuron', brand: 'Cyazypyr Mix + Diafenthiuron (FMC + Bayer)', dose: 300, unit: 'ملی لیٹر', phi: 7, note: 'شدید حملے کی صورت میں فوری نوک ڈاؤن' },
+      { name: 'Flonicamid 50% WG', brand: 'Teppeki (ISK / Kanzo / 4B)', dose: 80, unit: 'گرام', phi: 4, note: 'رس چوسنا فوری بند — محفوظ کیمیائی گروپ' },
+      { name: 'Pyriproxyfen 10% EC', brand: 'Admiral (Syngenta Pakistan) / Ali Akbar', dose: 450, unit: 'ملی لیٹر', phi: 7, note: 'آئی جی آر — اگلی نسل کی پیداوار روکتا ہے' },
+      { name: 'Pyrifluquinazon 20% WG', brand: 'Afinto (Bayer Pakistan)', dose: 200, unit: 'گرام', phi: 4, note: 'نئی کیمسٹری — رس چوسنے والے کیڑوں کا خاتمہ' },
+    ]
   },
-  'تیلا (Aphid)': {
-    icon: '🦟', crop: 'گندم / کپاس',
+  'سست تیلا / امرا (Jassid)': {
+    icon: '🦗', crop: 'کپاس (Cotton)',
+    etl: 'نئے پتوں پر پیلاہٹ اور ہاٹ اسپاٹ میں تیزی سے اضافہ',
+    waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
     products: [
-      { name: 'Chlorpyrifos 40% EC', dose: 500, tankMl: true, note: '500 مل / ایکڑ' },
-      { name: 'Dimethoate 40% EC', dose: 500, tankMl: true, note: 'متبادل — 500 مل / ایکڑ' },
-    ],
-    waterPerAcre: 100, bestTime: 'صبح 7-10 بجے'
+      { name: 'Flonicamid 50% WG', brand: 'Teppeki (ISK Biosciences / 4B)', dose: 60, unit: 'گرام', phi: 4, note: '60 گرام فی ایکڑ — سست تیلے کا حتمی کنٹرول' },
+      { name: 'Dinotefuran 20% SG', brand: 'Starkle (ISK / Ali Akbar Group)', dose: 100, unit: 'گرام', phi: 7, note: 'سسٹمک اثر — دیرپا تحفظ' },
+      { name: 'Isocycloseram 10% SC', brand: 'Sefina (BASF Pakistan)', dose: 80, unit: 'ملی لیٹر', phi: 7, note: 'جدید مالیکیول — ماحول دوست' },
+    ]
   },
-  'زنگ / Rust': {
-    icon: '🍂', crop: 'گندم',
+  'تھرپس (Thrips)': {
+    icon: '🌿', crop: 'کپاس / مرچ (Cotton / Chilli)',
+    etl: '>10 تھرپس فی پتہ اور پتوں پر چاندی جیسے چمکدار دھبے',
+    waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
     products: [
-      { name: 'Propiconazole 25% EC', dose: 500, tankMl: true, note: 'پہلی علامت پر — 500 مل / ایکڑ' },
-      { name: 'Tebuconazole 25% WG', dose: 200, tankMl: true, note: 'متبادل — 200 گرام / ایکڑ' },
-    ],
-    waterPerAcre: 100, bestTime: 'صبح 8-11 بجے'
+      { name: 'Imidacloprid 20% SL', brand: 'Confidor (Bayer) / Ali Akbar Group', dose: 175, unit: 'ملی لیٹر', phi: 14, note: 'پتوں کے اندر داخل ہو کر تحفظ دیتا ہے' },
+      { name: 'Thiamethoxam 25% WG', brand: 'Actara (Syngenta Pakistan) / 4B', dose: 90, unit: 'گرام', phi: 8, note: 'متبادل گروپ — 80-100 گرام فی ایکڑ' },
+    ]
   },
-  'بلاسٹ / Rice Blast': {
-    icon: '🍚', crop: 'چاول',
+  'ڈسکی کاٹن بگ (Dusky Bug)': {
+    icon: '🐞', crop: 'کپاس (Cotton)',
+    etl: 'کھلے ہوئے ٹنڈوں پر کیڑوں کے جھنڈ اور کالی چپچپاہٹ',
+    waterPerAcre: 100, bestTime: 'شام 5 تا 7 بجے',
     products: [
-      { name: 'Tricyclazole 75% WP', dose: 200, tankMl: true, note: '200 گرام / ایکڑ' },
-      { name: 'Isoprothiolane 40% EC', dose: 500, tankMl: true, note: 'متبادل — 500 مل / ایکڑ' },
-    ],
-    waterPerAcre: 100, bestTime: 'صبح 6-9 بجے'
+      { name: 'Clothianidin 20% SL', brand: 'Dantotsu (Sumitomo / Ali Akbar)', dose: 200, unit: 'ملی لیٹر', phi: 14, note: '200 مل فی ایکڑ — روئی کو داغدار ہونے سے بچائیں' },
+    ]
   },
-  'لال سنڈی (Stem Borer)': {
-    icon: '🐌', crop: 'چاول / مکئی',
+  'پیلی زنگ (Yellow/Stripe Rust)': {
+    icon: '🍂', crop: 'گندم (Wheat)',
+    etl: 'جھنڈے کے پتے (Flag leaf) پر پیلی پٹیاں یا 5% رقبہ متاثر',
+    waterPerAcre: 100, bestTime: 'صبح 8 تا 11 بجے (شبنم سوکھنے کے بعد)',
     products: [
-      { name: 'Cartap Hydrochloride 4% GR', dose: 8000, tankMl: false, note: '8 کلو گرانیول / ایکڑ' },
-      { name: 'Chlorantraniliprole 18.5% SC', dose: 200, tankMl: true, note: 'فاموریش — 200 مل / ایکڑ' },
-    ],
-    waterPerAcre: 100, bestTime: 'صبح 7-10 بجے'
+      { name: 'Tebuconazole 25% EC', brand: 'Folicur (Bayer) / Kanzo / Ali Akbar', dose: 450, unit: 'ملی لیٹر', phi: 25, note: 'پہلی علامت پر فوری سپرے — زنگ کا پھیلاؤ رک جائے گا' },
+      { name: 'Propiconazole 25% EC', brand: 'Tilt (Syngenta) / Radar (Ali Akbar)', dose: 450, unit: 'ملی لیٹر', phi: 25, note: 'پھپھوندی کے سپورز کو تلف کرتا ہے' },
+      { name: 'Azoxystrobin + Tebuconazole SC', brand: 'Amistar Top (Syngenta Pakistan)', dose: 275, unit: 'ملی لیٹر', phi: 21, note: 'حفاظتی اور علاجی دونوں خصوصیات' },
+    ]
   },
-  'فال آرمی ورم': {
-    icon: '🪱', crop: 'مکئی',
+  'گندم کا سست تیلا (Wheat Aphid)': {
+    icon: '🦟', crop: 'گندم (Wheat)',
+    etl: '≥5 تیلے فی سٹہ / بالی (دانے بننے کے مرحلے پر)',
+    waterPerAcre: 100, bestTime: 'صبح 8 تا 11 بجے',
     products: [
-      { name: 'Spinetoram 12% SC', dose: 300, tankMl: true, note: 'Radiant — 300 مل / ایکڑ، بنڈ میں ڈالیں' },
-      { name: 'Emamectin Benzoate 1.9%', dose: 250, tankMl: true, note: '250 مل / ایکڑ' },
-    ],
-    waterPerAcre: 80, bestTime: 'شام 5-7 بجے'
+      { name: 'Thiamethoxam 25% WG', brand: 'Actara (Syngenta Pakistan) / 4B', dose: 20, unit: 'گرام', phi: 8, note: 'صرف 20 گرام فی ایکڑ — سستے داموں فوری خاتمہ' },
+      { name: 'Pymetrozine 50% WG', brand: 'Chess (Syngenta Pakistan)', dose: 70, unit: 'گرام', phi: 4, note: 'دوست کیڑوں (لیڈی برڈ وغیرہ) کے لیے بالکل محفوظ' },
+      { name: 'Dinotefuran 20% SG', brand: 'Starkle (ISK / Ali Akbar Group)', dose: 90, unit: 'گرام', phi: 7, note: 'دانے بھرنے کے وقت محفوظ اور موثر' },
+    ]
   },
-  'جھلساؤ (Early/Late Blight)': {
-    icon: '🍅', crop: 'آلو / ٹماٹر',
+  'چاول کا جھلساؤ (Rice Blast)': {
+    icon: '🍚', crop: 'چاول باسمتی (Rice)',
+    etl: 'پتوں پر آنکھ نما داغ یا گوب کی حالت پر گردن کا جھلساؤ خطرہ',
+    waterPerAcre: 100, bestTime: 'صبح 6 تا 9 بجے',
     products: [
-      { name: 'Mancozeb 80% WP', dose: 1000, tankMl: false, note: '1 کلو / ایکڑ — ہفتہ وار' },
-      { name: 'Metalaxyl + Mancozeb', dose: 750, tankMl: false, note: 'Ridomil — 750 گرام / ایکڑ' },
-    ],
-    waterPerAcre: 100, bestTime: 'صبح 7-10 بجے'
+      { name: 'Tricyclazole 75% WP', brand: 'Beam (Syngenta) / Ali Akbar Group', dose: 225, unit: 'گرام', phi: 21, note: 'گوب کے وقت احتیاطی سپرے سے گردن توڑ کا خطرہ ختم' },
+      { name: 'Azoxystrobin 25% SC', brand: 'Amistar (Syngenta Pakistan) / 4B', dose: 225, unit: 'ملی لیٹر', phi: 14, note: 'جھلساؤ اور بھورے داغ دونوں میں یکساں مفید' },
+    ]
   },
-  'دیمک (Termite)': {
-    icon: '🐜', crop: 'تمام فصلیں',
+  'پتہ لپیٹ سنڈی (Leaf Folder)': {
+    icon: '🍃', crop: 'چاول (Rice)',
+    etl: '>10% لپٹے ہوئے پتے یا 5-10 سنڈیاں فی مربع میٹر',
+    waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
     products: [
-      { name: 'Chlorpyrifos 40% EC', dose: 1500, tankMl: true, note: 'جڑوں کے پاس ڈالیں — 1.5 لیٹر / ایکڑ' },
-      { name: 'Imidacloprid Seed Treatment', dose: 5, tankMl: false, note: 'بوائی سے پہلے بیج علاج' },
-    ],
-    waterPerAcre: 100, bestTime: 'کسی بھی وقت'
+      { name: 'Chlorantraniliprole 18.5% SC', brand: 'Coragen (FMC United) / Kanzo', dose: 175, unit: 'ملی لیٹر', phi: 7, note: 'پتے کے اندر موجود سنڈی کو مارتا ہے' },
+      { name: 'Emamectin Benzoate 1.9% EC', brand: 'Proclaim (Syngenta Pakistan) / FMC', dose: 225, unit: 'ملی لیٹر', phi: 14, note: 'چاول پر لیبل شدہ پی ایچ آئی 14 دن ہے' },
+    ]
+  },
+  'تنے کی سنڈی (Stem Borer)': {
+    icon: '🐌', crop: 'چاول / مکئی (Rice / Maize)',
+    etl: '>5% مردہ دل (Dead Hearts) شگوفوں کے وقت',
+    waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
+    products: [
+      { name: 'Cartap Hydrochloride 50% SP', brand: 'Padan / Thiodan Generics', dose: 450, unit: 'گرام', phi: 14, note: '450 گرام فی ایکڑ پانی میں ملا کر سپرے' },
+      { name: 'Chlorantraniliprole 18.5% SC', brand: 'Coragen (FMC United)', dose: 175, unit: 'ملی لیٹر', phi: 7, note: 'شگوفے نکلتے وقت پہلی خوراک' },
+    ]
+  },
+  'آلو/ٹماٹر پچھیتا جھلساؤ (Late Blight)': {
+    icon: '🥔', crop: 'آلو / ٹماٹر (Potato / Tomato)',
+    etl: 'نم آلود سرد موسم میں پتوں پر پانی بھرے کالے داغ اور سفید پھپھوندی',
+    waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
+    products: [
+      { name: 'Metalaxyl-M + Mancozeb 68% WP', brand: 'Ridomil Gold (Syngenta Pakistan)', dose: 450, unit: 'گرام', phi: 7, note: 'پہلی علامت نظر آتے ہی فوری سپرے — 7 دن کا وقفہ' },
+      { name: 'Cymoxanil + Famoxadone SC', brand: 'Curzate M8 (مقامی رجسٹرڈ)', dose: 275, unit: 'ملی لیٹر', phi: 4, note: 'بارش کے بعد سسٹمک علاج — تیز عمل' },
+      { name: 'Fluopicolide + Propamocarb SC', brand: 'Previcur Energy (Bayer Pakistan)', dose: 225, unit: 'ملی لیٹر', phi: 3, note: 'ٹماٹر کے لیے محفوظ ترین — صرف 3 دن PHI' },
+    ]
+  },
+  'آلو/ٹماٹر اگیتا جھلساؤ (Early Blight)': {
+    icon: '🍅', crop: 'آلو / ٹماٹر (Potato / Tomato)',
+    etl: 'پرانے پتوں پر دائرہ نما بھورے نشانات (Target spots)',
+    waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
+    products: [
+      { name: 'Mancozeb 75% WP', brand: 'Dithane M-45 (Corteva) / Indofil M-45', dose: 900, unit: 'گرام', phi: 8, note: 'حفاظتی سپرے — پودے کی سطح پر حفاظتی تہہ بناتا ہے' },
+    ]
   },
 };
 
 const TANK_SIZES = [15, 16, 20, 25, 100, 400];
-const ACTIVE_INGREDIENTS = {
-  'Emamectin Benzoate 1.9% EC': 'Emamectin Benzoate 1.9% — ایمامیکٹن بینزویٹ',
-  'Spinosad 48% SC': 'Spinosad 48% SC — سپیناسیڈ',
-  'Imidacloprid 200 SL': 'Imidacloprid 20% SL — امیڈاکلوپریڈ',
-  'Acetamiprid 20 SP': 'Acetamiprid 20% SP — ایسیٹامی پرڈ',
-  'Chlorpyrifos 40% EC': 'Chlorpyrifos 40% EC — کلورپائری فاس',
-  'Dimethoate 40% EC': 'Dimethoate 40% EC — ڈائی میتھویٹ',
-  'Propiconazole 25% EC': 'Propiconazole 25% EC — پروپی کونازول (Tilt / Bumper / Radar)',
-  'Tebuconazole 25% WG': 'Tebuconazole 25% WG — ٹیبوکونازول (Folicur / Orius)',
-  'Tricyclazole 75% WP': 'Tricyclazole 75% WP — ٹرائی سائکلازول',
-  'Isoprothiolane 40% EC': 'Isoprothiolane 40% EC — آئسوپروتھیولین',
-  'Cartap Hydrochloride 4% GR': 'Cartap Hydrochloride 4% GR — کارٹاپ ہائیڈروکلورائیڈ (Padan)',
-  'Chlorantraniliprole 18.5% SC': 'Chlorantraniliprole 18.5% SC — کلورینٹرینی لیپرول (Coragen)',
-  'Spinetoram 12% SC': 'Spinetoram 12% SC — سپائنٹورم (Radiant)',
-  'Emamectin Benzoate 1.9%': 'Emamectin Benzoate 1.9% EC — ایمامیکٹن',
-  'Mancozeb 80% WP': 'Mancozeb 80% WP — مینکوزیب (Indofil M-45 / Dithane)',
-  'Metalaxyl + Mancozeb': 'Metalaxyl 8% + Mancozeb 64% WP — (Ridomil Gold)',
-};
-
-const DISCLAIMER = '⚠️ تمام ادویات کی مقداریں محکمہ آفات نباتات و مالیاتی معیار کیڑے مار ادویات پنجاب (Pest Warning & Quality Control of Pesticides) کی مصدقہ رجسٹریشن فہرست 2024 کے مطابق ہیں۔ تصدیق: محکمہ زراعت پنجاب — 0800-17000';
+const DISCLAIMER = '⚠️ تمام ادویات کی مقداریں محکمہ آفات نباتات و مالیاتی معیار کیڑے مار ادویات پنجاب (Pest Warning & Quality Control) اور CCRI ملتان 2024-2026 ایڈوائزری کے مطابق ہیں۔ سپرے کے بعد درج شدہ PHI (ممنوعہ دن) کا احترام لازمی کریں۔ تصدیق: 0800-17000';
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
 export default function SprayDoseCalc() {
   const [pest, setPest] = useState('');
-  const [tankSize, setTankSize] = useState(15);
+  const [tankSize, setTankSize] = useState(20);
   const [district, setDistrict] = useState('');
-  const [acres, setAcres] = useState('');
+  const [acres, setAcres] = useState('1');
   const [weather, setWeather] = useState(null);
   const [wxLoading, setWxLoading] = useState(false);
   const [result, setResult] = useState(null);
   const { isOffline } = useOffline();
-  // Soil profile — affects spray efficacy (pH, EC, OM)
+
+  // Soil profile — affects spray efficacy (pH, EC)
   const [soilData] = useState(() => { try { return getSavedSoilProfile(); } catch { return null; } });
 
   const fetchWeather = useCallback(async (dist) => {
@@ -161,7 +185,6 @@ export default function SprayDoseCalc() {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&hourly=windspeed_10m,precipitation_probability&timezone=Asia%2FKarachi&forecast_days=1`;
       const res = await fetch(url);
       const data = await res.json();
-      // Get current hour index
       const now = new Date();
       const h = now.getHours();
       const wind = data.hourly?.windspeed_10m?.[h] ?? null;
@@ -169,11 +192,9 @@ export default function SprayDoseCalc() {
       setWeather({ wind, rain, cached: false });
       localStorage.setItem('dehati_spray_weather', JSON.stringify({ wind, rain, district: dist, ts: Date.now() }));
     } catch {
-      // try cache
       const cached = localStorage.getItem('dehati_spray_weather');
       if (cached) {
-        const c = JSON.parse(cached);
-        setWeather({ ...c, cached: true });
+        setWeather({ ...JSON.parse(cached), cached: true });
       }
     } finally {
       setWxLoading(false);
@@ -185,13 +206,24 @@ export default function SprayDoseCalc() {
     if (!pestData) return;
     const a = parseFloat(acres) || 1;
     const tank = parseFloat(tankSize);
+
+    // Standard water volume per acre is 100L in Punjab
+    const waterVol = pestData.waterPerAcre || 100;
     const products = pestData.products.map(p => {
-      const dosePerTank = p.tankMl
-        ? ((p.dose / pestData.waterPerAcre) * tank).toFixed(1)
-        : 'گرانیول — براہ راست ڈالیں';
-      return { ...p, dosePerTank };
+      // Dose per tank: (dose_per_acre / waterVol) * tankSize
+      const dosePerTank = ((p.dose / waterVol) * tank).toFixed(1);
+      const totalQuantity = (p.dose * a).toFixed(0);
+      return { ...p, dosePerTank, totalQuantity };
     });
-    setResult({ pestData, products, a, tank, totalTanks: Math.ceil((a * pestData.waterPerAcre) / tank) });
+
+    setResult({
+      pest,
+      pestData,
+      products,
+      a,
+      tank,
+      totalTanks: Math.ceil((a * waterVol) / tank)
+    });
   };
 
   const safeSpray = weather && weather.wind !== null
@@ -201,58 +233,69 @@ export default function SprayDoseCalc() {
   return (
     <div dir="rtl" style={{ ...nas }}>
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #0c4a6e, #075985)', borderRadius: 12, padding: '0.85rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-        <div style={{ fontSize: '1.6rem' }}>🌤️</div>
+      <div style={{ background: 'linear-gradient(135deg, #0c4a6e, #075985)', borderRadius: 14, padding: '0.85rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'white' }}>
+        <div style={{ fontSize: '1.6rem' }}>💧</div>
         <div>
-          <div style={{ color: 'white', fontWeight: 800, fontSize: '0.95rem' }}>اسمارٹ سپرے کیلکولیٹر</div>
-          <div style={{ color: '#bae6fd', fontSize: '0.72rem', marginTop: 2 }}>موسم چیک + محفوظ ونڈو + درست مقدار</div>
+          <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>اسمارٹ سپرے و کیڑے مار کیلکولیٹر</div>
+          <div style={{ color: '#bae6fd', fontSize: '0.72rem', marginTop: 2 }}>محکمہ پیسٹ وارننگ پنجاب + CCRI ملتان مصدقہ ڈائریکٹری</div>
         </div>
       </div>
 
       <div className="form-group">
         {/* Pest Selection */}
         <div>
-          <label className="input-label">کیڑا / بیماری منتخب کریں</label>
+          <label className="input-label" style={{ fontWeight: 700, marginBottom: 6, display: 'block' }}>کیڑا یا بیماری منتخب کریں:</label>
           <select className="input" value={pest} id="spray-pest"
             onChange={e => { setPest(e.target.value); setResult(null); }}
-            style={{ ...nas }}
+            style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: 8, border: '1.5px solid #d1d5db', background: 'white', fontWeight: 700, fontSize: '0.85rem', ...nas }}
           >
-            <option value="">کیڑا یا بیماری منتخب کریں</option>
+            <option value="">-- فہرست سے منتخب کریں --</option>
             {Object.entries(PESTS).map(([name, d]) => (
-              <option key={name} value={name}>{d.icon} {name}</option>
+              <option key={name} value={name}>{d.icon} {name} ({d.crop})</option>
             ))}
           </select>
           {pest && PESTS[pest] && (
-            <div style={{ fontSize: '0.72rem', color: '#0369a1', marginTop: 4, ...nas }}>
-              فصل: {PESTS[pest].crop}
+            <div style={{ fontSize: '0.72rem', color: '#0369a1', marginTop: 4, fontWeight: 700 }}>
+              فصل: {PESTS[pest].crop} | پانی: {PESTS[pest].waterPerAcre} لیٹر / ایکڑ
             </div>
           )}
         </div>
 
         {/* Tank Size */}
-        <div>
-          <label className="input-label">ٹینک کا سائز</label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
+        <div style={{ marginTop: 10 }}>
+          <label className="input-label" style={{ fontWeight: 700, marginBottom: 6, display: 'block' }}>سپرے ٹینکی کا سائز:</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
             {TANK_SIZES.map(t => (
               <button key={t} id={`spray-tank-${t}`}
                 onClick={() => setTankSize(t)}
-                style={{ padding: '0.55rem', borderRadius: 8, border: `2px solid ${tankSize === t ? '#0369a1' : '#e5e7eb'}`, background: tankSize === t ? '#eff6ff' : 'white', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', color: '#1a2f0e', fontFamily: 'Inter, sans-serif' }}
-              >{t}L</button>
+                style={{
+                  padding: '0.55rem', borderRadius: 8,
+                  border: `2px solid ${tankSize === t ? '#0369a1' : '#e5e7eb'}`,
+                  background: tankSize === t ? '#e0f2fe' : 'white',
+                  fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer',
+                  color: tankSize === t ? '#0369a1' : '#1e293b', fontFamily: 'Inter, sans-serif'
+                }}
+              >
+                {t} لیٹر {t === 20 ? '⭐ (سولو/معیاری)' : ''}
+              </button>
             ))}
           </div>
         </div>
 
         {/* Acreage */}
-        <div>
-          <label className="input-label">رقبہ (ایکڑ)</label>
-          <input id="spray-acres" type="number" className="input input-number" placeholder="5" value={acres} min="0.5" step="0.5" dir="ltr" onChange={e => { setAcres(e.target.value); setResult(null); }} />
+        <div style={{ marginTop: 10 }}>
+          <label className="input-label" style={{ fontWeight: 700, marginBottom: 6, display: 'block' }}>رقبہ (ایکڑ میں):</label>
+          <input id="spray-acres" type="number" className="input" placeholder="1" value={acres} min="0.5" step="0.5" dir="ltr"
+            onChange={e => { setAcres(e.target.value); setResult(null); }}
+            style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 8, border: '1.5px solid #d1d5db', fontSize: '1rem', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}
+          />
         </div>
 
-        {/* District + Weather */}
-        <div>
-          <label className="input-label">ضلع (موسم چیک کے لیے)</label>
+        {/* District Weather Check */}
+        <div style={{ marginTop: 10 }}>
+          <label className="input-label" style={{ fontWeight: 700, marginBottom: 6, display: 'block' }}>ضلع (محفوظ سپرے ونڈو چیک):</label>
           <div style={{ display: 'flex', gap: 8 }}>
-            <select className="input" value={district} id="spray-district" style={{ flex: 1, ...nas }}
+            <select className="input" value={district} id="spray-district" style={{ flex: 1, padding: '0.6rem 0.8rem', borderRadius: 8, border: '1.5px solid #d1d5db', background: 'white', ...nas }}
               onChange={e => { setDistrict(e.target.value); setWeather(null); }}
             >
               <option value="">ضلع منتخب کریں</option>
@@ -261,98 +304,180 @@ export default function SprayDoseCalc() {
             <button id="spray-wx-btn"
               onClick={() => district && !isOffline && fetchWeather(district)}
               disabled={!district || isOffline || wxLoading}
-              style={{ padding: '0 0.9rem', borderRadius: 8, border: '2px solid #0369a1', background: '#eff6ff', fontWeight: 800, fontSize: '1.2rem', cursor: 'pointer', minWidth: 48 }}
-            >{wxLoading ? '⏳' : '🌤️'}</button>
+              style={{ padding: '0 1rem', borderRadius: 8, border: '2px solid #0369a1', background: '#eff6ff', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', minWidth: 50 }}
+            >
+              {wxLoading ? '⏳' : '🌤️ چیک کریں'}
+            </button>
           </div>
         </div>
 
-        {/* Weather Card */}
+        {/* Weather Window Card */}
         {weather && (
-          <div style={{ borderRadius: 10, padding: '0.75rem', border: '1.5px solid', borderColor: safeSpray ? '#86efac' : '#fca5a5', background: safeSpray ? '#f0fdf4' : '#fef2f2' }}>
-            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: safeSpray ? '#15803d' : '#dc2626', ...nas }}>
-              {safeSpray ? '✅ سپرے کا بہترین وقت' : '⛔ ابھی سپرے نہ کریں'}
+          <div style={{ marginTop: 10, borderRadius: 10, padding: '0.75rem 1rem', border: '1.5px solid', borderColor: safeSpray ? '#86efac' : '#fca5a5', background: safeSpray ? '#f0fdf4' : '#fef2f2' }}>
+            <div style={{ fontWeight: 800, fontSize: '0.92rem', color: safeSpray ? '#15803d' : '#dc2626' }}>
+              {safeSpray ? '✅ سپرے کے لیے موسم بالکل محفوظ ہے' : '⛔ ابھی سپرے نہ کریں — دوائی اڑنے یا دھلنے کا خطرہ'}
             </div>
-            <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
+            <div style={{ display: 'flex', gap: 16, marginTop: 6, alignItems: 'center' }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '1.2rem' }}>💨</div>
-                <div style={{ fontWeight: 800, fontFamily: 'Inter', fontSize: '1rem' }}>{weather.wind?.toFixed(0) ?? '?'} km/h</div>
-                <div style={{ fontSize: '0.68rem', color: '#6b7280', ...nas }}>ہوا</div>
+                <div style={{ fontSize: '1.1rem' }}>💨</div>
+                <div style={{ fontWeight: 800, fontFamily: 'Inter', fontSize: '0.95rem' }}>{weather.wind?.toFixed(0) ?? '?'} km/h</div>
+                <div style={{ fontSize: '0.65rem', color: '#6b7280' }}>ہوا کی رفتار</div>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '1.2rem' }}>🌧️</div>
-                <div style={{ fontWeight: 800, fontFamily: 'Inter', fontSize: '1rem' }}>{weather.rain?.toFixed(0) ?? '?'}%</div>
-                <div style={{ fontSize: '0.68rem', color: '#6b7280', ...nas }}>بارش امکان</div>
+                <div style={{ fontSize: '1.1rem' }}>🌧️</div>
+                <div style={{ fontWeight: 800, fontFamily: 'Inter', fontSize: '0.95rem' }}>{weather.rain?.toFixed(0) ?? '?'}%</div>
+                <div style={{ fontSize: '0.65rem', color: '#6b7280' }}>بارش امکان</div>
               </div>
               {safeSpray !== null && (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ fontSize: '0.78rem', color: safeSpray ? '#15803d' : '#dc2626', fontWeight: 700, ...nas }}>
-                    {safeSpray ? `آج شام ${PESTS[pest]?.bestTime || '5-7 بجے'}` : 'ہوا یا بارش زیادہ ہے — کل کوشش کریں'}
+                <div style={{ flex: 1, textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.75rem', color: safeSpray ? '#15803d' : '#dc2626', fontWeight: 700 }}>
+                    {safeSpray ? `بہترین وقت: ${PESTS[pest]?.bestTime || 'صبح 7-10 بجے یا شام'}` : 'ہوا تیز یا بارش متوقع ہے — کل صبح تک انتظار کریں'}
                   </div>
                 </div>
               )}
             </div>
-            {weather.cached && <div style={{ fontSize: '0.65rem', color: '#9ca3af', marginTop: 4, ...nas }}>⚡ آف لائن — آخری محفوظ موسم</div>}
           </div>
         )}
 
+        {/* Calculate Button */}
         <button className="btn btn-primary btn-full" id="spray-calc-btn"
           onClick={calculate} disabled={!pest}
-          style={{ background: 'linear-gradient(135deg, #0c4a6e, #0369a1)', fontSize: '1rem', padding: '0.85rem', ...nas }}
+          style={{ width: '100%', marginTop: 12, fontSize: '0.95rem', padding: '0.8rem', background: 'linear-gradient(135deg, #0c4a6e, #0369a1)', color: 'white', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', ...nas }}
         >
-          💧 سپرے مقدار حساب لگائیں
+          💧 مصدقہ سپرے نسخہ حساب لگائیں
         </button>
 
-        {/* Result */}
+        {/* Results */}
         {result && (
-          <div className="animate-fade-in-up">
-            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0c4a6e', marginBottom: 8, ...nas }}>
-              {result.pestData.icon} {pest} — {result.a} ایکڑ — کل {result.totalTanks} ٹینک
+          <div className="animate-fade-in-up" style={{ marginTop: 14 }}>
+            {/* Summary */}
+            <div style={{ background: '#f0f9ff', border: '1.5px solid #7dd3fc', borderRadius: 12, padding: '0.85rem', marginBottom: 10, textAlign: 'center' }}>
+              <div style={{ fontSize: '0.92rem', color: '#0369a1', fontWeight: 800 }}>
+                {result.pestData.icon} {result.pest} — رقبہ: {result.a} ایکڑ
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: 4 }}>
+                ٹینک کا سائز: {result.tank} لیٹر | کل درکار ٹینکس: <strong>{result.totalTanks} ٹینک</strong>
+              </div>
             </div>
-            {result.products.map((p, i) => (
-              <div key={i} style={{ background: 'white', border: '1.5px solid #e0f2fe', borderRadius: 12, padding: '0.85rem', marginBottom: 8, borderRight: '4px solid #0369a1' }}>
-                <div style={{ fontWeight: 800, color: '#0c4a6e', fontSize: '0.88rem', ...nas }}>{i === 0 ? '✅ پہلی پسند:' : '🔄 متبادل:'} {p.name}</div>
-                {ACTIVE_INGREDIENTS[p.name] && (
-                  <div style={{ fontSize: '0.68rem', color: '#0369a1', marginTop: 2, ...nas }}>🧪 فارمولا: {ACTIVE_INGREDIENTS[p.name]}</div>
-                )}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8 }}>
-                  <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '0.55rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.65rem', color: '#6b7280', ...nas }}>فی {tankSize}L ٹینک</div>
-                    {tankSize !== 20 && p.tankMl && (
-                      <div style={{ fontSize: '0.6rem', color: '#0369a1', ...nas }}>20L ٹینکی: {((p.dose / (result.pestData?.waterPerAcre || 100)) * 20).toFixed(1)} مل</div>
-                    )}
-                    <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0369a1', fontFamily: 'Inter' }} dir="ltr">{p.dosePerTank}</div>
-                    <div style={{ fontSize: '0.65rem', color: '#6b7280', ...nas }}>مل/گرام</div>
+
+            {/* Pest Warning ETL Card */}
+            {result.pestData.etl && (
+              <div style={{ background: '#fef3c7', border: '1.5px solid #f59e0b', borderRadius: 10, padding: '8px 12px', marginBottom: 10, direction: 'rtl' }}>
+                <div style={{ fontWeight: 800, fontSize: '.72rem', color: '#92400e' }}>
+                  ⚠️ نقصان کی معاشی حد (Pest Warning ETL):
+                </div>
+                <div style={{ fontSize: '.78rem', color: '#78350f', marginTop: 3, fontWeight: 700, lineHeight: 1.5 }}>
+                  {result.pestData.etl}
+                </div>
+                <div style={{ fontSize: '.68rem', color: '#b45309', marginTop: 3 }}>
+                  💡 نوٹ: کیمیائی سپرے صرف تب کریں جب کیڑوں کی تعداد اس حد سے تجاوز کرے۔ ورنہ دوست کیڑوں کا نقصان ہوتا ہے۔
+                </div>
+              </div>
+            )}
+
+            {/* Soil Profile Context */}
+            {soilData && (() => {
+              const ph = parseFloat(soilData.pH || soilData.ph || 7.5);
+              const ec = parseFloat(soilData.ec || 1.5);
+              const tips = [];
+              if (ph > 8.0) tips.push('آپ کی زمین کا pH ' + ph + ' ہے (الکالائن) — سپرے کے پانی میں تھوڑا سرکہ یا بائیو پاور ملائیں تاکہ دوائی کا اثر 100% ہو۔');
+              if (ec > 4.0) tips.push('EC ' + ec + ' dS/m — نمکین مٹی پر پودے کمزور ہوتے ہیں، پانی کی مقدار 100 کے بجائے 120 لیٹر فی ایکڑ رکھیں۔');
+              if (!tips.length) return null;
+              return (
+                <div style={{ background: '#ecfdf5', border: '1.5px solid #6ee7b7', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
+                  <div style={{ fontWeight: 800, fontSize: '.72rem', color: '#065f46', marginBottom: 2 }}>🌱 آپ کی مٹی پروفائل — سپرے رہنمائی:</div>
+                  {tips.map((t, idx) => <div key={idx} style={{ fontSize: '.72rem', color: '#047857', lineHeight: 1.5 }}>• {t}</div>)}
+                </div>
+              );
+            })()}
+
+            {/* Products List */}
+            {result.products.map((p, i) => {
+              const phiColor = p.phi <= 5 ? '#15803d' : p.phi <= 14 ? '#d97706' : '#dc2626';
+              const phiBg = p.phi <= 5 ? '#f0fdf4' : p.phi <= 14 ? '#fffbeb' : '#fef2f2';
+              return (
+                <div key={i} style={{ background: 'white', border: '1.5px solid #e0f2fe', borderRadius: 12, padding: '0.85rem', marginBottom: 10, borderRight: `4px solid ${i === 0 ? '#0369a1' : '#64748b'}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6 }}>
+                    <div>
+                      <div style={{ fontWeight: 800, color: '#0c4a6e', fontSize: '0.9rem' }}>
+                        {i === 0 ? '✅ اولین تجویز:' : '🔄 متبادل مالیکیول:'} {p.name}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#0284c7', marginTop: 2, fontWeight: 700 }}>
+                        🏷️ تجارتی برانڈز: {p.brand}
+                      </div>
+                    </div>
+                    {/* PHI Badge */}
+                    <div style={{ background: phiBg, border: `1.5px solid ${phiColor}`, borderRadius: 16, padding: '3px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: '.68rem' }}>⏳</span>
+                      <span style={{ fontSize: '.7rem', fontWeight: 800, color: phiColor, fontFamily: 'Inter, sans-serif' }}>
+                        PHI: {p.phi} دن (کٹائی سے قبل ممنوع)
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '0.55rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.65rem', color: '#6b7280', ...nas }}>فی ایکڑ</div>
-                    <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0369a1', fontFamily: 'Inter' }} dir="ltr">{p.dose}</div>
-                    <div style={{ fontSize: '0.65rem', color: '#6b7280', ...nas }}>مل/گرام</div>
+
+                  {/* Dose Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 10 }}>
+                    <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '0.6rem', textAlign: 'center', border: '1px solid #bae6fd' }}>
+                      <div style={{ fontSize: '0.68rem', color: '#6b7280' }}>فی {result.tank}L ٹینک خوراک</div>
+                      <div style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0369a1', fontFamily: 'Inter' }} dir="ltr">
+                        {p.dosePerTank}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#0369a1', fontWeight: 700 }}>{p.unit}</div>
+                    </div>
+
+                    <div style={{ background: '#f8fafc', borderRadius: 8, padding: '0.6rem', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '0.68rem', color: '#6b7280' }}>کل مقدار ({result.a} ایکڑ)</div>
+                      <div style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', fontFamily: 'Inter' }} dir="ltr">
+                        {p.totalQuantity}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#475569', fontWeight: 700 }}>{p.unit} (فی ایکڑ: {p.dose} {p.unit})</div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: '0.72rem', color: '#475569', marginTop: 8, lineHeight: 1.5 }}>
+                    📝 <strong>طریقہ استعمال:</strong> {p.note}
                   </div>
                 </div>
-                <div style={{ fontSize: '0.72rem', color: '#475569', marginTop: 6, ...nas }}>📝 {p.note}</div>
-              </div>
-            ))}
-            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '0.65rem 0.8rem', fontSize: '0.72rem', color: '#92400e', ...nas }}>
+              );
+            })}
+
+            {/* Institutional Badge & Disclaimer */}
+            <div style={{ marginTop: 8 }}>
+              <InstitutionalBadge type="pest" helpline="0800-17000" />
+            </div>
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '0.65rem 0.8rem', fontSize: '0.72rem', color: '#92400e', marginTop: 8 }}>
               {DISCLAIMER}
             </div>
+
+            {/* WhatsApp Share Prescription */}
             <button onClick={() => {
               const lines = [
-                '💧 DehatiAI سپرے نسخہ',
-                `کیڑا/بیماری: ${pest} | فصل: ${result.pestData.crop}`,
-                `رقبہ: ${result.a} ایکڑ | ٹینک: ${tankSize}L | کل ٹینک: ${result.totalTanks}`,
+                '💧 *DehatiAI مصدقہ سپرے نسخہ*',
+                `کیڑا/بیماری: ${result.pest} (${result.pestData.crop})`,
+                `رقبہ: ${result.a} ایکڑ | ٹینک سائز: ${result.tank} لیٹر | کل ٹینکس: ${result.totalTanks}`,
+                `⚠️ معاشی حد (ETL): ${result.pestData.etl}`,
                 '━━━━━━━━━━━━━━━━━',
-                ...result.products.map((p,i) => `${i===0?'✅':'🔄'} ${p.name}\n   فی ٹینک: ${p.dosePerTank} مل | فی ایکڑ: ${p.dose} مل\n   ${p.note}`),
+                ...result.products.map((p, i) =>
+                  `${i === 0 ? '✅ اولین تجویز' : '🔄 متبادل'}: ${p.name}` +
+                  `\nبرانڈ: ${p.brand}` +
+                  `\nفی ٹینک خوراک: ${p.dosePerTank} ${p.unit} | کل درکار: ${p.totalQuantity} ${p.unit}` +
+                  `\n⏳ PHI: ${p.phi} دن | ${p.note}`
+                ),
                 '━━━━━━━━━━━━━━━━━',
                 `بہترین وقت: ${result.pestData.bestTime}`,
-                '⚠️ استعمال سے پہلے مقامی زرعی افسر سے تصدیق کروائیں',
-                '📞 0800-17000 | 🌐 dehati-ai.vercel.app',
+                '📚 ماخذ: محکمہ آفات نباتات پنجاب + CCRI ملتان',
+                '📞 تصدیق کیلئے: 0800-17000 | 🌐 dehati-ai.vercel.app',
               ];
               window.open('https://wa.me/?text=' + encodeURIComponent(lines.join('\n')), '_blank');
             }}
-              style={{ width: '100%', padding: '10px', borderRadius: 10, border: 'none',
-                background: '#25D366', color: '#fff', fontWeight: 700, fontSize: '0.85rem',
-                cursor: 'pointer', marginTop: 8, direction: 'rtl' }}
-            >📤 ڈیلر کو واٹس ایپ پر سپرے نسخہ بھیجیں</button>
+              style={{
+                width: '100%', padding: '10px', borderRadius: 10, border: 'none',
+                background: '#25D366', color: '#fff', fontWeight: 800, fontSize: '0.88rem',
+                cursor: 'pointer', marginTop: 10, direction: 'rtl', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+              }}
+            >
+              📤 ڈیلر یا زراعت افسر کو واٹس ایپ نسخہ بھیجیں
+            </button>
           </div>
         )}
       </div>
