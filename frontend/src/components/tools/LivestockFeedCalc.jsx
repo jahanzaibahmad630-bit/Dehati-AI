@@ -17,7 +17,7 @@ const WANDA_RECIPE = [
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
 export default function LivestockFeedCalc() {
-  const [activeTab, setActiveTab] = useState('ration'); // 'ration' | 'recipe'
+  const [activeTab, setActiveTab] = useState('ration'); // 'ration' | 'recipe' | 'lactometer'
 
   // Daily Ration State
   const [animalType, setAnimalType] = useState('buffalo'); // 'buffalo' | 'cow' | 'dry' | 'goat' | 'poultry'
@@ -27,6 +27,23 @@ export default function LivestockFeedCalc() {
 
   // Wanda Recipe Batch State
   const [batchSize, setBatchSize] = useState(100); // 100, 200, 500, 1000 kg
+
+  // Lactometer Correction State (UVAS / Zeal calibration at 60°F)
+  const [observedLR, setObservedLR] = useState('');
+  const [milkTempF, setMilkTempF] = useState('');
+  const [lactResult, setLactResult] = useState(null);
+
+  const calculateLactometer = () => {
+    const lr = parseFloat(observedLR);
+    const t = parseFloat(milkTempF);
+    if (isNaN(lr) || isNaN(t)) return;
+    // Zeal lactometer formula: +1 CLR per 3°F above 60°F calibration
+    const correctedLR = +(lr + (t - 60) / 3).toFixed(1);
+    // Approximate fat %: fat% = (CLR / 4) + 0.5 (standard dodhi field estimate)
+    const fatPct = +(correctedLR / 4 + 0.5).toFixed(1);
+    const fraudDiff = +(correctedLR - lr).toFixed(1);
+    setLactResult({ observedLR: lr, correctedLR, fatPct, fraudDiff, milkTempF: t });
+  };
 
   // Calculate Daily Ration
   const calculateRation = () => {
@@ -123,7 +140,7 @@ export default function LivestockFeedCalc() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 12 }}>
         <button
           onClick={() => setActiveTab('ration')}
           style={{
@@ -131,10 +148,10 @@ export default function LivestockFeedCalc() {
             border: `2px solid ${activeTab === 'ration' ? '#b45309' : '#e2e8f0'}`,
             background: activeTab === 'ration' ? '#fef3c7' : 'white',
             color: activeTab === 'ration' ? '#92400e' : '#64748b',
-            fontWeight: 800, fontSize: '.85rem', cursor: 'pointer', ...nas
+            fontWeight: 800, fontSize: '.82rem', cursor: 'pointer', ...nas
           }}
         >
-          🐄 روزانہ راشن (خوراک پلان)
+          🐄 روزانہ راشن
         </button>
         <button
           onClick={() => setActiveTab('recipe')}
@@ -143,10 +160,22 @@ export default function LivestockFeedCalc() {
             border: `2px solid ${activeTab === 'recipe' ? '#15803d' : '#e2e8f0'}`,
             background: activeTab === 'recipe' ? '#dcfce7' : 'white',
             color: activeTab === 'recipe' ? '#15803d' : '#64748b',
-            fontWeight: 800, fontSize: '.85rem', cursor: 'pointer', ...nas
+            fontWeight: 800, fontSize: '.82rem', cursor: 'pointer', ...nas
           }}
         >
-          🥣 100 کلو گھریلو ونڈا نسخہ
+          🥣 گھریلو ونڈا
+        </button>
+        <button
+          onClick={() => setActiveTab('lactometer')}
+          style={{
+            padding: '8px', borderRadius: 10,
+            border: `2px solid ${activeTab === 'lactometer' ? '#7c3aed' : '#e2e8f0'}`,
+            background: activeTab === 'lactometer' ? '#f5f3ff' : 'white',
+            color: activeTab === 'lactometer' ? '#7c3aed' : '#64748b',
+            fontWeight: 800, fontSize: '.82rem', cursor: 'pointer', ...nas
+          }}
+        >
+          🧪 لیکٹو میٹر
         </button>
       </div>
 
@@ -355,6 +384,129 @@ export default function LivestockFeedCalc() {
           </div>
 
           <InstitutionalBadge type="uvas" helpline="0800-15000" />
+        </div>
+      )}
+
+      {/* ── TAB 3: LACTOMETER TEMPERATURE CORRECTION ──────────────────────────── */}
+      {activeTab === 'lactometer' && (
+        <div className="form-group">
+          {/* Header explanation */}
+          <div style={{ background: '#f5f3ff', border: '1.5px solid #c4b5fd', borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
+            <div style={{ fontWeight: 800, color: '#6d28d9', fontSize: '.85rem', marginBottom: 4 }}>
+              🧪 لیکٹو میٹر درجہ حرارت کریکشن — ڈوڈھیوں کی بے ایمانی سے بچیں!
+            </div>
+            <div style={{ fontSize: '.7rem', color: '#5b21b6', lineHeight: 1.6 }}>
+              <strong>مسئلہ:</strong> ذیل لیکٹو میٹر (Zeal) 60°F (15.5°C) پر کیلیبریٹ ہوتا ہے۔ گرم موسم میں تازہ دودھ 95–100°F ہوتا ہے۔ ہر 3°F درجہ حرارت بڑھنے پر CLR 1 درجہ کم دکھاتا ہے — اس طرح ڈوڈھی کم قیمت ادا کرتا ہے۔<br />
+              <strong>فارمولہ (UVAS لاہور):</strong> درست CLR = دیکھا ہوا LR + ((درجہ حرارت°F - 60) ÷ 3)
+            </div>
+          </div>
+
+          {/* Inputs */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontWeight: 700, fontSize: '.78rem', display: 'block', marginBottom: 4, color: '#374151' }}>
+                لیکٹو میٹر کی ریڈنگ (LR):
+              </label>
+              <input
+                type="number" placeholder="مثلاً: 26" dir="ltr"
+                value={observedLR}
+                onChange={e => { setObservedLR(e.target.value); setLactResult(null); }}
+                style={{ width: '100%', padding: '0.6rem 0.7rem', borderRadius: 8, border: '1.5px solid #d1d5db', fontSize: '1rem', fontWeight: 800, fontFamily: 'Inter' }}
+              />
+              <div style={{ fontSize: '.65rem', color: '#6b7280', marginTop: 2 }}>نارمل بھینس دودھ: 26–32</div>
+            </div>
+            <div>
+              <label style={{ fontWeight: 700, fontSize: '.78rem', display: 'block', marginBottom: 4, color: '#374151' }}>
+                دودھ کا درجہ حرارت (°F):
+              </label>
+              <input
+                type="number" placeholder="مثلاً: 95" dir="ltr"
+                value={milkTempF}
+                onChange={e => { setMilkTempF(e.target.value); setLactResult(null); }}
+                style={{ width: '100%', padding: '0.6rem 0.7rem', borderRadius: 8, border: '1.5px solid #d1d5db', fontSize: '1rem', fontWeight: 800, fontFamily: 'Inter' }}
+              />
+              <div style={{ fontSize: '.65rem', color: '#6b7280', marginTop: 2 }}>گرمی میں تازہ دودھ: 90–100°F</div>
+            </div>
+          </div>
+
+          <button
+            onClick={calculateLactometer}
+            style={{ width: '100%', padding: '0.8rem', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #6d28d9, #7c3aed)', color: 'white', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', marginBottom: 12, ...nas }}
+          >
+            🧪 درست CLR اور فیٹ حساب لگائیں
+          </button>
+
+          {/* Result */}
+          {lactResult && (
+            <div className="animate-fade-in-up">
+              {/* Corrected CLR banner */}
+              <div style={{ background: 'linear-gradient(135deg, #6d28d9, #7c3aed)', borderRadius: 14, padding: '1rem', textAlign: 'center', marginBottom: 10, color: 'white' }}>
+                <div style={{ fontSize: '.8rem', opacity: .9 }}>درست لیکٹو میٹر ریڈنگ (Corrected CLR)</div>
+                <div style={{ fontSize: '2.8rem', fontWeight: 900, fontFamily: 'Inter', marginTop: 2 }} dir="ltr">
+                  {lactResult.correctedLR}
+                </div>
+                <div style={{ fontSize: '.75rem', color: '#ddd6fe', marginTop: 2 }}>
+                  مشاہدہ شدہ: {lactResult.observedLR} → درست: {lactResult.correctedLR} (فرق: +{lactResult.fraudDiff})
+                </div>
+              </div>
+
+              {/* Fraud alert if significant difference */}
+              {lactResult.fraudDiff >= 2 && (
+                <div style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
+                  <div style={{ fontWeight: 800, color: '#b91c1c', fontSize: '.82rem', marginBottom: 4 }}>
+                    ⚠️ ممکنہ دھوکہ دہی — ڈوڈھی کو فوری بتائیں!
+                  </div>
+                  <div style={{ fontSize: '.7rem', color: '#991b1b', lineHeight: 1.6 }}>
+                    آپ کا دودھ {lactResult.milkTempF}°F گرم تھا۔ درجہ حرارت کی وجہ سے CLR {lactResult.fraudDiff} درجے کم دکھ رہا تھا۔ اگر ڈوڈھی نے کریکشن کے بغیر قیمت دی تو آپ کو نقصان ہوا۔
+                    <br /><strong>مطالبہ کریں: ٹھنڈا دودھ یا درست CLR {lactResult.correctedLR} کے حساب سے قیمت۔</strong>
+                  </div>
+                </div>
+              )}
+
+              {/* Fat % and quality */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 10, padding: '0.75rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '.68rem', color: '#166534', fontWeight: 700 }}>تخمینہ فیٹ فیصد</div>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#15803d', fontFamily: 'Inter' }} dir="ltr">
+                    {lactResult.fatPct}%
+                  </div>
+                  <div style={{ fontSize: '.62rem', color: '#16a34a' }}>بھینس معیار: 6%+</div>
+                </div>
+                <div style={{ background: '#faf5ff', border: '1.5px solid #c4b5fd', borderRadius: 10, padding: '0.75rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '.68rem', color: '#6d28d9', fontWeight: 700 }}>کریکشن فیکٹر</div>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#7c3aed', fontFamily: 'Inter' }} dir="ltr">
+                    +{lactResult.fraudDiff}
+                  </div>
+                  <div style={{ fontSize: '.62rem', color: '#6d28d9' }}>CLR اضافہ</div>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div style={{ background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 10, padding: '8px 12px', fontSize: '.7rem', color: '#78350f', lineHeight: 1.5 }}>
+                💡 <strong>صحیح طریقہ:</strong> دوہنے کے فوری بعد دودھ کا نمونہ ٹھنڈا پانی میں رکھیں اور 60°F (15°C) پر ٹھنڈا کر کے پڑھیں۔ یا یہ کیلکولیٹر استعمال کریں۔ L&DD پنجاب ہیلپ لائن: 0800-17000
+              </div>
+            </div>
+          )}
+
+          {/* Reference table */}
+          <div style={{ marginTop: 12, background: 'white', border: '1.5px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ background: '#7c3aed', color: 'white', padding: '6px 12px', fontWeight: 800, fontSize: '.78rem' }}>
+              📊 حوالہ جاتی CLR جدول (UVAS لاہور / Zeal Lactometer)
+            </div>
+            {[
+              { lr: '28–30', fat: '7.5–8%', quality: '⭐⭐⭐ اعلیٰ', color: '#f0fdf4' },
+              { lr: '26–28', fat: '7–7.5%', quality: '⭐⭐ اچھا', color: 'white' },
+              { lr: '24–26', fat: '6.5–7%', quality: '⭐ قابل قبول', color: '#f0fdf4' },
+              { lr: '22–24', fat: '6–6.5%', quality: '⚠️ کمزور', color: 'white' },
+              { lr: '18 سے کم', fat: '5% سے کم', quality: '⛔ ملاوٹ / پانی', color: '#fef2f2' },
+            ].map((row, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', padding: '6px 12px', background: row.color, borderBottom: '1px solid #f1f5f9', fontSize: '.7rem' }}>
+                <div style={{ fontWeight: 800, fontFamily: 'Inter' }} dir="ltr">CLR: {row.lr}</div>
+                <div style={{ color: '#15803d', fontWeight: 700 }} dir="ltr">{row.fat}</div>
+                <div style={{ ...nas }}>{row.quality}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

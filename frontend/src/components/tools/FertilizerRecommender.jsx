@@ -466,6 +466,23 @@ export default function FertilizerRecommender() {
               );
             })}
 
+            {/* ── CCRI Multan Cotton Urea Timing Alert (only for cotton) ── */}
+            {result.crop === 'کپاس' && (
+              <div style={{ background: '#fff1f2', border: '2px solid #f43f5e', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
+                <div style={{ fontWeight: 800, color: '#be123c', fontSize: '.85rem', marginBottom: 6 }}>
+                  ⛔ CCRI ملتان — کپاس میں یوریا ڈالنے کا صحیح وقت:
+                </div>
+                <div style={{ fontSize: '.72rem', color: '#9f1239', lineHeight: 1.7 }}>
+                  <strong>کپاس کی بوائی کے وقت یوریا ہرگز نہ ڈالیں!</strong> بوائی پر نائٹروجن دینے سے پودا صرف لمبا اور سبز ہو جاتا ہے — پھول اور ٹنڈے نہیں آتے اور پوری فصل خراب ہو جاتی ہے۔<br />
+                  ✅ <strong>یوریا صرف 3 مرحلوں میں دیں:</strong><br />
+                  1️⃣ پہلا پانی (20–25 دن بعد) — پہلی قسط<br />
+                  2️⃣ پہلی کلی/بڈ نکلنے پر (35–45 دن) — دوسری قسط<br />
+                  3️⃣ پھول بننے پر (50–60 دن) — تیسری قسط<br />
+                  📞 تصدیق: CCRI ملتان 0800-29000 / DG کاٹن 0333-6159100
+                </div>
+              </div>
+            )}
+
             {/* ── SFRI Nutrient Antagonism & Volatilization Safety Gates ── */}
             <div style={{ background: '#fef2f2', border: '1.5px solid #ef4444', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
               <div style={{ fontWeight: 800, color: '#b91c1c', fontSize: '.85rem', marginBottom: 4 }}>

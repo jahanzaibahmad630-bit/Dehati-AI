@@ -106,6 +106,7 @@ export default function SeedRateCalc() {
   const [timing, setTiming] = useState('optimal');
   const [method, setMethod] = useState('drill'); // 'drill' | 'broadcast'
   const [cottonSeedType, setCottonSeedType] = useState('delinted');
+  const [isCertified, setIsCertified] = useState(true); // PSC certified vs home-saved
   const [acres, setAcres] = useState('1');
   const [result, setResult] = useState(null);
 
@@ -123,6 +124,14 @@ export default function SeedRateCalc() {
       baseRate = +(baseRate * 1.35).toFixed(1);
     }
 
+    // Apply home-saved seed germination adjustment (+17%)
+    // PSC certified: ≥85% germination; home-saved: 65-70% germination
+    // To compensate, increase seed rate by factor: 85/70 ≈ 1.21 → use 1.17 (conservative)
+    const seedFactor = isCertified ? 1.0 : 1.17;
+    if (!isCertified) {
+      baseRate = +(baseRate * seedFactor).toFixed(1);
+    }
+
     const totalSeed = +(baseRate * a).toFixed(1);
 
     setResult({
@@ -132,6 +141,7 @@ export default function SeedRateCalc() {
       selectedTiming,
       method,
       cottonSeedType,
+      isCertified,
       baseRate,
       totalSeed,
       varieties: cropData.varieties
@@ -270,30 +280,84 @@ export default function SeedRateCalc() {
           />
         </div>
 
+        {/* ── PSC Certified vs Home-Saved Seed Toggle (PSC / گھر کا بیج) ── */}
+        <div style={{ marginTop: 10 }}>
+          <label className="input-label" style={{ fontWeight: 700, marginBottom: 6, display: 'block' }}>بیج کا ذریعہ (اگاؤ کے مطابق مقدار):</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            <button
+              onClick={() => { setIsCertified(true); setResult(null); }}
+              style={{
+                padding: '0.6rem 0.4rem', borderRadius: 8, textAlign: 'center',
+                border: `2px solid ${isCertified ? '#15803d' : '#cbd5e1'}`,
+                background: isCertified ? '#f0fdf4' : 'white',
+                color: isCertified ? '#15803d' : '#475569',
+                fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', ...nas
+              }}
+            >
+              ✅ PSC سرٹیفائیڈ بیج<br />
+              <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>(اگاؤ ≥85% — معیاری مقدار)</span>
+            </button>
+            <button
+              onClick={() => { setIsCertified(false); setResult(null); }}
+              style={{
+                padding: '0.6rem 0.4rem', borderRadius: 8, textAlign: 'center',
+                border: `2px solid ${!isCertified ? '#b45309' : '#cbd5e1'}`,
+                background: !isCertified ? '#fffbeb' : 'white',
+                color: !isCertified ? '#b45309' : '#475569',
+                fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', ...nas
+              }}
+            >
+              🏠 گھر کا / پرانا بیج<br />
+              <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>(اگاؤ 65–70% — +17% اضافی)</span>
+            </button>
+          </div>
+          {!isCertified && (
+            <div style={{ background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 8, padding: '6px 10px', marginTop: 6, fontSize: '0.7rem', color: '#78350f' }}>
+              ⚠️ <strong>PSC مشورہ:</strong> گھر کے بیج کا اگاؤ 65–70% ہوتا ہے جبکہ سرٹیفائیڈ بیج کا اگاؤ ≥85%۔ کم اگاؤ کی تلافی کیلئے بیج کی مقدار خودکار +17% بڑھائی جا رہی ہے۔ بوائی سے پہلے گرمینیشن ٹیسٹ ضور کریں۔
+            </div>
+          )}
+        </div>
+
         {/* Action Button */}
         <button className="btn btn-primary btn-full" id="seed-calc-btn"
           disabled={!crop || !acres}
           onClick={calculate}
           style={{ width: '100%', marginTop: 12, fontSize: '0.95rem', padding: '0.8rem', background: 'linear-gradient(135deg, #14532d, #16a34a)', color: 'white', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', ...nas }}
         >
-          🌱 سرٹیفائیڈ بیج کی مقدار و ورائٹیاں دیکھیں
+          🌱 بیج کی صحیح مقدار و ورائٹیاں دیکھیں
         </button>
 
         {/* Results */}
         {result && (
           <div className="animate-fade-in-up" style={{ marginTop: 14 }}>
             {/* Total Seed Banner */}
-            <div style={{ background: 'linear-gradient(135deg, #14532d, #15803d)', borderRadius: 14, padding: '1rem', textAlign: 'center', marginBottom: 12, color: 'white' }}>
+            <div style={{ background: result.isCertified ? 'linear-gradient(135deg, #14532d, #15803d)' : 'linear-gradient(135deg, #78350f, #b45309)', borderRadius: 14, padding: '1rem', textAlign: 'center', marginBottom: 12, color: 'white' }}>
               <div style={{ fontSize: '0.82rem', opacity: 0.9 }}>
                 {result.cropData.icon} {result.cropData.cropLabel} — {result.a} ایکڑ ({result.selectedTiming.label})
               </div>
               <div style={{ fontSize: '2.2rem', fontWeight: 900, fontFamily: 'Inter', marginTop: 4 }} dir="ltr">
                 {result.totalSeed.toLocaleString()} {result.cropData.unit}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#bbf7d0', marginTop: 2 }}>
+              <div style={{ fontSize: '0.75rem', color: result.isCertified ? '#bbf7d0' : '#fde68a', marginTop: 2 }}>
                 فی ایکڑ بیج شرح: <strong>{result.baseRate} {result.cropData.unit}</strong> ({result.method === 'drill' ? 'ڈرل کاشت' : 'چھٹہ کاشت'})
+                {!result.isCertified && <span> — 🏠 گھر کا بیج (+17% شامل)</span>}
               </div>
             </div>
+
+            {/* Home-saved seed warning banner */}
+            {!result.isCertified && (
+              <div style={{ background: '#fffbeb', border: '1.5px solid #f59e0b', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
+                <div style={{ fontWeight: 800, fontSize: '.78rem', color: '#92400e', marginBottom: 4 }}>
+                  🏠 گھر کے بیج کی احتیاطی تدابیر (PSC رہنمائی):
+                </div>
+                <div style={{ fontSize: '0.7rem', color: '#78350f', lineHeight: 1.6 }}>
+                  • گرمینیشن ٹیسٹ: 100 دانے گیلے کپڑے میں لپیٹ کر 3 دن رکھیں — 70 سے کم اگیں تو PSC سرٹیفائیڈ بیج خریدیں<br />
+                  • گھر کا بیج 2 سال سے زیادہ نہ رکھیں — بیماریاں اور کمزوری آ جاتی ہے<br />
+                  • نزدیکی PSC آؤٹ لیٹ یا کسان مارکیٹ سے سرٹیفائیڈ بیج حاصل کریں: 0800-29000
+                </div>
+              </div>
+            )}
+
 
             {/* Yield Penalty Warning Banner */}
             {result.selectedTiming.penaltyText && (

@@ -184,9 +184,9 @@ const WEEDS = {
     etl: 'دونوں اقسام کی جڑی بوٹیاں موجود ہوں — پہلا پانی 30-35 دن بعد',
     waterPerAcre: 100, bestTime: 'صبح 10 بجے تا 2 بجے',
     products: [
-      { name: 'Iodosulfuron + Mesosulfuron 6WG', brand: 'Atlantis Super (Bayer Pakistan)', dose: 100, unit: 'گرام', phi: 30, note: 'صرف عام روٹی والی گندم (Bread Wheat) کے لیے۔ ڈیوڈم (پاستا) گندم پر نہ کریں۔ باکس والا بائیو پاور لازمی ملائیں۔' },
+      { name: 'Iodosulfuron + Mesosulfuron 6WG', brand: 'Atlantis Super (Bayer Pakistan)', dose: 100, unit: 'گرام', phi: 30, note: 'صرف عام روٹی والی گندم (Bread Wheat) کے لیے۔ ڈیوڈم (پاستا) گندم پر نہ کریں۔ باکس والا بائیو پاور لازمی ملائیں۔ ⚠️ فصل چکر انتباہ: اٹلانٹس استعمال کے بعد اگلی فصل میں کپاس، خربوزہ، تربوز، دال، یا سبزیاں کاشت کرنے میں کم از کم 4 ماہ کا وقفہ لازمی رکھیں۔' },
       { name: 'Pyroxsulam + Fluroxypyr SG', brand: 'Broadway (Corteva Pakistan)', dose: 140, unit: 'گرام', phi: 30, note: '140 گرام فی ایکڑ — چوڑے اور باریک پتے والی جڑی بوٹیوں کا بیک وقت کنٹرول۔' },
-      { name: 'Clodinafop + Metsulfuron Mix', brand: 'Total (Kanzo) / Ali Akbar Group', dose: 170, unit: 'گرام', phi: 30, note: '160g Clodinafop + 10g Metsulfuron پری مکس فارمولیشن۔' },
+      { name: 'Clodinafop + Metsulfuron Mix', brand: 'Total (Kanzo) / Ali Akbar Group', dose: 170, unit: 'گرام', phi: 30, note: '160g Clodinafop + 10g Metsulfuron پری مکس فارمولیشن۔ ⚠️ فصل چکر: میٹسلفیورون کے استعمال کے بعد کپاس اور چوڑے پتوں والی فصلیں 3 سے 4 ماہ تک نہ کاشت کریں۔' },
     ]
   },
   'کپاس: کاشت کے فوراً بعد (Pre-emergence)': {
@@ -194,7 +194,7 @@ const WEEDS = {
     etl: 'کاشت کے فوراً بعد — اگاؤ سے قبل (0 تا 2 دن اندر اندر)',
     waterPerAcre: 100, bestTime: 'شام کے وقت (پہلی آبپاشی کے فوراً بعد)',
     products: [
-      { name: 'Pendimethalin 33% EC', brand: 'Stomp (Bayer Pakistan) / 4B / ICI', dose: 1200, unit: 'ملی لیٹر', phi: 60, note: 'کاشت کے فوراً بعد وتر حالت پر چھڑکاؤ کریں۔ بیج کے اگاؤ سے پہلے جڑی بوٹی کے بیج کو مارتا ہے۔' },
+      { name: 'Pendimethalin 33% EC', brand: 'Stomp (Bayer Pakistan) / 4B / ICI', dose: 1200, unit: 'ملی لیٹر', phi: 60, note: 'کاشت کے فوراً بعد وتر حالت پر چھڑکاؤ کریں۔ بیج کے اگاؤ سے پہلے جڑی بوٹی کے بیج کو مارتا ہے۔ ⚠️ فصل چکر انتباہ: پینڈی میتھالین کے استعمال کے بعد مٹی میں 45 تا 60 دن کا اثر رہتا ہے۔ چاول، جوار، باجرہ، یا برسیم کم از کم 60 دن بعد کاشت کریں۔' },
       { name: 'S-Metolachlor 96% EC', brand: 'Dual Gold (Syngenta Pakistan)', dose: 800, unit: 'ملی لیٹر', phi: 60, note: '800 مل فی ایکڑ — گھاس نما جڑی بوٹیوں کو اگنے نہیں دیتا۔' },
     ]
   },
@@ -223,45 +223,45 @@ const ORCHARDS = {
   'آم کی پھل کی مکھی (Mango Fruit Fly)': {
     icon: '🪰', crop: 'آم (Mango - Multan)',
     etl: 'بیکٹرو سرا ڈورسیلس: کٹائی سے 45 دن پہلے ٹریپ لگائیں۔ اگر روزانہ 5 سے زائد مکھیاں ٹریپ میں آئیں تو بیت سپرے کریں۔',
-    waterPerAcre: 100, bestTime: 'صبح کے وقت',
+    waterPerAcre: 600, treesPerAcre: 35, litersPerTree: 16, bestTime: 'صبح کے وقت',
     products: [
       { name: 'Methyl Eugenol MAT Traps (میتھائل یوجینول)', brand: 'مصدقہ سیکس فیرومون ٹریپ (MRS Multan)', dose: 10, unit: 'ٹریپس فی ایکڑ', phi: 0, note: '5 تا 6 فٹ اونچائی پر درخت کے مشرقی حصے میں لگائیں۔ ہر 15 تا 20 دن بعد روئی کا لور تبدیل کریں۔' },
-      { name: 'Protein Hydrolysate Bait Spray', brand: 'پروٹین ہائیڈرولائزیٹ + ڈیلٹا میتھرین', dose: 100, unit: 'گرام + 2ml فی لیٹر', phi: 7, note: 'اگر روزانہ 5 سے زائد مکھیاں آئیں تو درخت کے تنے اور نچلے پتوں پر ہفتہ وار سپرے کریں۔' },
+      { name: 'Protein Hydrolysate Bait Spray', brand: 'پروٹین ہائیڈرولائزیٹ + ڈیلٹا میتھرین', dose: 100, unit: 'گرام + 2ml فی لیٹر', phi: 7, note: 'اگر روزانہ 5 سے زائد مکھیاں آئیں تو درخت کے تنے اور نچلے پتوں پر ہفتہ وار سپرے کریں۔ ⚠️ باغ کا سپرے: 35 درخت فی ایکڑ × 16 لیٹر فی درخت = 560 لیٹر پانی فی ایکڑ — ٹریکٹر پاور گن یا ہائی پریشر سپرے ضروری ہے۔' },
     ]
   },
   'آم کا گچھا مچھا (Mango Malformation)': {
     icon: '🌿', crop: 'آم (Mango - Multan)',
     etl: 'متاثرہ گچھا نظر آتے ہی 15 تا 20 سینٹی میٹر پیچھے صحت مند لکڑی سے کاٹ کر جلائیں۔',
-    waterPerAcre: 100, bestTime: 'اکتوبر اور اپریل',
+    waterPerAcre: 600, treesPerAcre: 35, litersPerTree: 16, bestTime: 'اکتوبر اور اپریل',
     products: [
-      { name: 'NAA (Naphthalene Acetic Acid 10% SL)', brand: 'پلانٹ گروتھ ریگولیٹر (100–200 ppm)', dose: 100, unit: 'ملی لیٹر فی 100L', phi: 30, note: 'اکتوبر میں برسٹنگ کے وقت سپرے کرنے سے گچھا مچھا کے حملے میں 70% کمی آتی ہے۔' },
+      { name: 'NAA (Naphthalene Acetic Acid 10% SL)', brand: 'پلانٹ گروتھ ریگولیٹر (100–200 ppm)', dose: 100, unit: 'ملی لیٹر فی 100L', phi: 30, note: 'اکتوبر میں برسٹنگ کے وقت سپرے کرنے سے گچھا مچھا کے حملے میں 70% کمی آتی ہے۔ ⚠️ مکمل کینوپی کو بھگوئیں — 16 لیٹر فی درخت کم از کم۔' },
       { name: 'Thiophanate-methyl 70% WP', brand: 'Topsin-M (Nippon Soda / Arysta)', dose: 100, unit: 'گرام فی 100L', phi: 14, note: 'کٹائی کے فورا بعد تنے اور بور پر پھپھوندی کش سپرے کریں۔' },
     ]
   },
   'آم کے سیاہ دھبے و سفوفی پھپھوندی (Anthracnose)': {
     icon: '🍂', crop: 'آم (Mango - Multan)',
     etl: 'بور نکلنے سے قبل اور مٹر کے دانے کے برابر پھل بنتے ہی حفاظتی سپرے کریں۔',
-    waterPerAcre: 100, bestTime: 'شام کے وقت',
+    waterPerAcre: 600, treesPerAcre: 35, litersPerTree: 16, bestTime: 'شام کے وقت',
     products: [
-      { name: 'Difenoconazole 25% EC', brand: 'Score (Syngenta) / Kanzo', dose: 50, unit: 'ملی لیٹر فی 100L', phi: 14, note: 'مٹر کے دانے پر ہر 14 دن بعد سپرے دہرائیں تاکہ سیاہ داغ نہ بنیں۔' },
+      { name: 'Difenoconazole 25% EC', brand: 'Score (Syngenta) / Kanzo', dose: 50, unit: 'ملی لیٹر فی 100L', phi: 14, note: 'مٹر کے دانے پر ہر 14 دن بعد سپرے دہرائیں تاکہ سیاہ داغ نہ بنیں۔ ⚠️ آم کی گھنی شاخوں تک پہنچنے کیلئے ٹریکٹر پاور گن (500+ L/acre) لازمی ہے۔' },
       { name: 'Wettable Sulphur 80% WP', brand: 'سلفیکس / کمولس (BASF)', dose: 300, unit: 'گرام فی 100L', phi: 7, note: 'بور نکلنے سے قبل سفوفی پھپھوندی کے خاتمے کیلئے۔' },
     ]
   },
   'کینو کا پھل گرنا (Citrus Pre-harvest Fruit Drop)': {
     icon: '🍊', crop: 'کینو / مالٹا (Citrus - Sargodha)',
     etl: 'ستمبر تا اکتوبر: کٹائی سے 30 تا 40 دن پہلے پھل گرنے سے بچاؤ کیلئے۔',
-    waterPerAcre: 100, bestTime: 'صبح یا شام',
+    waterPerAcre: 500, treesPerAcre: 40, litersPerTree: 12, bestTime: 'صبح یا شام',
     products: [
-      { name: '2,4-D Sodium Salt (10–12 ppm)', brand: 'گروتھ ہارمون سپرے (CRI Sargodha)', dose: 1.5, unit: 'گرام فی 100L', phi: 7, note: '1.5 گرام پاؤڈر 100 لیٹر پانی میں ملا کر سپرے کریں۔ کٹائی سے 7 دن کے اندر سپرے نہ کریں۔' },
+      { name: '2,4-D Sodium Salt (10–12 ppm)', brand: 'گروتھ ہارمون سپرے (CRI Sargodha)', dose: 1.5, unit: 'گرام فی 100L', phi: 7, note: '1.5 گرام پاؤڈر 100 لیٹر پانی میں ملا کر سپرے کریں۔ کٹائی سے 7 دن کے اندر سپرے نہ کریں۔ ⚠️ کینو: 40 درخت فی ایکڑ × 12 لیٹر = 480 لیٹر پانی فی ایکڑ ضروری ہے۔' },
       { name: 'Zinc Sulphate + Potassium Nitrate (فولیئر)', brand: 'ZnSO4 0.5% + KNO3 1%', dose: 500, unit: 'گرام زنک + 1 کلو پوٹاش', phi: 0, note: 'پھل کی رنگت، چمک اور گرنے سے روک تھام کیلئے جامع فولیئر غذائیت۔' },
     ]
   },
   'کینو کا بیکٹیریل کینکر و گریننگ (Citrus Canker)': {
     icon: '🍋', crop: 'کینو / لیموں (Citrus - Sargodha)',
     etl: 'نئی کونپلیں (فلاش) نکلنے پر ہر 21 دن بعد تانبے کا سپرے کریں۔',
-    waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
+    waterPerAcre: 500, treesPerAcre: 40, litersPerTree: 12, bestTime: 'صبح 7 تا 10 بجے',
     products: [
-      { name: 'Copper Oxychloride 50% WP', brand: 'کوبوکس / بلائٹوکس (Bayer / ICI)', dose: 300, unit: 'گرام فی 100L', phi: 14, note: 'بہار اور مون سون کی نئی پھوٹ پر ہر 21 دن بعد سپرے کریں۔' },
+      { name: 'Copper Oxychloride 50% WP', brand: 'کوبوکس / بلائٹوکس (Bayer / ICI)', dose: 300, unit: 'گرام فی 100L', phi: 14, note: 'بہار اور مون سون کی نئی پھوٹ پر ہر 21 دن بعد سپرے کریں۔ ⚠️ پوری کینوپی بھگوئیں: 500 لیٹر فی ایکڑ — ناکافی پانی سے کینکر قابو نہیں ہوتا۔' },
       { name: 'Copper Hydroxide 77% WP', brand: 'Champion (Nufarm / FMC)', dose: 200, unit: 'گرام فی 100L', phi: 14, note: 'کینکر کے بیکٹیریا کے پھیلاؤ کو فوری روکتا ہے۔' },
     ]
   },
