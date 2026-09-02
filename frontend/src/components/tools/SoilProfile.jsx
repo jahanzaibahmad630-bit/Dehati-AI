@@ -68,6 +68,8 @@ export function buildSoilContextBlock(profile) {
   ].join('\n');
 }
 
+import InstitutionalBadge from '../ui/InstitutionalBadge';
+
 export default function SoilProfile() {
   const [values, setValues] = useState({ pH: '', ec: '', om: '', n: '', p: '', k: '', zn: '' });
   const [saved, setSaved] = useState(false);

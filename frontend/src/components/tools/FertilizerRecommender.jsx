@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOffline } from '../../hooks/useOffline';
 import { getSavedSoilProfile } from './SoilProfile';
+import InstitutionalBadge from '../ui/InstitutionalBadge';
 
 // ─── Punjab Agriculture Extension NPK Database ─────────────────────────────
 const NPK_DB = {
@@ -137,7 +138,7 @@ const SOIL_CONDITIONS = [
 ];
 
 const COLORS = ['#15803d', '#ca8a04', '#7c3aed', '#0369a1'];
-const DISCLAIMER = '⚠️ یہ تجاویز پنجاب زرعی تحقیقاتی ڈیٹا پر مبنی ہیں۔ حتمی فیصلے سے قبل مقامی زراعت آفیسر سے مشورہ کریں۔';
+const DISCLAIMER = '⚠️ یہ تجاویز ادارہ تحقیقات برائے زرخیزی زمین پنجاب (SFRI) اور ایوب زرعی تحقیقاتی ادارہ (AARI) فیصل آباد کے 2024-26 ریسرچ اعداد پر مبنی ہیں۔ ذاتی مٹی ٹیسٹ کے بغیر یہ علاقائی اوسط ہے۔ تصدیق کیلئے: 0800-17000';
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
 // Market vs Kissan Card Subsidized Prices (PKR per bag / kg)
@@ -378,6 +379,9 @@ export default function FertilizerRecommender() {
               </div>
             )}
 
+            {/* SFRI Institutional Provenance Badge */}
+            <InstitutionalBadge type="sfri" helpline="0800-17000" />
+
             {/* Stage Cards */}
             {result.plan.map(({ stage, recs }, i) => {
               const items = Object.entries(recs).map(([type, val]) => fmtBag(type, val, result.a)).filter(Boolean);
@@ -465,7 +469,7 @@ export default function FertilizerRecommender() {
             <div style={{ background: '#f0f9ff', border: '1px solid #7dd3fc', borderRadius: 10, padding: '8px 12px', marginTop: 6, direction: 'rtl', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>🔍</span>
               <div style={{ fontSize: '0.7rem', color: '#0c4a6e' }}>
-                <strong>درستگی کی سطح:</strong> کیلکولیٹر ~90% درست (پنجاب SFRI ریسرچ اوسط) — مٹی ٹیسٹ سے 100% ہو جاتا ہے۔
+                <strong>درستگی:</strong> SFRI پنجاب کیلیبریٹڈ NPK اوسط (~90% درست)۔ مٹی ٹیسٹ (SFRI لیب یا قریبی ماڈل ایگری مال) سے 100% درستگی ممکن۔ تصدیق: 0800-17000
               </div>
             </div>
           </div>

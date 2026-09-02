@@ -3,6 +3,7 @@ import livestockDb from '../../data/livestockDatabase.json';
 import { askAnimalHealth } from '../../services/api';
 import AIDisclaimer from '../ui/AIDisclaimer';
 import { useOffline } from '../../hooks/useOffline';
+import InstitutionalBadge from '../ui/InstitutionalBadge';
 import MarkdownRenderer from '../MarkdownRenderer';
 
 const CATEGORIES = [
@@ -96,7 +97,7 @@ export default function AnimalHealthAdvisor() {
               ⚡ 0ms آف لائن ویٹرنری میڈیسن گائیڈ
             </div>
             <div style={{ fontSize: '.72rem', color: '#cbd5e1', fontFamily: '"Noto Nastaliq Urdu", serif' }}>
-              33 DRAP رجسٹرڈ پاکستان ادویات و ویکسینیشن شیڈول (100٪ آف لائن)
+              33 DRAP رجسٹرڈ پاکستان ادویات و ویکسینیشن شیڈول | محکمہ لائیوسٹاک ہیلپ لائن: 0800-15000
             </div>
           </div>
         </div>
@@ -318,6 +319,9 @@ export default function AnimalHealthAdvisor() {
           ))
         )}
       </div>
+
+      {/* ── DRAP Institutional Badge ── */}
+      <InstitutionalBadge type="drap" helpline="0800-15000" />
 
       {/* ── 5. DehatiAI Hybrid AI Fallback Section ── */}
       <div style={{ background: 'linear-gradient(135deg, #1e3a16, #2e5a27)', padding: '1.1rem', borderRadius: '18px', color: 'white', boxShadow: '0 4px 16px rgba(46,90,39,0.3)', marginTop: '.5rem' }}>

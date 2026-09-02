@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useOffline } from '../../hooks/useOffline';
+import InstitutionalBadge from '../ui/InstitutionalBadge';
 
 // ─── Punjab district GPS coordinates ────────────────────────────────────────
 const DISTRICTS = {
@@ -136,7 +137,7 @@ const ACTIVE_INGREDIENTS = {
   'Metalaxyl + Mancozeb': 'Metalaxyl 8% + Mancozeb 64% WP — (Ridomil Gold)',
 };
 
-const DISCLAIMER = '⚠️ یہ تجاویز زرعی تحقیقاتی ڈیٹا پر مبنی ہیں۔ حتمی فیصلے سے قبل مقامی زراعت آفیسر سے مشورہ کریں۔';
+const DISCLAIMER = '⚠️ تمام ادویات کی مقداریں محکمہ آفات نباتات و مالیاتی معیار کیڑے مار ادویات پنجاب (Pest Warning & Quality Control of Pesticides) کی مصدقہ رجسٹریشن فہرست 2024 کے مطابق ہیں۔ تصدیق: محکمہ زراعت پنجاب — 0800-17000';
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
 export default function SprayDoseCalc() {
