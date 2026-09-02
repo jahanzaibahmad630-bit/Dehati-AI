@@ -51,6 +51,27 @@ const BADGES = {
     full: 'قومی زرعی تحقیقاتی مرکز اسلام آباد (NARC) — اعلیٰ قدر فصلیں',
     url: 'https://www.narc.gov.pk',
   },
+  pamra: {
+    bg: '#f0fdf4', border: '#15803d', color: '#166534',
+    icon: '⚖️',
+    label: 'PAMRA پنجاب',
+    full: 'پنجاب ایگریکلچرل مارکیٹنگ ریگولیٹری اتھارٹی (PAMRA) — منڈی قوانین و کٹوتی سلیب',
+    url: 'https://www.agripunjab.gov.pk',
+  },
+  uvas: {
+    bg: '#fef3c7', border: '#d97706', color: '#92400e',
+    icon: '🥛',
+    label: 'UVAS لاہور / BRI',
+    full: 'یونیورسٹی آف ویٹرنری اینڈ اینیمل سائنسز لاہور (UVAS) و BRI پتوکی — متوازن ونڈا',
+    url: 'https://www.uvas.edu.pk',
+  },
+  spu: {
+    bg: '#eff6ff', border: '#3b82f6', color: '#1e40af',
+    icon: '🧬',
+    label: 'SPU قادرآباد',
+    full: 'سیمن پروڈکشن یونٹ قادرآباد (SPU) و لائیوسٹاک ڈیپارٹمنٹ پنجاب — افزائش نسل و تخم کاری',
+    url: 'https://www.livestockpunjab.gov.pk',
+  },
 };
 
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };

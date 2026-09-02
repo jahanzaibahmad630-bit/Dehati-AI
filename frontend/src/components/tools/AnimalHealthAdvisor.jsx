@@ -12,9 +12,44 @@ const CATEGORIES = [
   { id: 'poultry', label: 'مرغی / پولٹری', icon: '🐓', count: 11 }
 ];
 
+// ─── SPU Qadirabad & Punjab Livestock Breeding Standards ──────────────────────
+const SILENT_HEAT_SIGNS = [
+  { icon: '💧', title: 'شفاف لیس دار مواد (Clear Mucus)', desc: 'صبح چوئے کے وقت جانور کی اندام نہانی یا دودھ کی بالٹی میں پتلا، شیشے جیسا لیس دار مواد دکھائی دیتا ہے۔' },
+  { icon: '⏱️', title: 'بار بار پیشاب کرنا (Frequent Urination)', desc: 'جانور تھوڑی تھوڑی دیر بعد بے چین ہو کر تھوڑا پیشاب کرتا ہے اور پاؤں مارتا ہے۔' },
+  { icon: '🥛', title: 'ہوانے میں سوجن اور تناؤ', desc: 'ہوانہ ضرورت سے زیادہ بھرا ہوا اور رگیں زیادہ ابھری ہوئی محسوس ہوتی ہیں۔' },
+  { icon: '🌾', title: 'چارہ کم کھانا اور بے چینی', desc: 'جانور کھلی پر چارہ چھوڑ دیتا ہے اور باڑے میں چکر کاٹتا ہے۔ گرمیوں میں ڈکار نہیں مارتا (خاموش مستی)۔' },
+  { icon: '🐃', title: 'دوسرے جانوروں پر چڑھنا', desc: 'جھنڈ میں دوسرے جانوروں پر چڑھنے کی کوشش کرتا ہے مگر خود کھڑا نہیں ہوتا۔' },
+];
+
+const AI_TIMING_RULES = {
+  morning: {
+    label: 'صبح کے وقت علامات (AM: 6:00 تا 10:00)',
+    action: 'اسی دن شام کو ٹیکہ لگوائیں (PM: 4:00 تا 8:00)',
+    window: 'علامات کے 6 تا 8 گھنٹے بعد',
+    conception: '55% تا 60% حاملہ ہونے کی شرح',
+    tip: 'گرمیوں میں جانور کو دوپہر ٹھنڈے پانی سے نہلائیں تاکہ ہیٹ اسٹریس کم ہو'
+  },
+  evening: {
+    label: 'شام کے وقت علامات (PM: 4:00 تا 8:00)',
+    action: 'اگلی صبح ٹیکہ لگوائیں (AM: 6:00 تا 10:00)',
+    window: 'علامات کے 6 تا 8 گھنٹے بعد (اگلی صبح)',
+    conception: '55% تا 60% حاملہ ہونے کی شرح',
+    tip: 'صبح جلد از جلد مستند AI ٹیکنیشن سے سیمن رکھوائیں'
+  },
+  silent: {
+    label: 'خاموش مستی / صرف لیس دار مواد (Silent Heat)',
+    action: 'پہلی علامت نظر آنے کے 12 تا 16 گھنٹے بعد',
+    window: '12 تا 16 گھنٹے کا درمیانی وقفہ',
+    conception: '45% تا 50% حاملہ ہونے کی شرح',
+    tip: 'اعلیٰ کوالٹی (40% متحرک سپرم) والے اسٹرا کا استعمال لازمی کریں'
+  }
+};
+
 const SYMPTOM_TAGS = ['بخار', 'سوجن', 'اسہال', 'کھانسی', 'رال بہنا', 'لنگڑاپن', 'خون', 'وزن میں کمی', 'کمزوری', 'چھالے'];
 
 export default function AnimalHealthAdvisor() {
+  const [mainView, setMainView] = useState('clinic'); // 'clinic' | 'breeding'
+  const [heatTime, setHeatTime] = useState('morning');
   const [activeCategory, setActiveCategory] = useState('cattle_buffalo');
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,8 +146,129 @@ export default function AnimalHealthAdvisor() {
         </span>
       </div>
 
-      {/* ── 1. Category Selector Tabs ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.4rem' }}>
+      {/* ── Top Mode Switcher: Clinic vs Breeding ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        <button
+          onClick={() => setMainView('clinic')}
+          style={{
+            padding: '8px', borderRadius: 10,
+            border: `2px solid ${mainView === 'clinic' ? '#166534' : '#e2e8f0'}`,
+            background: mainView === 'clinic' ? '#f0fdf4' : 'white',
+            color: mainView === 'clinic' ? '#166534' : '#64748b',
+            fontWeight: 800, fontSize: '.85rem', cursor: 'pointer', fontFamily: '"Noto Nastaliq Urdu", serif'
+          }}
+        >
+          🩺 امراض و DRAP علاج
+        </button>
+        <button
+          onClick={() => setMainView('breeding')}
+          style={{
+            padding: '8px', borderRadius: 10,
+            border: `2px solid ${mainView === 'breeding' ? '#0369a1' : '#e2e8f0'}`,
+            background: mainView === 'breeding' ? '#e0f2fe' : 'white',
+            color: mainView === 'breeding' ? '#0369a1' : '#64748b',
+            fontWeight: 800, fontSize: '.85rem', cursor: 'pointer', fontFamily: '"Noto Nastaliq Urdu", serif'
+          }}
+        >
+          🧬 افزائش نسل و تخم کاری (SPU)
+        </button>
+      </div>
+
+      {/* ── SPU BREEDING & SILENT HEAT VIEW ── */}
+      {mainView === 'breeding' && (
+        <div>
+          {/* Header */}
+          <div style={{ background: 'linear-gradient(135deg, #075985, #0284c7)', borderRadius: 14, padding: '0.85rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'white' }}>
+            <div style={{ fontSize: '1.6rem' }}>🧬</div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>بھینس کی خاموش مستی و ٹیکہ ٹائمنگ گائیڈ</div>
+              <div style={{ color: '#bae6fd', fontSize: '0.72rem', marginTop: 2 }}>
+                سیمن پروڈکشن یونٹ (SPU) قادرآباد و لائیوسٹاک ڈیپارٹمنٹ پنجاب
+              </div>
+            </div>
+          </div>
+
+          {/* AM-PM Calculator Card */}
+          <div style={{ background: 'white', border: '1.5px solid #bae6fd', borderRadius: 12, padding: '12px', marginBottom: 10 }}>
+            <div style={{ fontWeight: 800, color: '#0369a1', fontSize: '.9rem', marginBottom: 6 }}>
+              ⏱️ AM-PM مصنوعی تخم کاری (AI) کیلکولیٹر:
+            </div>
+            <div style={{ fontSize: '.75rem', color: '#475569', marginBottom: 8 }}>
+              جانور میں مستی کی پہلی علامت کب دیکھی؟
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {Object.entries(AI_TIMING_RULES).map(([key, r]) => (
+                <button key={key}
+                  onClick={() => setHeatTime(key)}
+                  style={{
+                    padding: '8px 12px', borderRadius: 8, textAlign: 'right',
+                    border: `2px solid ${heatTime === key ? '#0284c7' : '#e2e8f0'}`,
+                    background: heatTime === key ? '#f0f9ff' : 'white',
+                    color: heatTime === key ? '#0369a1' : '#334155',
+                    fontWeight: 800, fontSize: '.8rem', cursor: 'pointer', fontFamily: '"Noto Nastaliq Urdu", serif'
+                  }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 10, padding: '10px', marginTop: 10 }}>
+              <div style={{ fontSize: '.72rem', color: '#166534', fontWeight: 700 }}>تجویز کردہ وقت:</div>
+              <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#15803d', marginTop: 2 }}>
+                {AI_TIMING_RULES[heatTime].action}
+              </div>
+              <div style={{ fontSize: '.72rem', color: '#16a34a', marginTop: 3 }}>
+                وقفہ: <strong>{AI_TIMING_RULES[heatTime].window}</strong> | کامیابی شرح: <strong>{AI_TIMING_RULES[heatTime].conception}</strong>
+              </div>
+              <div style={{ fontSize: '.7rem', color: '#334155', marginTop: 4 }}>
+                💡 <strong>ہدایت:</strong> {AI_TIMING_RULES[heatTime].tip}
+              </div>
+            </div>
+          </div>
+
+          {/* Summer Silent Heat Detection */}
+          <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 12, padding: '12px', marginBottom: 10 }}>
+            <div style={{ fontWeight: 800, color: '#92400e', fontSize: '.9rem', marginBottom: 6 }}>
+              🔍 گرمیوں میں نیلی راوی بھینس کی خاموش مستی کی 5 نشانیاں:
+            </div>
+            <div style={{ fontSize: '.72rem', color: '#78350f', marginBottom: 8, lineHeight: 1.5 }}>
+              شدید گرمی میں بھینس آواز (بڑہک) نہیں مارتی جس سے کسان کو پتا نہیں چلتا اور سال ضائع ہو جاتا ہے۔ روزانہ صبح یہ علامات چیک کریں:
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {SILENT_HEAT_SIGNS.map((s, idx) => (
+                <div key={idx} style={{ background: 'white', borderRadius: 8, padding: '8px 10px', border: '1px solid #fed7aa', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1.2rem' }}>{s.icon}</span>
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#9a3412', fontSize: '.8rem' }}>{s.title}</div>
+                    <div style={{ fontSize: '.7rem', color: '#475569', marginTop: 2, lineHeight: 1.4 }}>{s.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Semen Straw Verification */}
+          <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: 12, padding: '12px', marginBottom: 10 }}>
+            <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '.88rem', marginBottom: 6 }}>
+              🛡️ SPU قادرآباد تصدیق شدہ سیمن اسٹرا کی جانچ:
+            </div>
+            <div style={{ fontSize: '.72rem', color: '#475569', lineHeight: 1.6 }}>
+              1. <strong>اسٹرا کوڈ فارمیٹ:</strong> اسٹرا پر سرکاری کوڈ لازمی چیک کریں، مثلاً: <code style={{ fontFamily: 'Inter', background: '#f1f5f9', padding: '1px 6px', borderRadius: 4, color: '#0369a1', fontWeight: 700 }}>QDB-[Bull-ID]-[Batch]-[Date]</code><br />
+              2. <strong>لیکوئڈ نائٹروجن درجہ حرارت:</strong> سیمن سلنڈر کا درجہ حرارت <span style={{ fontFamily: 'Inter', fontWeight: 700 }}>-196°C</span> ہونا لازمی ہے۔ پگھلے ہوئے اسٹرا کو دوبارہ کبھی نہ جمائیں۔<br />
+              3. <strong>متحرک سپرم (Motility):</strong> گرمیوں میں صرف 40% یا اس سے زائد متحرک سپرم والے اسٹرا استعمال کریں۔
+            </div>
+          </div>
+
+          <InstitutionalBadge type="spu" helpline="0800-15000" />
+        </div>
+      )}
+
+      {/* ── CLINIC VIEW ── */}
+      {mainView === 'clinic' && (
+        <>
+          {/* ── 1. Category Selector Tabs ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.4rem' }}>
         {CATEGORIES.map(cat => {
           const isActive = activeCategory === cat.id;
           return (
@@ -379,6 +535,8 @@ export default function AnimalHealthAdvisor() {
           </div>
         )}
       </div>
+      </>
+      )}
 
     </div>
   );
