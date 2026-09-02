@@ -45,6 +45,65 @@ const AI_TIMING_RULES = {
   }
 };
 
+// ─── Punjab Livestock & Dairy Development (L&DD) 12-Month Calendar ────────────
+const PUNJAB_VACCINE_CALENDAR = [
+  {
+    month: 'مارچ (March)',
+    disease: 'منہ کھر (FMD / Foot-and-Mouth)',
+    vaccine: 'FMD Trivalent (O, A, Asia-1)',
+    target: '6 ماہ سے بڑے تمام گائے و بھینس (بچھڑوں کو 4 ہفتے بعد بوسٹر)',
+    badgeColor: '#0284c7',
+    bg: '#f0f9ff',
+    isMandatory: true,
+    freeAtCVH: true,
+    notes: 'سال میں دو مرتبہ (مارچ اور ستمبر)۔ دودھ دینے والے جانوروں کیلئے لازمی۔'
+  },
+  {
+    month: 'مئی تا جون (May–June)',
+    disease: 'گل گھوٹو (HS) و چوڑیا (BQ)',
+    vaccine: 'HS Alum Bacterin + BQ Vaccine (کومبو)',
+    target: 'تمام مویشی (گائے، بھینس، کٹڑے)',
+    badgeColor: '#dc2626',
+    bg: '#fef2f2',
+    isMandatory: true,
+    freeAtCVH: true,
+    notes: '⚠️ مون سون سے قبل سب سے اہم ترین ٹیکہ! سیلابی علاقوں میں ایمرجنسی مہم چلائی جاتی ہے۔'
+  },
+  {
+    month: 'اگست (August)',
+    disease: 'گلٹی والا بخار (Anthrax)',
+    vaccine: 'Anthrax Spore Vaccine (لائیو)',
+    target: 'صرف حکومت کے نوٹیفائیڈ متاثرہ اضلاع میں',
+    badgeColor: '#d97706',
+    bg: '#fffbeb',
+    isMandatory: false,
+    freeAtCVH: true,
+    notes: 'بیمار جانور کو ہرگز نہ لگائیں۔ صرف وبائی علاقوں میں حفاظتی ٹیکہ۔'
+  },
+  {
+    month: 'ستمبر (September)',
+    disease: 'منہ کھر دوسرا راؤنڈ (FMD Booster)',
+    vaccine: 'FMD Trivalent دوسرا ڈوز',
+    target: 'تمام گائے و بھینس',
+    badgeColor: '#0284c7',
+    bg: '#f0f9ff',
+    isMandatory: true,
+    freeAtCVH: true,
+    notes: 'سردیوں کے آغاز سے قبل اینٹی باڈیز کی سطح برقرار رکھنے کیلئے۔'
+  },
+  {
+    month: 'مئی تا جون و سال بھر',
+    disease: 'ریکی (Enterotoxemia) و چیچک (Pox)',
+    vaccine: 'ET Type-D + Sheep Pox Vaccine',
+    target: 'چھوٹے جانور (بکریاں اور بھیڑیں)',
+    badgeColor: '#16a34a',
+    bg: '#f0fdf4',
+    isMandatory: true,
+    freeAtCVH: true,
+    notes: 'نئی سبز گھاس چرانے سے قبل ریکی کا ٹیکہ لگانا بکریوں کو فوری موت سے بچاتا ہے۔'
+  }
+];
+
 const SYMPTOM_TAGS = ['بخار', 'سوجن', 'اسہال', 'کھانسی', 'رال بہنا', 'لنگڑاپن', 'خون', 'وزن میں کمی', 'کمزوری', 'چھالے'];
 
 export default function AnimalHealthAdvisor() {
@@ -257,6 +316,52 @@ export default function AnimalHealthAdvisor() {
               1. <strong>اسٹرا کوڈ فارمیٹ:</strong> اسٹرا پر سرکاری کوڈ لازمی چیک کریں، مثلاً: <code style={{ fontFamily: 'Inter', background: '#f1f5f9', padding: '1px 6px', borderRadius: 4, color: '#0369a1', fontWeight: 700 }}>QDB-[Bull-ID]-[Batch]-[Date]</code><br />
               2. <strong>لیکوئڈ نائٹروجن درجہ حرارت:</strong> سیمن سلنڈر کا درجہ حرارت <span style={{ fontFamily: 'Inter', fontWeight: 700 }}>-196°C</span> ہونا لازمی ہے۔ پگھلے ہوئے اسٹرا کو دوبارہ کبھی نہ جمائیں۔<br />
               3. <strong>متحرک سپرم (Motility):</strong> گرمیوں میں صرف 40% یا اس سے زائد متحرک سپرم والے اسٹرا استعمال کریں۔
+            </div>
+          </div>
+
+          {/* ── 12-Month Punjab Livestock Vaccination & Deworming Calendar ── */}
+          <div style={{ background: 'white', border: '1.5px solid #cbd5e1', borderRadius: 12, padding: '12px', marginBottom: 10 }}>
+            <div style={{ fontWeight: 800, color: '#166534', fontSize: '.92rem', marginBottom: 4 }}>
+              📅 سالانہ حفاظتی ٹیکہ جات و پیٹ کے کیڑے شیڈول (L&DD پنجاب):
+            </div>
+            <div style={{ fontSize: '.72rem', color: '#475569', marginBottom: 8 }}>
+              محکمہ لائیوسٹاک پنجاب (16-کوپر روڈ، لاہور) کا آفیشل سالانہ حفاظتی شیڈول:
+            </div>
+
+            {/* Deworming Buffer Alert */}
+            <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 10, padding: '10px', marginBottom: 10 }}>
+              <div style={{ fontWeight: 800, color: '#92400e', fontSize: '.82rem' }}>
+                💊 ٹیکہ لگانے سے 7 تا 10 دن قبل پیٹ کے کیڑے مارنا (Deworming) لازمی ہے!
+              </div>
+              <div style={{ fontSize: '.7rem', color: '#78350f', marginTop: 3, lineHeight: 1.5 }}>
+                اگر جانور کے پیٹ میں کیڑے ہوں تو اس کی قوتِ مدافعت کمزور ہوتی ہے اور ویکسین کا اثر نہیں ہوتا۔ ویکسین سے ایک ہفتہ قبل <strong>البینڈازول 10% (Albendazole)</strong> یا <strong>آئیورمیکٹن (Ivermectin)</strong> لازمی پلائیں۔
+              </div>
+            </div>
+
+            {/* Calendar Rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+              {PUNJAB_VACCINE_CALENDAR.map((v, i) => (
+                <div key={i} style={{ background: v.bg, border: `1px solid ${v.badgeColor}`, borderRadius: 10, padding: '8px 10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 900, color: v.badgeColor, fontSize: '.85rem' }}>{v.month}</span>
+                    <span style={{ background: 'white', color: v.badgeColor, border: `1px solid ${v.badgeColor}`, padding: '1px 8px', borderRadius: 10, fontSize: '.68rem', fontWeight: 800 }}>
+                      {v.isMandatory ? 'لازمی ٹیکہ' : 'مخصوص اضلاع'}
+                    </span>
+                  </div>
+                  <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '.82rem', marginTop: 3 }}>{v.disease}</div>
+                  <div style={{ fontSize: '.7rem', color: '#475569', marginTop: 1 }}>
+                    <strong>ویکسین:</strong> {v.vaccine} | <strong>ہدف:</strong> {v.target}
+                  </div>
+                  <div style={{ fontSize: '.68rem', color: '#334155', marginTop: 2, fontStyle: 'italic' }}>
+                    {v.notes}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Civil Veterinary Hospital Free Notice */}
+            <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '8px 10px', fontSize: '.72rem', color: '#166534', lineHeight: 1.5 }}>
+              🏥 <strong>سرکاری مفت سہولت:</strong> پنجاب کے تمام سول ویٹرنری ہسپتالوں (CVH) اور موبائل یونٹس پر HS, BQ اور FMD کی ویکسینز حکومتِ پنجاب کی طرف سے بلامعاوضہ (مفت) دستیاب ہوتی ہیں۔ ہیلپ لائن: <strong>0800-15000</strong>
             </div>
           </div>
 

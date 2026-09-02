@@ -218,11 +218,60 @@ const WEEDS = {
   },
 };
 
+// ─── 3. ORCHARDS DIRECTORY (MRS Multan & CRI Sargodha) ────────────────────────
+const ORCHARDS = {
+  'آم کی پھل کی مکھی (Mango Fruit Fly)': {
+    icon: '🪰', crop: 'آم (Mango - Multan)',
+    etl: 'بیکٹرو سرا ڈورسیلس: کٹائی سے 45 دن پہلے ٹریپ لگائیں۔ اگر روزانہ 5 سے زائد مکھیاں ٹریپ میں آئیں تو بیت سپرے کریں۔',
+    waterPerAcre: 100, bestTime: 'صبح کے وقت',
+    products: [
+      { name: 'Methyl Eugenol MAT Traps (میتھائل یوجینول)', brand: 'مصدقہ سیکس فیرومون ٹریپ (MRS Multan)', dose: 10, unit: 'ٹریپس فی ایکڑ', phi: 0, note: '5 تا 6 فٹ اونچائی پر درخت کے مشرقی حصے میں لگائیں۔ ہر 15 تا 20 دن بعد روئی کا لور تبدیل کریں۔' },
+      { name: 'Protein Hydrolysate Bait Spray', brand: 'پروٹین ہائیڈرولائزیٹ + ڈیلٹا میتھرین', dose: 100, unit: 'گرام + 2ml فی لیٹر', phi: 7, note: 'اگر روزانہ 5 سے زائد مکھیاں آئیں تو درخت کے تنے اور نچلے پتوں پر ہفتہ وار سپرے کریں۔' },
+    ]
+  },
+  'آم کا گچھا مچھا (Mango Malformation)': {
+    icon: '🌿', crop: 'آم (Mango - Multan)',
+    etl: 'متاثرہ گچھا نظر آتے ہی 15 تا 20 سینٹی میٹر پیچھے صحت مند لکڑی سے کاٹ کر جلائیں۔',
+    waterPerAcre: 100, bestTime: 'اکتوبر اور اپریل',
+    products: [
+      { name: 'NAA (Naphthalene Acetic Acid 10% SL)', brand: 'پلانٹ گروتھ ریگولیٹر (100–200 ppm)', dose: 100, unit: 'ملی لیٹر فی 100L', phi: 30, note: 'اکتوبر میں برسٹنگ کے وقت سپرے کرنے سے گچھا مچھا کے حملے میں 70% کمی آتی ہے۔' },
+      { name: 'Thiophanate-methyl 70% WP', brand: 'Topsin-M (Nippon Soda / Arysta)', dose: 100, unit: 'گرام فی 100L', phi: 14, note: 'کٹائی کے فورا بعد تنے اور بور پر پھپھوندی کش سپرے کریں۔' },
+    ]
+  },
+  'آم کے سیاہ دھبے و سفوفی پھپھوندی (Anthracnose)': {
+    icon: '🍂', crop: 'آم (Mango - Multan)',
+    etl: 'بور نکلنے سے قبل اور مٹر کے دانے کے برابر پھل بنتے ہی حفاظتی سپرے کریں۔',
+    waterPerAcre: 100, bestTime: 'شام کے وقت',
+    products: [
+      { name: 'Difenoconazole 25% EC', brand: 'Score (Syngenta) / Kanzo', dose: 50, unit: 'ملی لیٹر فی 100L', phi: 14, note: 'مٹر کے دانے پر ہر 14 دن بعد سپرے دہرائیں تاکہ سیاہ داغ نہ بنیں۔' },
+      { name: 'Wettable Sulphur 80% WP', brand: 'سلفیکس / کمولس (BASF)', dose: 300, unit: 'گرام فی 100L', phi: 7, note: 'بور نکلنے سے قبل سفوفی پھپھوندی کے خاتمے کیلئے۔' },
+    ]
+  },
+  'کینو کا پھل گرنا (Citrus Pre-harvest Fruit Drop)': {
+    icon: '🍊', crop: 'کینو / مالٹا (Citrus - Sargodha)',
+    etl: 'ستمبر تا اکتوبر: کٹائی سے 30 تا 40 دن پہلے پھل گرنے سے بچاؤ کیلئے۔',
+    waterPerAcre: 100, bestTime: 'صبح یا شام',
+    products: [
+      { name: '2,4-D Sodium Salt (10–12 ppm)', brand: 'گروتھ ہارمون سپرے (CRI Sargodha)', dose: 1.5, unit: 'گرام فی 100L', phi: 7, note: '1.5 گرام پاؤڈر 100 لیٹر پانی میں ملا کر سپرے کریں۔ کٹائی سے 7 دن کے اندر سپرے نہ کریں۔' },
+      { name: 'Zinc Sulphate + Potassium Nitrate (فولیئر)', brand: 'ZnSO4 0.5% + KNO3 1%', dose: 500, unit: 'گرام زنک + 1 کلو پوٹاش', phi: 0, note: 'پھل کی رنگت، چمک اور گرنے سے روک تھام کیلئے جامع فولیئر غذائیت۔' },
+    ]
+  },
+  'کینو کا بیکٹیریل کینکر و گریننگ (Citrus Canker)': {
+    icon: '🍋', crop: 'کینو / لیموں (Citrus - Sargodha)',
+    etl: 'نئی کونپلیں (فلاش) نکلنے پر ہر 21 دن بعد تانبے کا سپرے کریں۔',
+    waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
+    products: [
+      { name: 'Copper Oxychloride 50% WP', brand: 'کوبوکس / بلائٹوکس (Bayer / ICI)', dose: 300, unit: 'گرام فی 100L', phi: 14, note: 'بہار اور مون سون کی نئی پھوٹ پر ہر 21 دن بعد سپرے کریں۔' },
+      { name: 'Copper Hydroxide 77% WP', brand: 'Champion (Nufarm / FMC)', dose: 200, unit: 'گرام فی 100L', phi: 14, note: 'کینکر کے بیکٹیریا کے پھیلاؤ کو فوری روکتا ہے۔' },
+    ]
+  },
+};
+
 const TANK_SIZES = [15, 16, 20, 25, 100, 400];
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
 export default function SprayDoseCalc() {
-  const [activeTab, setActiveTab] = useState('pests'); // 'pests' | 'weeds'
+  const [activeTab, setActiveTab] = useState('pests'); // 'pests' | 'weeds' | 'orchards'
   const [selectedItem, setSelectedItem] = useState('');
   const [tankSize, setTankSize] = useState(20);
   const [district, setDistrict] = useState('');
@@ -235,7 +284,7 @@ export default function SprayDoseCalc() {
 
   const [soilData] = useState(() => { try { return getSavedSoilProfile(); } catch { return null; } });
 
-  const activeCatalog = activeTab === 'pests' ? PESTS : WEEDS;
+  const activeCatalog = activeTab === 'pests' ? PESTS : activeTab === 'weeds' ? WEEDS : ORCHARDS;
 
   const fetchWeather = useCallback(async (dist) => {
     const coords = DISTRICTS[dist];
@@ -304,31 +353,43 @@ export default function SprayDoseCalc() {
         </div>
       </div>
 
-      {/* ── Category Tabs: Pests vs Weeds ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
+      {/* ── Category Tabs: Pests vs Weeds vs Orchards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: 6, marginBottom: 12 }}>
         <button
           onClick={() => { setActiveTab('pests'); setSelectedItem(''); setResult(null); }}
           style={{
-            padding: '8px', borderRadius: 10,
+            padding: '8px 4px', borderRadius: 10,
             border: `2px solid ${activeTab === 'pests' ? '#0284c7' : '#e2e8f0'}`,
             background: activeTab === 'pests' ? '#e0f2fe' : 'white',
             color: activeTab === 'pests' ? '#0369a1' : '#64748b',
-            fontWeight: 800, fontSize: '.85rem', cursor: 'pointer', ...nas
+            fontWeight: 800, fontSize: '.78rem', cursor: 'pointer', ...nas
           }}
         >
-          🐛 کیڑے مکوڑے و بیماریاں
+          🐛 کیڑے و بیماریاں
         </button>
         <button
           onClick={() => { setActiveTab('weeds'); setSelectedItem(''); setResult(null); }}
           style={{
-            padding: '8px', borderRadius: 10,
+            padding: '8px 4px', borderRadius: 10,
             border: `2px solid ${activeTab === 'weeds' ? '#15803d' : '#e2e8f0'}`,
             background: activeTab === 'weeds' ? '#dcfce7' : 'white',
             color: activeTab === 'weeds' ? '#15803d' : '#64748b',
-            fontWeight: 800, fontSize: '.85rem', cursor: 'pointer', ...nas
+            fontWeight: 800, fontSize: '.78rem', cursor: 'pointer', ...nas
           }}
         >
-          🌿 جڑی بوٹیاں و جڑی بوٹی کش (AARI)
+          🌿 جڑی بوٹی کش (AARI)
+        </button>
+        <button
+          onClick={() => { setActiveTab('orchards'); setSelectedItem(''); setResult(null); }}
+          style={{
+            padding: '8px 4px', borderRadius: 10,
+            border: `2px solid ${activeTab === 'orchards' ? '#d97706' : '#e2e8f0'}`,
+            background: activeTab === 'orchards' ? '#fef3c7' : 'white',
+            color: activeTab === 'orchards' ? '#b45309' : '#64748b',
+            fontWeight: 800, fontSize: '.78rem', cursor: 'pointer', ...nas
+          }}
+        >
+          🥭 باغات: آم و کینو (MRS/CRI)
         </button>
       </div>
 
@@ -336,7 +397,7 @@ export default function SprayDoseCalc() {
         {/* Selector */}
         <div>
           <label className="input-label" style={{ fontWeight: 700, marginBottom: 6, display: 'block' }}>
-            {activeTab === 'pests' ? 'کیڑا یا بیماری منتخب کریں:' : 'جڑی بوٹی یا مرحلہ منتخب کریں:'}
+            {activeTab === 'pests' ? 'کیڑا یا بیماری منتخب کریں:' : activeTab === 'weeds' ? 'جڑی بوٹی یا مرحلہ منتخب کریں:' : 'باغ کا مسئلہ (آم / کینو) منتخب کریں:'}
           </label>
           <select className="input" value={selectedItem} id="spray-pest"
             onChange={e => { setSelectedItem(e.target.value); setResult(null); }}
