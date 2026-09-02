@@ -3,125 +3,153 @@ import { useOffline } from '../../hooks/useOffline';
 import { getSavedSoilProfile } from './SoilProfile';
 import InstitutionalBadge from '../ui/InstitutionalBadge';
 
-// ─── Punjab Agriculture Extension NPK Database ─────────────────────────────
+// ─── SFRI Punjab (Lahore) 2024–2026 Official Fertilizer Matrix ────────────────
+// Sources: Soil Fertility Research Institute Punjab & Punjab Agri Dept 2026 Advisory
 const NPK_DB = {
   'گندم': {
     label: 'گندم (Wheat)', icon: '🌾',
-    yieldTarget: '50 من / ایکڑ',
+    yieldTarget: '50–60 من / ایکڑ (SFRI Standard)',
+    notes: 'تمام فاسفورس (DAP) اور پوٹاش (SOP) بوائی پر دیں۔ نائٹروجن (یوریا) 3 برابر اقساط میں۔',
     stages: {
-      'بوائی': {
-        loam:  { dap: 1,   urea: 0.5, sop: 0,   zinc: 5 },
-        sandy: { dap: 1.5, urea: 0.5, sop: 0.5, zinc: 8 },
-        clay:  { dap: 0.5, urea: 0.5, sop: 0,   zinc: 5 },
+      'بوائی (Basal)': {
+        medium: { dap: 2.0, urea: 0.5, sop: 1.0, zinc: 0, gypsum: 0 },
+        low:    { dap: 2.5, urea: 0.75, sop: 1.25, zinc: 5, gypsum: 0 },
+        high:   { dap: 1.5, urea: 0.5, sop: 0.75, zinc: 0, gypsum: 0 },
+        saline: { dap: 2.0, urea: 0.5, sop: 1.25, zinc: 10, gypsum: 80 },
+        sandy:  { dap: 2.0, urea: 0.5, sop: 1.0, zinc: 5, gypsum: 0 },
       },
-      'پہلا پانی (21-25 دن)': {
-        loam:  { dap: 0, urea: 1.5, sop: 0, zinc: 0 },
-        sandy: { dap: 0, urea: 2,   sop: 0, zinc: 5 },
-        clay:  { dap: 0, urea: 1,   sop: 0, zinc: 0 },
+      'پہلا پانی (تاج جڑیں CRI — 21–25 دن)': {
+        medium: { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 2.25, sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
       },
-      'دوسرا پانی (45-50 دن)': {
-        loam:  { dap: 0, urea: 1, sop: 0, zinc: 0 },
-        sandy: { dap: 0, urea: 1, sop: 0, zinc: 0 },
-        clay:  { dap: 0, urea: 1, sop: 0, zinc: 0 },
-      },
-      'بالیں نکلنا (75-85 دن)': {
-        loam:  { dap: 0, urea: 0.5, sop: 0, zinc: 0 },
-        sandy: { dap: 0, urea: 0.5, sop: 0, zinc: 0 },
-        clay:  { dap: 0, urea: 0,   sop: 0, zinc: 0 },
+      'دوسرا پانی (شگوفے Tillering — 40–45 دن)': {
+        medium: { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 2.0,  sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
       },
     }
   },
   'کپاس': {
     label: 'کپاس (Cotton)', icon: '🌿',
-    yieldTarget: '40 من / ایکڑ',
+    yieldTarget: '50–60 من / ایکڑ (Punjab Agri 2026 Strategy)',
+    notes: 'پنجاب حکومت 2026 ایڈوائزری: فاسفورس و پوٹاش بوائی پر۔ یوریا 20-25 دن اور پھول آنے پر۔',
     stages: {
-      'بوائی': {
-        loam:  { dap: 1,   urea: 0, sop: 0.5, zinc: 5 },
-        sandy: { dap: 1.5, urea: 0, sop: 1,   zinc: 8 },
-        clay:  { dap: 0.5, urea: 0, sop: 0.5, zinc: 5 },
+      'بوائی (Basal)': {
+        medium: { dap: 1.75, urea: 0, sop: 1.5, zinc: 5, gypsum: 0 },
+        low:    { dap: 2.0,  urea: 0.25, sop: 1.5, zinc: 8, gypsum: 0 },
+        high:   { dap: 1.5,  urea: 0, sop: 1.5, zinc: 0, gypsum: 0 },
+        saline: { dap: 1.75, urea: 0, sop: 1.5, zinc: 10, gypsum: 100 },
+        sandy:  { dap: 1.75, urea: 0, sop: 1.5, zinc: 8, gypsum: 0 },
       },
-      'پودا نکلنا (30 دن)': {
-        loam:  { dap: 0, urea: 1,   sop: 0.5, zinc: 0 },
-        sandy: { dap: 0, urea: 1.5, sop: 1,   zinc: 5 },
-        clay:  { dap: 0, urea: 0.5, sop: 0.5, zinc: 0 },
+      'پہلا پانی (20–25 دن)': {
+        medium: { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 2.25, sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
       },
-      'پھول آنا (70-80 دن)': {
-        loam:  { dap: 0, urea: 1.5, sop: 1, zinc: 0 },
-        sandy: { dap: 0, urea: 2,   sop: 1, zinc: 5 },
-        clay:  { dap: 0, urea: 1,   sop: 1, zinc: 0 },
+      'پھول و گڈی بننا (45–50 دن)': {
+        medium: { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
       },
-      'ٹنڈے بننا': {
-        loam:  { dap: 0, urea: 0.5, sop: 0.5, zinc: 0 },
-        sandy: { dap: 0, urea: 1,   sop: 0.5, zinc: 0 },
-        clay:  { dap: 0, urea: 0.5, sop: 0.5, zinc: 0 },
+      'ٹنڈے بننا (70–80 دن)': {
+        medium: { dap: 0, urea: 0.5, sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 0.5, sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 0.25, sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 0.5, sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 0.75, sop: 0, zinc: 0, gypsum: 0 },
       },
     }
   },
   'چاول': {
-    label: 'چاول (Rice)', icon: '🌾',
-    yieldTarget: '35 من / ایکڑ',
+    label: 'چاول باسمتی (Rice)', icon: '🌾',
+    yieldTarget: '40–50 من / ایکڑ (SFRI Standard)',
+    notes: 'کدو کے وقت زنک سلفیٹ 10 کلو لازمی۔ کٹائی سے 10-12 دن پہلے نائٹروجن بند کریں۔',
     stages: {
-      'پنیری لگانا': {
-        loam:  { dap: 1, urea: 0.5, sop: 0.5, zinc: 10 },
-        sandy: { dap: 1, urea: 0.5, sop: 1,   zinc: 15 },
-        clay:  { dap: 1, urea: 0.5, sop: 0,   zinc: 10 },
+      'کدو / پنیری منتقلی (Puddling)': {
+        medium: { dap: 1.75, urea: 0.25, sop: 1.0, zinc: 10, gypsum: 0 },
+        low:    { dap: 2.0,  urea: 0.5,  sop: 1.25, zinc: 10, gypsum: 0 },
+        high:   { dap: 1.35, urea: 0,    sop: 0.75, zinc: 5, gypsum: 0 },
+        saline: { dap: 1.75, urea: 0.25, sop: 1.25, zinc: 15, gypsum: 50 },
+        sandy:  { dap: 1.75, urea: 0.25, sop: 1.0, zinc: 10, gypsum: 0 },
       },
-      'پہلا پانی (25 دن)': {
-        loam:  { dap: 0, urea: 1.5, sop: 0, zinc: 0 },
-        sandy: { dap: 0, urea: 2,   sop: 0, zinc: 0 },
-        clay:  { dap: 0, urea: 1,   sop: 0, zinc: 0 },
+      'شگوفے نکلنا (Active Tillering — 20–25 دن)': {
+        medium: { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 2.0,  sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
       },
-      'بالیں نکلنا': {
-        loam:  { dap: 0, urea: 1, sop: 0.5, zinc: 0 },
-        sandy: { dap: 0, urea: 1, sop: 1,   zinc: 0 },
-        clay:  { dap: 0, urea: 1, sop: 0,   zinc: 0 },
-      },
-    }
-  },
-  'گنا': {
-    label: 'گنا (Sugarcane)', icon: '🎋',
-    yieldTarget: '1000 من / ایکڑ',
-    stages: {
-      'بوائی': {
-        loam:  { dap: 1.5, urea: 0, sop: 1, zinc: 5 },
-        sandy: { dap: 2,   urea: 0, sop: 1, zinc: 8 },
-        clay:  { dap: 1,   urea: 0, sop: 1, zinc: 5 },
-      },
-      'ابتدائی نشوونما (60 دن)': {
-        loam:  { dap: 0, urea: 2, sop: 0, zinc: 0 },
-        sandy: { dap: 0, urea: 3, sop: 0, zinc: 5 },
-        clay:  { dap: 0, urea: 2, sop: 0, zinc: 0 },
-      },
-      'تیز نشوونما (120 دن)': {
-        loam:  { dap: 0, urea: 2, sop: 1, zinc: 0 },
-        sandy: { dap: 0, urea: 3, sop: 1, zinc: 0 },
-        clay:  { dap: 0, urea: 2, sop: 1, zinc: 0 },
+      'گوب کی حالت (Panicle Initiation — 40–45 دن)': {
+        medium: { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
       },
     }
   },
   'مکئی': {
     label: 'مکئی (Maize)', icon: '🌽',
-    yieldTarget: '60 من / ایکڑ',
+    yieldTarget: '60–80 من / ایکڑ (SFRI Standard)',
+    notes: 'گھٹنے کے قد پر نائٹروجن کا بھاری حصہ درکار ہے۔ بھٹہ بننے پر فاسفورس اثر دکھاتا ہے۔',
     stages: {
-      'بوائی': {
-        loam:  { dap: 1.5, urea: 0, sop: 0.5, zinc: 5 },
-        sandy: { dap: 2,   urea: 0, sop: 1,   zinc: 8 },
-        clay:  { dap: 1,   urea: 0, sop: 0.5, zinc: 5 },
+      'بوائی (Basal)': {
+        medium: { dap: 2.0,  urea: 0.5, sop: 1.0, zinc: 5, gypsum: 0 },
+        low:    { dap: 2.35, urea: 0.75, sop: 1.25, zinc: 10, gypsum: 0 },
+        high:   { dap: 1.5,  urea: 0.25, sop: 0.75, zinc: 0, gypsum: 0 },
+        saline: { dap: 2.0,  urea: 0.5, sop: 1.0, zinc: 8, gypsum: 50 },
+        sandy:  { dap: 2.0,  urea: 0.5, sop: 1.0, zinc: 5, gypsum: 0 },
       },
-      'پودا نکلنا (25 دن)': {
-        loam:  { dap: 0, urea: 1.5, sop: 0, zinc: 0 },
-        sandy: { dap: 0, urea: 2,   sop: 0, zinc: 0 },
-        clay:  { dap: 0, urea: 1,   sop: 0, zinc: 0 },
+      'گھٹنے کے برابر قد (Knee-high — 25–30 دن)': {
+        medium: { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 2.0,  sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 2.0,  sop: 0, zinc: 0, gypsum: 0 },
       },
-      'تیز نشوونما (50 دن)': {
-        loam:  { dap: 0, urea: 2, sop: 0.5, zinc: 0 },
-        sandy: { dap: 0, urea: 2, sop: 1,   zinc: 0 },
-        clay:  { dap: 0, urea: 2, sop: 0.5, zinc: 0 },
+      'بور / چھلی بننا (Tasseling — 50–60 دن)': {
+        medium: { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 2.25, sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 1.35, sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
       },
-      'بھٹہ بننا': {
-        loam:  { dap: 0, urea: 0.5, sop: 0, zinc: 0 },
-        sandy: { dap: 0, urea: 1,   sop: 0, zinc: 0 },
-        clay:  { dap: 0, urea: 0.5, sop: 0, zinc: 0 },
+    }
+  },
+  'گنا': {
+    label: 'کماد / گنا (Sugarcane)', icon: '🎋',
+    yieldTarget: '800–1000 من / ایکڑ (SFRI Standard)',
+    notes: 'طویل مدتی فصل — بوائی پر تمام DAP/SOP۔ یوریا 3-4 اقساط میں 120 دن کے اندر مکمل کریں۔',
+    stages: {
+      'کاشت / بوائی (Planting)': {
+        medium: { dap: 2.4,  urea: 1.0, sop: 1.8, zinc: 5, gypsum: 0 },
+        low:    { dap: 2.85, urea: 1.5, sop: 2.1, zinc: 10, gypsum: 0 },
+        high:   { dap: 1.85, urea: 0.5, sop: 1.35, zinc: 0, gypsum: 0 },
+        saline: { dap: 2.4,  urea: 1.0, sop: 2.0, zinc: 10, gypsum: 100 },
+        sandy:  { dap: 2.4,  urea: 1.0, sop: 1.8, zinc: 8, gypsum: 0 },
+      },
+      'پہلا پانی / شگوفے (Tillering — 30–45 دن)': {
+        medium: { dap: 0, urea: 3.0, sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 3.5, sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 2.5, sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 2.5, sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 3.0, sop: 0, zinc: 0, gypsum: 0 },
+      },
+      'تیز نشوونما (Grand Growth — 90–120 دن)': {
+        medium: { dap: 0, urea: 3.2, sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 3.5, sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 2.5, sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 2.5, sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 3.2, sop: 0, zinc: 0, gypsum: 0 },
       },
     }
   },
@@ -131,10 +159,11 @@ const SOIL_MAP = { 'دوہمی': 'loam', 'ریتلی': 'sandy', 'چکنی': 'cla
 const SOIL_LABELS = { loam: 'دوہمی', sandy: 'ریتلی', clay: 'چکنی' };
 
 const SOIL_CONDITIONS = [
-  { id: 'normal', label: 'نارمل زرخیز زمین' },
-  { id: 'saline', label: 'کلراٹھی / نمکیاتی زمین (Saline)' },
-  { id: 'sandy',  label: 'ریتلی / ہلکی زمین' },
-  { id: 'low_om', label: 'نامیاتی مادہ کم (Low OM)' },
+  { id: 'medium', label: 'درمیانی زرخیز (SFRI معیار — نارمل مٹی)' },
+  { id: 'low',    label: 'کمزور / کم زرخیز (OM < 0.8% یا P < 9 ppm) — +25% خوراک' },
+  { id: 'high',   label: 'بہترین / اعلیٰ زرخیز (OM > 1.2% یا P > 18 ppm) — -25% خوراک' },
+  { id: 'saline', label: 'کلراٹھی / سیم زدہ (pH > 8.2 یا EC > 4.0) — جپسم + زنک' },
+  { id: 'sandy',  label: 'ریتلی / ہلکی مٹی (Mera/Retli) — اضافی اقساط' },
 ];
 
 const COLORS = ['#15803d', '#ca8a04', '#7c3aed', '#0369a1'];
@@ -169,7 +198,21 @@ export default function FertilizerRecommender() {
   useEffect(() => {
     try {
       const p = getSavedSoilProfile();
-      if (p) setSoilProfile(p);
+      if (p) {
+        setSoilProfile(p);
+        // SFRI Auto-Detection: classify soil automatically from test values
+        const ph = parseFloat(p.pH || 7.5);
+        const ec = parseFloat(p.ec || 1.5);
+        const om = parseFloat(p.om || 1.0);
+        const pVal = parseFloat(p.p || 12);
+        if (ph > 8.2 || ec > 4.0) {
+          setSoilCondition('saline');
+        } else if (om < 0.8 || pVal < 9) {
+          setSoilCondition('low');
+        } else if (om > 1.2 && pVal > 18) {
+          setSoilCondition('high');
+        }
+      }
     } catch {}
   }, []);
 
@@ -187,8 +230,17 @@ export default function FertilizerRecommender() {
     let totalSop = 0;
     let totalZinc = 0;
 
+    // Map condition to SFRI key: medium | low | high | saline | sandy
+    const conditionKey = (soilCondition === 'saline' || soilCondition === 'sandy' || soilCondition === 'high' || soilCondition === 'low')
+      ? soilCondition
+      : 'medium';
+
+    let totalGypsum = 0;
+
     const plan = Object.entries(cropData.stages).map(([stageName, soilRecs]) => {
-      const recs = { ...(soilRecs[soilKey] || soilRecs.loam) };
+      // Pick exact SFRI recommendation for this condition (or fallback to medium)
+      const baseRec = soilRecs[conditionKey] || soilRecs.medium || (soilRecs[soilKey] || soilRecs.loam);
+      const recs = { ...baseRec };
 
       // Apply soil condition adjustments
       if (soilCondition === 'saline') {
@@ -215,6 +267,7 @@ export default function FertilizerRecommender() {
       totalUrea += (recs.urea || 0) * a;
       totalSop  += (recs.sop  || 0) * a;
       totalZinc += (recs.zinc || 0) * a;
+      totalGypsum += (recs.gypsum || 0) * a;
 
       return {
         stage: stageName,
@@ -233,22 +286,22 @@ export default function FertilizerRecommender() {
       plan,
       soilKey,
       soilCondition,
-      totals: { dap: totalDap, urea: totalUrea, sop: totalSop, zinc: totalZinc },
+      totals: { dap: totalDap, urea: totalUrea, sop: totalSop, zinc: totalZinc, gypsum: totalGypsum },
       costs: { market: marketCost, subsidy: subsidyCost, savings: marketCost - subsidyCost }
     });
   };
 
   const bagLabel = (type, val, a) => {
-    if (type === 'zinc') return `${(val * a).toFixed(0)} کلو`;
+    if (type === 'zinc' || type === 'gypsum') return `${(val * a).toFixed(0)} کلو`;
     return `${(val * a).toFixed(1)} بوری`;
   };
 
   const fmtBag = (type, perAcre, a) => {
     if (!perAcre || perAcre === 0) return null;
     return {
-      label: type === 'dap' ? 'DAP' : type === 'urea' ? 'یوریا' : type === 'sop' ? 'SOP پوٹاش' : 'زنک سلفیٹ',
+      label: type === 'dap' ? 'DAP' : type === 'urea' ? 'یوریا' : type === 'sop' ? 'SOP پوٹاش' : type === 'gypsum' ? 'جپسم (80-mesh)' : 'زنک سلفیٹ',
       value: bagLabel(type, perAcre, a),
-      color: type === 'dap' ? '#15803d' : type === 'urea' ? '#d97706' : type === 'sop' ? '#7c3aed' : '#0369a1'
+      color: type === 'dap' ? '#15803d' : type === 'urea' ? '#d97706' : type === 'sop' ? '#7c3aed' : type === 'gypsum' ? '#b45309' : '#0369a1'
     };
   };
 
