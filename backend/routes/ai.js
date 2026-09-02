@@ -377,6 +377,23 @@ router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
 
     const q = question.trim().slice(0, 1000); // safety length cap
 
+    // If client sends soil profile, prepend it to the question for personalized AI response
+    const soilBlock = (() => {
+      try {
+        const sp = req.body.soilProfile;
+        if (!sp) return '';
+        const parts = [];
+        if (sp.ph)  parts.push('pH: ' + sp.ph);
+        if (sp.ec)  parts.push('EC: ' + sp.ec + ' dS/m');
+        if (sp.n)   parts.push('N: ' + sp.n + ' kg/acre');
+        if (sp.p)   parts.push('P: ' + sp.p + ' kg/acre');
+        if (sp.k)   parts.push('K: ' + sp.k + ' kg/acre');
+        if (sp.zn)  parts.push('Zn: ' + sp.zn + ' ppm');
+        return parts.length ? '[کسان مٹی رپورٹ: ' + parts.join(' | ') + ']\n' : '';
+      } catch { return ''; }
+    })();
+    const qWithSoil = soilBlock ? soilBlock + q : q;
+
     // Fast keyword guard
     if (!isAgricultureRelated(q)) {
       return res.json({ answer: OFF_TOPIC_UR, offTopic: true });
@@ -397,7 +414,7 @@ router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
       return res.json({ answer: cached, fromCache: true });
     }
 
-    const text = await geminiAsk(q, buildChatSystem(language), 700);
+    const text = await geminiAsk(qWithSoil, buildChatSystem(language), 700);
 
     // M4 fix: Save to cache for future requests
     if (text) aiCache.set(q, language, text);

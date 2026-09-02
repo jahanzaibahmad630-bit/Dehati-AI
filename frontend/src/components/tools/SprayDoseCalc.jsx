@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useOffline } from '../../hooks/useOffline';
+import { getSavedSoilProfile } from './SoilProfile';
 import InstitutionalBadge from '../ui/InstitutionalBadge';
 
 // ─── Punjab district GPS coordinates ────────────────────────────────────────
@@ -149,6 +150,8 @@ export default function SprayDoseCalc() {
   const [wxLoading, setWxLoading] = useState(false);
   const [result, setResult] = useState(null);
   const { isOffline } = useOffline();
+  // Soil profile — affects spray efficacy (pH, EC, OM)
+  const [soilData] = useState(() => { try { return getSavedSoilProfile(); } catch { return null; } });
 
   const fetchWeather = useCallback(async (dist) => {
     const coords = DISTRICTS[dist];

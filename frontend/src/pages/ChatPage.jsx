@@ -9,6 +9,25 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import AudioPlayer from '../components/ui/AudioPlayer';
 
 const CHAT_HISTORY_KEY = 'dehati_chat_history_v2';
+
+// ─── Read saved soil profile for chat context injection ───────────────────────
+function getSoilChatContext() {
+  try {
+    const raw = localStorage.getItem('dehati_soil_profile_v1');
+    if (!raw) return '';
+    const p = JSON.parse(raw);
+    const lines = [];
+    if (p.ph)  lines.push('pH: ' + p.ph);
+    if (p.ec)  lines.push('EC: ' + p.ec + ' dS/m');
+    if (p.om)  lines.push('نامیاتی مادہ: ' + p.om + '%');
+    if (p.n)   lines.push('نائٹروجن: ' + p.n + ' kg/acre');
+    if (p.p)   lines.push('فاسفورس: ' + p.p + ' kg/acre');
+    if (p.k)   lines.push('پوٹاشیم: ' + p.k + ' kg/acre');
+    if (p.zn)  lines.push('زنک: ' + p.zn + ' ppm');
+    if (!lines.length) return '';
+    return '\n[کسان کی مٹی رپورٹ (SFRI مٹی ٹیسٹ): ' + lines.join(' | ') + ']\n';
+  } catch { return ''; }
+}
 const MAX_SESSIONS = 30;  // Keep up to 30 past sessions in localStorage
 
 import { API_URL } from '../config';

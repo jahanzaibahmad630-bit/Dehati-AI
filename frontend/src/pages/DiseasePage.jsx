@@ -5,6 +5,15 @@ import { detectDisease, getDiseaseCatalog } from '../services/api';
 import AnimalHealthAdvisor from '../components/tools/AnimalHealthAdvisor';
 import AudioPlayer from '../components/ui/AudioPlayer';
 
+// ─── Read saved soil profile for disease context ──────────────────────────────
+function readSoilForDisease() {
+  try {
+    const raw = localStorage.getItem('dehati_soil_profile_v1');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
 async function compressImage(file, maxSizeMB = 0.4) {
   try {
     const options = { maxSizeMB, maxWidthOrHeight: 1024, useWebWorker: true };
