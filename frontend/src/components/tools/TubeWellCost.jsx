@@ -30,6 +30,22 @@ const SOLAR_SUBSIDY_STEPS = [
 const DISCLAIMER = '⚠️ یہ تجاویز زرعی تحقیقاتی ڈیٹا پر مبنی ہیں۔ حتمی فیصلے سے قبل مقامی زراعت آفیسر سے مشورہ کریں۔';
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
+
+// ─── PCRWR (Pakistan Council of Research in Water Resources) Crop Water Delta ──
+const PCRWR_DELTA = [
+  { crop: 'گندم (Wheat)', delta: '14–18 ایکڑ انچ', irrigations: '4–6 پانی', critical: 'تاج جڑیں (21–25 دن)، شگوفے (40–45 دن)، بالیاں نکلنا' },
+  { crop: 'کپاس (Cotton)', delta: '22–28 ایکڑ انچ', irrigations: '4–7 پانی', critical: 'گڈی بننا (40–45 دن)، پھول آنا، ٹینڈا بننا' },
+  { crop: 'چاول باسمتی (Rice)', delta: '55–65 ایکڑ انچ', irrigations: '10–14 پانی', critical: 'پنیری منتقلی، گوب کی حالت (40–45 دن)، پھول آنا' },
+  { crop: 'کماد / گنا (Sugarcane)', delta: '55–65 ایکڑ انچ', irrigations: '8–12 پانی', critical: 'شگوفے (30 دن)، تیز نشوونما (90–120 دن)' },
+];
+
+// PCRWR Regional Solar Depth Guidelines for Punjab
+const REGIONAL_SOLAR_GUIDE = [
+  { depth: '100–150 فٹ', hp: '5–7.5 HP', pipe: '3–4 انچ', cfs: '0.25–0.35 کیوسک', pv: '6–8 kWp', zones: 'ملتان، وہاڑی، لودھراں' },
+  { depth: '150–250 فٹ', hp: '7.5–10 HP', pipe: '4 انچ', cfs: '0.30–0.40 کیوسک', pv: '9–11 kWp', zones: 'ساہیوال، فیصل آباد، خانیوال' },
+  { depth: '250–350 فٹ', hp: '10–15 HP', pipe: '4–6 انچ', cfs: '0.35–0.50 کیوسک', pv: '12–16 kWp', zones: 'بہاولپور، رحیم یار خان' },
+];
+
 export default function TubeWellCost() {
   const [hp, setHp] = useState('');
   const [depth, setDepth] = useState('');

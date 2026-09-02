@@ -16,7 +16,15 @@
       "common_brands_pakistan": "جراثیم کش: پوٹاشیم پرمینگنیٹ محلول، بیٹاڈین؛ اینٹی بایوٹک: آکسی ٹیٹراسائیکلین (مثلاً الفامائسن، ٹیراما ئسن-ایل اے)",
       "dosage": "رجسٹرڈ ویٹرنری ڈاکٹر سے خوراک ضرور معلوم کریں — وزن اور عمر کے حساب سے خوراک بدلتی ہے",
       "price_pkr": "مقامی پرچون/ویٹرنری اسٹور سے تازہ قیمت معلوم کریں — قیمت شہر اور وقت کے ساتھ بدلتی ہے",
-      "prevention_vaccine": "ایف ایم ڈی ویکسین — ہر 6 ماہ بعد لگوائیں"
+      "prevention_vaccine": "FMD ویکسین سال میں 2 بار (ہر 6 ماہ بعد) پنجاب لائیوسٹاک شیڈول کے مطابق",
+      "drap_calibrated_dose": {
+        "tier1_small": "Oxytetracycline LA 20% (Alamycin): 10 mL IM + زخموں پر گلیسرین/پوٹاشیم پرمینگنیٹ",
+        "tier2_medium": "Oxytetracycline LA 20%: 25 mL IM + Flunixin 5% 5-7 mL",
+        "tier3_adult": "Oxytetracycline LA 20%: 40-50 mL IM + Flunixin 5% 10-15 mL"
+      },
+      "milk_withholding_hours": 72,
+      "meat_withdrawal_days": 21,
+      "withholding_alert": "⚠️ گوشت 21 دن تک نہ کھائیں | دودھ 72 گھنٹے ابال کر صرف ضائع کریں"
     },
     {
       "disease_name": "خونی بخار / گلا گھونٹو (Hemorrhagic Septicemia)",
@@ -49,7 +57,15 @@
       "common_brands_pakistan": "تھن میں لگانے والی ٹیوب: ماسٹیلیپ، ماسٹی ٹریٹ، سیپراوین؛ عام دوا: اینروفلوکسیسن (اینروویٹ)",
       "dosage": "رجسٹرڈ ویٹرنری ڈاکٹر سے خوراک ضرور معلوم کریں — وزن اور عمر کے حساب سے خوراک بدلتی ہے",
       "price_pkr": "مقامی پرچون/ویٹرنری اسٹور سے تازہ قیمت معلوم کریں — قیمت شہر اور وقت کے ساتھ بدلتی ہے",
-      "prevention_vaccine": "صاف ستھری دوہنے کی عادت، دودھ نکالنے کے بعد تھن کو جراثیم کش سے صاف کریں"
+      "prevention_vaccine": "صاف ستھری دوہنے کی عادت، دودھ نکالنے کے بعد تھن کو جراثیم کش سے صاف کریں",
+      "drap_calibrated_dose": {
+        "tier1_small": "انٹرا میمری ٹیوب (Mastijet) 1 ٹیوب فی متاثرہ تھن روزانہ 3-5 دن",
+        "tier2_medium": "1 ٹیوب فی تھن + Ceftiofur (Excenel) 1-2 mg/kg IM (5-7 mL)",
+        "tier3_adult": "1 ٹیوب فی تھن + Ceftiofur 1-2 mg/kg IM (10-15 mL) + Flunixin 5% 10-15 mL"
+      },
+      "milk_withholding_hours": 72,
+      "meat_withdrawal_days": 14,
+      "withholding_alert": "⚠️ دودھ کا ممنوع وقت: 72 سے 96 گھنٹے دودھ فروخت نہ کریں (اینٹی بائیوٹک باقیات خطرہ)"
     },
     {
       "disease_name": "تھیلیریا / چیچڑی بخار (Theileriosis)",
@@ -60,7 +76,15 @@
       "common_brands_pakistan": "بیوپارواکون (بیوٹالیکس، زوبیون)؛ چیچڑی کے لیے: امیٹراز ڈپ/سپرے",
       "dosage": "رجسٹرڈ ویٹرنری ڈاکٹر سے خوراک ضرور معلوم کریں — وزن اور عمر کے حساب سے خوراک بدلتی ہے",
       "price_pkr": "مقامی پرچون/ویٹرنری اسٹور سے تازہ قیمت معلوم کریں — قیمت شہر اور وقت کے ساتھ بدلتی ہے",
-      "prevention_vaccine": "باقاعدہ چیچڑی کا تدارک؛ پاکستان میں عام ویکسین دستیاب نہیں"
+      "prevention_vaccine": "باقاعدہ چیچڑی کا تدارک؛ پاکستان میں عام ویکسین دستیاب نہیں",
+      "drap_calibrated_dose": {
+        "tier1_small": "Buparvaquone 2.5% (Butalex): 2.5 mg/kg یعنی 0.1 mL/kg (10 mL گردن کے پٹھے میں)",
+        "tier2_medium": "Buparvaquone 2.5%: 20-25 mL IM (دو جگہ تقسیم کریں) + اینٹی بائیوٹک",
+        "tier3_adult": "Buparvaquone 2.5%: 35-50 mL IM (دو الگ جگہ لگائیں) + کثیر الحیات انجکشن"
+      },
+      "milk_withholding_hours": 96,
+      "meat_withdrawal_days": 14,
+      "withholding_alert": "⚠️ دودھ دینے والے جانور پر Butalex کے بعد 96 گھنٹے دودھ ضائع کریں"
     },
     {
       "disease_name": "لال پیشاب کی بیماری (Babesiosis)",
