@@ -68,11 +68,38 @@ function formatUpdatedAt(isoString) {
   return d.toLocaleDateString('ur-PK', { day: 'numeric', month: 'long' });
 }
 
+// ─── 5-Year Punjab Average Price Benchmarks (PAMRA/AMIS 2020–2024 avg) ────────
+// Monthly average prices per 40kg maund (PKR). Source: PAMRA Punjab / AMIS data.
+const PRICE_BENCHMARKS = {
+  'گندم':    [3100, 3150, 3200, 3250, 3000, 3100, 3200, 3300, 3400, 3700, 3800, 3700], // Jan–Dec 5yr avg
+  'باسمتی': [3800, 4000, 4200, 4100, 4000, 3900, 3800, 3600, 3200, 3100, 3300, 3600],
+  'کپاس':   [8000, 8200, 8400, 8600, 8500, 8300, 8000, 7800, 7500, 7200, 7500, 7800],
+  'مکئی':   [1600, 1650, 1700, 1750, 1700, 1650, 1600, 1500, 1450, 1550, 1600, 1650],
+};
+
+function getSellSignal(item) {
+  const m = new Date().getMonth(); // 0-indexed
+  const keywords = { 'گندم': 'گندم', 'باسمتی': 'باسمتی', 'کپاس': 'کپاس', 'مکئی': 'مکئی' };
+  let key = null;
+  for (const [k, v] of Object.entries(keywords)) {
+    if (item.nameUrdu && item.nameUrdu.includes(k)) { key = v; break; }
+  }
+  if (!key || !PRICE_BENCHMARKS[key]) return null;
+  const avg5yr = PRICE_BENCHMARKS[key][m];
+  const price = Number(item.price);
+  if (!price || !avg5yr) return null;
+  const pctDiff = +((price - avg5yr) / avg5yr * 100).toFixed(1);
+  if (pctDiff >= 5) return { signal: 'sell', label: `ابھی بیچیں ✅`, color: '#15803d', bg: '#f0fdf4', border: '#86efac', pctDiff };
+  if (pctDiff <= -5) return { signal: 'wait', label: `انتظار کریں ⏳`, color: '#b45309', bg: '#fffbeb', border: '#fde68a', pctDiff };
+  return { signal: 'neutral', label: `اوسط قیمت 📊`, color: '#0369a1', bg: '#eff6ff', border: '#93c5fd', pctDiff };
+}
+
 function PriceRow({ item }) {
   const isStale = item.isReal && hoursAgo(item.updatedAt) > STALE_HOURS;
+  const sellSignal = getSellSignal(item);
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #f3f4f6', background: 'white' }}>
-      <div style={{ minWidth: 0 }}>
+      <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontWeight: 700, fontSize: '.95rem', direction: 'rtl' }}>{item.nameUrdu}</div>
         <div style={{ fontSize: '.7rem', color: '#6b7280', marginTop: 2, direction: 'rtl' }}>
           {item.unit} · {item.category}
@@ -92,6 +119,18 @@ function PriceRow({ item }) {
           {item.isReal &&  isStale && `پرانی قیمت · ${formatUpdatedAt(item.updatedAt)}`}
           {!item.isReal            && 'حوالہ قیمت · نمونہ ڈیٹا'}
         </div>
+        {/* Sell Now vs Store signal */}
+        {sellSignal && (
+          <div style={{
+            marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 3,
+            fontSize: '.65rem', fontWeight: 700, marginRight: 4,
+            color: sellSignal.color, background: sellSignal.bg,
+            border: `1px solid ${sellSignal.border}`,
+            borderRadius: 6, padding: '1px 6px', direction: 'rtl'
+          }}>
+            {sellSignal.label} ({sellSignal.pctDiff > 0 ? '+' : ''}{sellSignal.pctDiff}% 5-سالہ اوسط سے)
+          </div>
+        )}
       </div>
       <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: '1.05rem', color: item.isReal && !isStale ? '#166534' : '#78350f', flexShrink: 0, marginRight: 4 }} dir="ltr">
         ₨{Number(item.price).toLocaleString()}

@@ -293,6 +293,34 @@ export default function LivestockFeedCalc() {
                 ⚠️ <strong>UVAS لاہور کی اہم نصیحت:</strong> ونڈا ہمیشہ دو برابر حصوں میں صبح اور شام دودھ دوہتے وقت دیں۔ خشک ونڈا یکدم نہ کھلائیں، ہلکا پانی چھڑک کر توڑی یا سائیلج میں مکس کر کے دیں۔ نمک اور صاف پانی ہر وقت جانور کے سامنے رکھیں۔
               </div>
 
+              {/* WhatsApp Share Ration Plan */}
+              <button onClick={() => {
+                try { localStorage.setItem('dehati_last_ration', JSON.stringify({ type: rationResult.type, count: rationResult.count, wanda: rationResult.totalWanda, ts: Date.now() })); } catch {}
+                const lines = [
+                  '🐄 *DehatiAI لائیوسٹاک راشن پلان — UVAS/BRI مصدقہ*',
+                  `جانور: ${rationResult.type === 'buffalo' ? 'نیلی راوی بھینس' : rationResult.type === 'cow' ? 'ساہیوال/کراس گائے' : rationResult.type === 'goat' ? 'بکری' : rationResult.type === 'dry' ? 'گابھن جانور' : 'دیسی مرغی'} (${rationResult.count} عدد)`,
+                  '━━━━━━━━━━━━━━━━━',
+                  `روزانہ متوازن ونڈا: ${rationResult.totalWanda} کلو`,
+                  rationResult.maintWanda ? `  • بنیادی زندگی: ${rationResult.maintWanda} کلو` : '',
+                  rationResult.prodWanda && rationResult.prodWanda !== '0' ? `  • دودھ پیداوار: ${rationResult.prodWanda} کلو` : '',
+                  `سبز چارہ (برسیم/جوار): ${rationResult.greenFodder} کلو یا ${rationResult.silage} کلو سائیلج`,
+                  `خشک چارہ (توڑی): ${rationResult.dryFodder} کلو`,
+                  '━━━━━━━━━━━━━━━━━',
+                  '📚 ماخذ: UVAS لاہور + BRI پتوکی',
+                  '📞 مشورہ: 0800-15000 | 🌐 dehati-ai.vercel.app',
+                ].filter(Boolean);
+                window.open('https://wa.me/?text=' + encodeURIComponent(lines.join('\n')), '_blank');
+              }}
+                style={{
+                  width: '100%', padding: '10px', borderRadius: 10, border: 'none',
+                  background: '#25D366', color: '#fff', fontWeight: 800, fontSize: '0.88rem',
+                  cursor: 'pointer', marginTop: 10, direction: 'rtl',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                }}
+              >
+                📤 راشن پلان واٹس ایپ پر بھیجیں
+              </button>
+
               <div style={{ marginTop: 10 }}>
                 <InstitutionalBadge type="uvas" helpline="0800-15000" />
               </div>

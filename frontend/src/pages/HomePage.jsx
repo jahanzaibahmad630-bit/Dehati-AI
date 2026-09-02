@@ -67,6 +67,53 @@ function getSeasonAdvice() {
   return { season: 'ربیع', icon: '🌾', crops: 'گندم، سرسوں، آلو، چنا', advice: timeAdvice, color: '#92400e' };
 }
 
+// ── Month-precise Punjab crop action calendar (AARI/CCRI/RRI) ─────────────────
+function getCropSeasonBanner() {
+  const m = new Date().getMonth() + 1;
+  const d = new Date().getDate();
+  const BANNERS = {
+    1:  { emoji: '🌾', color: '#15803d', bg: '#f0fdf4', border: '#86efac', urgency: 'info',
+          title: 'گندم — پہلا پانی دیں (جنوری)',
+          msg: 'گندم کی CRI (تاج جڑ) مرحلے پر پہلا پانی 21–25 دن پر لازمی دیں۔ پہلے پانی پر یوریا کی دوسری قسط ڈالیں۔ سرسوں میں گریبیج کیڑے کی نگرانی کریں۔' },
+    2:  { emoji: '⚠️', color: '#b45309', bg: '#fffbeb', border: '#fde68a', urgency: 'warn',
+          title: 'گندم — زنگ کا خطرہ (فروری)',
+          msg: '⚠️ فروری میں سرد رطوبتی موسم میں پیلا زنگ (Yellow Rust) کا خطرہ بڑھ جاتا ہے۔ فصل دیکھتے رہیں — کوئی بھی زرد دھاریاں نظر آئیں تو Propiconazole (Tilt 250EC) 200ml فی ایکڑ فوری سپرے کریں۔' },
+    3:  { emoji: '🌿', color: '#0369a1', bg: '#eff6ff', border: '#93c5fd', urgency: 'info',
+          title: 'کپاس — اگیتی کاشت کا وقت (مارچ)',
+          msg: '🌿 اگیتی کپاس (15 فروری تا 31 مارچ) کاشت کریں۔ CCRI ملتان مصدقہ ورائٹیاں: FH-333، CKC-01، MNH-1020۔ بیج کی مقدار: ایسڈ ڈیلنٹڈ 6–8 کلو/ایکڑ۔ بوائی پر یوریا ہرگز نہ ڈالیں!' },
+    4:  { emoji: '🌾', color: '#b45309', bg: '#fffbeb', border: '#fde68a', urgency: 'warn',
+          title: 'گندم — کٹائی کا وقت | کپاس جاری (اپریل)',
+          msg: `${d <= 20 ? '⏳ گندم کٹائی: دانے میں نمی 12–14% پر کمبائن چلائیں۔ کٹائی کے فوراً بعد صاف خشک گودام میں رکھیں — اپریل میں قیمت کم ہوتی ہے، اکتوبر تک روکنے سے 10–15% زیادہ ملتا ہے۔' : '🌿 کپاس کی بوائی جاری رکھیں — 15 مئی تک مکمل کریں!'}`},
+    5:  { emoji: '🌿', color: '#be123c', bg: '#fff1f2', border: '#fda4af', urgency: 'urgent',
+          title: '⏰ کپاس — آخری تاریخ 15 مئی! (مئی)',
+          msg: '⛔ 15 مئی کے بعد کپاس کی بوائی سے گلابی سنڈی کا خطرہ بڑھ جاتا ہے اور پیداوار 20–30% کم ہو سکتی ہے۔ فوری بوائی مکمل کریں! باسمتی نرسری 20 مئی سے شروع کریں۔' },
+    6:  { emoji: '🍚', color: '#15803d', bg: '#f0fdf4', border: '#86efac', urgency: 'info',
+          title: 'باسمتی نرسری — پنیری منتقلی (جون)',
+          msg: '🍚 باسمتی نرسری بوائی: 20 مئی تا 20 جون۔ پنیری 25–30 دن بعد منتقل کریں (25 جون تا 20 جولائی)۔ کپاس: پہلا پانی (20–25 دن) پر پہلی یوریا قسط ڈالیں۔ سفید مکھی کی نگرانی شروع کریں۔' },
+    7:  { emoji: '🦟', color: '#be123c', bg: '#fff1f2', border: '#fda4af', urgency: 'urgent',
+          title: '⚠️ کپاس — سفید مکھی و گلابی سنڈی کا عروج (جولائی)',
+          msg: '⚠️ جولائی میں سفید مکھی اور گلابی سنڈی کا زور ہوتا ہے۔ ETL: 10–12 بالغ مکھی فی پتہ۔ Spirotetramat (Movento) یا Buprofezin (Applaud) استعمال کریں۔ ہفتے میں ایک بار فصل دیکھیں!' },
+    8:  { emoji: '🌾', color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd', urgency: 'info',
+          title: 'چاول — بلاسٹ بیماری کا خطرہ (اگست)',
+          msg: '🌾 اگست میں باسمتی چاول میں گردن بلاسٹ کا خطرہ ہوتا ہے — خاص طور پر ابر آلود ٹھنڈے موسم میں۔ بوٹنگ مرحلے پر Trifloxystrobin (Nativo) یا Tebuconazole سپرے کریں۔ نائٹروجن کا زیادہ استعمال بیماری بڑھاتا ہے۔' },
+    9:  { emoji: '🍚', color: '#15803d', bg: '#f0fdf4', border: '#86efac', urgency: 'info',
+          title: 'چاول کٹائی — نمی چیک کریں (ستمبر)',
+          msg: '🍚 باسمتی دھان کٹائی: 20–24% نمی پر کمبائن چلائیں، پھر 14% تک سکھائیں۔ کپاس: پھول و ٹنڈے بننے پر تیسری یوریا قسط ڈالیں۔ گندم کی اگیتی بوائی کی تیاری شروع کریں۔' },
+    10: { emoji: '🌾', color: '#b45309', bg: '#fffbeb', border: '#fde68a', urgency: 'warn',
+          title: '⏳ گندم بوائی کی تیاری (اکتوبر)',
+          msg: `⏳ گندم کی بہترین بوائی: 1–20 نومبر۔ ابھی تیاری کریں: زمین ہموار کریں، بیج PSC سے لیں (42–45 کلو/ایکڑ)، DAP 2 بوری + SOP 1 بوری بوائی پر تیار رکھیں۔ ${d > 20 ? 'کینو کٹائی شروع کریں — TSS 10–11 بریکس پر کاٹیں۔' : ''}` },
+    11: { emoji: '🌾', color: '#be123c', bg: '#fff1f2', border: '#fda4af', urgency: d <= 20 ? 'urgent' : 'warn',
+          title: d <= 20 ? '✅ گندم بوائی — بہترین وقت (نومبر 1–20)' : '⚠️ گندم پچھیتی — فوری کاشت کریں! (نومبر 21+)',
+          msg: d <= 20
+            ? '✅ 1–20 نومبر گندم کی بہترین بوائی کا وقت ہے! بیج شرح: ڈرل 42–45 کلو، چھٹہ 48–50 کلو فی ایکڑ۔ بوائی کے ساتھ DAP 2 بوری + SOP 1 بوری + ⅓ یوریا بیسل پر ڈالیں۔ مصدقہ ورائٹی: دلکش-20، عروج-22'
+            : '⚠️ 20 نومبر کے بعد ہر دن تاخیر پر پیداوار 1% کم ہوتی ہے! ابھی فوری بوائی کریں — بیج شرح بڑھا کر 60 کلو/ایکڑ کریں۔' },
+    12: { emoji: '❄️', color: '#0369a1', bg: '#eff6ff', border: '#93c5fd', urgency: 'info',
+          title: 'گندم — پالے سے بچاؤ (دسمبر)',
+          msg: '❄️ دسمبر میں گندم کی CRI مرحلے (21–25 دن) پر پہلا پانی دیں — رات کا پالہ ٹوٹتا ہے۔ انتہائی پچھیتی بوائی (11–31 دسمبر): بیج 68–70 کلو/ایکڑ کریں۔ آلو: پالے کی صورت میں بوری یا فلم سے ڈھانپیں۔' },
+  };
+  return BANNERS[m] || BANNERS[11];
+}
+
 function getIrrigationAdvice() {
   const m = new Date().getMonth() + 1;
   if (m >= 5 && m <= 9) return 'گرمی زیادہ ہے — صبح 6-8 بجے یا شام 5-7 بجے پانی دیں';
@@ -196,6 +243,7 @@ export default function HomePage() {
   const season = getSeasonAdvice();
   const irrigationAdvice = getIrrigationAdvice();
   const pestAlert = getPestAlert();
+  const cropBanner = getCropSeasonBanner();
   const { canInstall, isInstalled, install } = usePWAInstall();
 
   const shareOnWhatsApp = () => {
@@ -300,6 +348,30 @@ export default function HomePage() {
               <span style={{ fontSize: '1.4rem' }}>🌤️</span>
               موسم دیکھیں
             </button>
+          </div>
+        </div>
+
+        {/* ── Monthly Crop Action Banner (AARI/CCRI/RRI Calendar) ── */}
+        <div style={{
+          background: cropBanner.bg,
+          border: `1.5px solid ${cropBanner.border}`,
+          borderRadius: 14, padding: '0.85rem 1rem', marginBottom: '0.75rem',
+          borderRight: `5px solid ${cropBanner.color}`,
+          direction: 'rtl'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: cropBanner.color }}>
+              {cropBanner.emoji} {cropBanner.title}
+            </div>
+            {cropBanner.urgency === 'urgent' && (
+              <span style={{ background: '#be123c', color: 'white', fontSize: '0.6rem', fontWeight: 800, padding: '2px 7px', borderRadius: 6 }}>فوری</span>
+            )}
+          </div>
+          <div style={{ fontSize: '0.72rem', color: '#374151', lineHeight: 1.6 }}>
+            {cropBanner.msg}
+          </div>
+          <div style={{ marginTop: 6, fontSize: '0.62rem', color: '#6b7280' }}>
+            📋 ماخذ: AARI فیصل آباد / CCRI ملتان / RRI کالا شاہ کاکو
           </div>
         </div>
 

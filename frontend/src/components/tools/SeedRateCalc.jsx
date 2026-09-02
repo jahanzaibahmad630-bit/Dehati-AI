@@ -411,6 +411,36 @@ export default function SeedRateCalc() {
                 </div>
               ))}
             </div>
+
+            {/* WhatsApp Share Prescription */}
+            <button onClick={() => {
+              try { localStorage.setItem('dehati_last_seed', JSON.stringify({ crop: result.crop, acres: result.a, rate: result.baseRate, total: result.totalSeed, ts: Date.now() })); } catch {}
+              const lines = [
+                '🌱 *DehatiAI بیج نسخہ — PSC/AARI مصدقہ*',
+                `فصل: ${result.cropData.cropLabel}`,
+                `رقبہ: ${result.a} ایکڑ | کاشت: ${result.selectedTiming.label}`,
+                `طریقہ: ${result.method === 'drill' ? 'ڈرل کاشت' : 'چھٹہ کاشت'}`,
+                `بیج قسم: ${result.isCertified ? 'PSC سرٹیفائیڈ (≥85% اگاؤ)' : 'گھر کا بیج (~70% اگاؤ)'}`,
+                '━━━━━━━━━━━━━━━━━',
+                `فی ایکڑ بیج شرح: ${result.baseRate} ${result.cropData.unit}`,
+                `کل بیج درکار: ${result.totalSeed} ${result.cropData.unit}`,
+                '━━━━━━━━━━━━━━━━━',
+                `⭐ تجویز کردہ ورائٹی: ${result.varieties[0]?.name || '—'}`,
+                `پیداوار: ${result.varieties[0]?.yield || '—'}`,
+                '📚 ماخذ: پنجاب سیڈ کارپوریشن + AARI فیصل آباد',
+                '📞 تصدیق: 0800-17000 | 🌐 dehati-ai.vercel.app',
+              ];
+              window.open('https://wa.me/?text=' + encodeURIComponent(lines.join('\n')), '_blank');
+            }}
+              style={{
+                width: '100%', padding: '10px', borderRadius: 10, border: 'none',
+                background: '#25D366', color: '#fff', fontWeight: 800, fontSize: '0.88rem',
+                cursor: 'pointer', marginTop: 10, direction: 'rtl',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+              }}
+            >
+              📤 بیج نسخہ واٹس ایپ پر بھیجیں
+            </button>
           </div>
         )}
       </div>

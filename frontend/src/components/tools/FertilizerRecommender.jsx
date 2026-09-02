@@ -41,7 +41,7 @@ const NPK_DB = {
     stages: {
       'بوائی (Basal)': {
         medium: { dap: 1.75, urea: 0, sop: 1.5, zinc: 5, gypsum: 0 },
-        low:    { dap: 2.0,  urea: 0.25, sop: 1.5, zinc: 8, gypsum: 0 },
+        low:    { dap: 2.0,  urea: 0, sop: 1.5, zinc: 8, gypsum: 0 },
         high:   { dap: 1.5,  urea: 0, sop: 1.5, zinc: 0, gypsum: 0 },
         saline: { dap: 1.75, urea: 0, sop: 1.5, zinc: 10, gypsum: 100 },
         sandy:  { dap: 1.75, urea: 0, sop: 1.5, zinc: 8, gypsum: 0 },
@@ -524,6 +524,7 @@ export default function FertilizerRecommender() {
             <button
               onClick={() => {
                 const rec = result.totals;
+                try { localStorage.setItem('dehati_last_fertilizer', JSON.stringify({ crop: result.crop, soil: result.soilKey, acres: result.a, urea: rec.urea, dap: rec.dap, ts: Date.now() })); } catch {}
                 const slipLines = [
                   '🌾 *DehatiAI اسمارٹ کھاد نسخہ*',
                   `فصل: ${result.crop} | مٹی: ${SOIL_LABELS[result.soilKey]} (${SOIL_CONDITIONS.find(s=>s.id===result.soilCondition)?.label})`,
