@@ -146,8 +146,18 @@ const MARKET_PRICES  = { dap: 8500, urea: 3200, sop: 9500, zinc: 280 };
 const SUBSIDY_PRICES = { dap: 6800, urea: 2560, sop: 7600, zinc: 224 };
 
 export default function FertilizerRecommender() {
-  const [crop, setCrop] = useState('گندم');
-  const [acres, setAcres] = useState('1');
+  // Load last used crop from localStorage (farmer's habit)
+  const getDefaultCrop = () => {
+    try {
+      const saved = localStorage.getItem('dehati_last_crop');
+      return saved || 'گندم';
+    } catch { return 'گندم'; }
+  };
+  const [crop, setCrop] = useState(getDefaultCrop);
+  const getDefaultAcres = () => {
+    try { return localStorage.getItem('dehati_last_acres') || '1'; } catch { return '1'; }
+  };
+  const [acres, setAcres] = useState(getDefaultAcres);
   const [soil, setSoil] = useState('دوہمی');
   const [soilCondition, setSoilCondition] = useState('normal');
   const [showSubsidy, setShowSubsidy] = useState(false);

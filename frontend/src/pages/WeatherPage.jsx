@@ -212,6 +212,25 @@ function WeeklySchedule({ forecast }) {
   );
 }
 
+
+// ─── Generates actionable 1-line Urdu advisory from current weather ────────────
+function getWeatherAdvisory(weather) {
+  if (!weather) return null;
+  const temp  = weather.temp ?? 30;
+  const wind  = weather.windSpeed ?? 0;
+  const humid = weather.humidity ?? 50;
+  const rain  = weather.forecast?.[0]?.rainProb ?? 0;
+
+  if (rain >= 60) return { icon: '🌧️', text: 'آج بارش کا زیادہ امکان ہے — سپرے بالکل نہ کریں، بیج ڈھک کر رکھیں۔', color: '#1d4ed8', bg: '#eff6ff', border: '#93c5fd' };
+  if (rain >= 30) return { icon: '☁️', text: 'کل بارش کا امکان ہے — آبپاشی آج کریں، سپرے کل تک ملتوی کریں۔', color: '#0369a1', bg: '#f0f9ff', border: '#7dd3fc' };
+  if (wind >= 25) return { icon: '💨', text: 'ہوا تیز ہے — سپرے کریں گے تو دوائی اڑ جائے گی، PKR 2,000–5,000 ضائع ہوگا۔ شام کا انتظار کریں۔', color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' };
+  if (temp >= 42) return { icon: '🔥', text: 'شدید گرمی — کوئی بھی سپرے پتوں کو جھلسا سکتا ہے۔ صرف صبح 6-8 بجے سپرے کریں۔', color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' };
+  if (temp >= 35 && humid < 30) return { icon: '🌡️', text: 'گرمی اور خشک ہوا — آبپاشی کا بہترین وقت ہے۔ فصل کو پانی دیں۔', color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
+  if (temp <= 5)  return { icon: '❄️', text: 'پالے کا خطرہ — نازک فصلیں ڈھانپ لیں، آبپاشی صبح کریں تاکہ پالا کم لگے۔', color: '#1e3a8a', bg: '#eff6ff', border: '#93c5fd' };
+  if (wind < 15 && rain < 20 && temp >= 20 && temp <= 35) return { icon: '✅', text: 'آج سپرے کا بہترین وقت — ہوا کم، بارش نہیں، درجہ حرارت مناسب۔ فصل کا دورہ کریں۔', color: '#15803d', bg: '#f0fdf4', border: '#86efac' };
+  return null;
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function WeatherPage() {
   const [weather, setWeather]           = useState(null);
@@ -433,6 +452,25 @@ export default function WeatherPage() {
                 {weather.fallback && <span>• تخمینہ</span>}
               </div>
             </div>
+
+            {/* ── Actionable Advisory Banner from Live Weather ── */}
+            {(() => {
+              const adv = getWeatherAdvisory(weather);
+              if (!adv) return null;
+              return (
+                <div style={{ background: adv.bg, border: `2px solid ${adv.border}`, borderRadius: 14, padding: '12px 14px', direction: 'rtl', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>{adv.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 800, fontSize: '.72rem', color: adv.color, marginBottom: 2, fontFamily: '"Noto Nastaliq Urdu", serif' }}>
+                      ⚡ DehatiAI فوری موسمی مشورہ:
+                    </div>
+                    <div style={{ fontSize: '.82rem', color: adv.color, fontFamily: '"Noto Nastaliq Urdu", serif', lineHeight: 1.6, fontWeight: 600 }}>
+                      {adv.text}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ── 7-Day Forecast Strip ── */}
             {weather.forecast && weather.forecast.length > 0 && (
