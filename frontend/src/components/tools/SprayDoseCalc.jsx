@@ -314,7 +314,7 @@ export default function SprayDoseCalc() {
                   <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '0.55rem', textAlign: 'center' }}>
                     <div style={{ fontSize: '0.65rem', color: '#6b7280', ...nas }}>فی {tankSize}L ٹینک</div>
                     {tankSize !== 20 && p.tankMl && (
-                      <div style={{ fontSize: '0.6rem', color: '#0369a1', ...nas }}>20L ٹینکی: {((p.dose / pestData.waterPerAcre) * 20).toFixed(1)} مل</div>
+                      <div style={{ fontSize: '0.6rem', color: '#0369a1', ...nas }}>20L ٹینکی: {((p.dose / (result.pestData?.waterPerAcre || 100)) * 20).toFixed(1)} مل</div>
                     )}
                     <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0369a1', fontFamily: 'Inter' }} dir="ltr">{p.dosePerTank}</div>
                     <div style={{ fontSize: '0.65rem', color: '#6b7280', ...nas }}>مل/گرام</div>
