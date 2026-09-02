@@ -14,7 +14,15 @@ function authHeaders(extra = {}) {
 }
 
 async function handleResponse(res) {
-  const data = await res.json();
+  let data;
+  const text = await res.text();
+  try {
+    data = JSON.parse(text);
+  } catch {
+    const err = new Error(res.status >= 500 ? 'سرور مصروف ہے — کچھ دیر بعد کوشش کریں' : 'درخواست ناکام');
+    err.status = res.status;
+    throw err;
+  }
   if (!res.ok) {
     const err = new Error(data.error || 'درخواست ناکام');
     err.status = res.status;
@@ -119,13 +127,7 @@ export async function login({ phone, password }) {
   return handleResponse(res);
 }
 
-export async function guestLogin() {
-  const res = await fetch(`${API_URL}/api/auth/guest`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
-  });
-  return handleResponse(res);
-}
+
 
 // === Image compression helper ===
 // Uses canvas-based resize as primary (no extra memory from web worker)
@@ -200,12 +202,10 @@ export async function fileToBase64(file) {
 
 // ─── Soil Report OCR — scans a photo of a soil test report ───────────────────
 export async function scanSoilReport(imageBase64, mimeType = 'image/jpeg') {
-  const res = await fetch(`${API_URL}/ai/soil-scan`, {
+  const res = await fetch(`${API_URL}/api/ai/soil-scan`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ imageBase64, mimeType }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Soil scan failed');
-  return data;
+  return handleResponse(res);
 }

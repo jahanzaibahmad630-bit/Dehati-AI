@@ -134,19 +134,36 @@ async function testConnection() {
 
 // ─── findUserByPhone ──────────────────────────────────────────────────────────
 async function findUserByPhone(phone) {
+  if (!phone) return null;
+  let p1 = phone;
+  let p2 = phone;
+  if (phone.startsWith('0') && phone.length === 11) {
+    p2 = '+92' + phone.slice(1);
+  } else if (phone.startsWith('+92') && phone.length === 13) {
+    p2 = '0' + phone.slice(3);
+  } else if (phone.startsWith('92') && phone.length === 12) {
+    p2 = '0' + phone.slice(2);
+  }
+
   if (pool) {
-    const { rows } = await pool.query('SELECT * FROM users WHERE phone=$1 LIMIT 1', [phone]);
-    return rows[0] || null;
+    try {
+      const { rows } = await pool.query('SELECT * FROM users WHERE phone=$1 OR phone=$2 LIMIT 1', [p1, p2]);
+      return rows[0] || null;
+    } catch (err) {
+      console.warn('Postgres findUserByPhone failed, falling back:', err.message);
+    }
   }
   const supabase = getSupabase();
   if (supabase) {
-    // maybeSingle() returns null (not error) when 0 rows
-    const { data, error } = await supabase.from('users').select('*').eq('phone', phone).maybeSingle();
-    if (error) console.error('❌ findUserByPhone error:', error.code, error.message);
-    return data || null;
+    try {
+      const { data, error } = await supabase.from('users').select('*').or(`phone.eq.${p1},phone.eq.${p2}`).limit(1).maybeSingle();
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Supabase findUserByPhone error:', e.message);
+    }
   }
   const all = getMemUsers();
-  return all.find(u => u.phone === phone) || null;
+  return all.find(u => u.phone === p1 || u.phone === p2) || null;
 }
 
 // ─── createUser ───────────────────────────────────────────────────────────────
@@ -387,8 +404,10 @@ async function saveChatLog({ userId, userName, userPhone, question, answer, lang
 async function getChatLogs({ page = 1, limit = 20, search = '' } = {}) {
   if (!pool) return getMemChatLogs({ page, limit, search });
   const offset = (page - 1) * limit;
-  const where  = search ? `WHERE question ILIKE $3 OR user_name ILIKE $3` : '';
-  const params = search ? [limit, offset, `%${search}%`] : [limit, offset];
+  const where       = search ? `WHERE question ILIKE $3 OR user_name ILIKE $3` : '';
+  const params      = search ? [limit, offset, `%${search}%`] : [limit, offset];
+  const countWhere  = search ? `WHERE question ILIKE $1 OR user_name ILIKE $1` : '';
+  const countParams = search ? [`%${search}%`] : [];
 
   const [{ rows }, { rows: countRows }] = await Promise.all([
     pool.query(
@@ -398,8 +417,8 @@ async function getChatLogs({ page = 1, limit = 20, search = '' } = {}) {
       params
     ),
     pool.query(
-      `SELECT COUNT(*) as c FROM chat_logs ${where}`,
-      search ? [`%${search}%`] : []
+      `SELECT COUNT(*) as c FROM chat_logs ${countWhere}`,
+      countParams
     )
   ]);
 
@@ -679,11 +698,14 @@ async function purgeChatLogs(days = 90) {
 module.exports = {
   pool, initDB, testConnection,
   findUserByPhone, createUser, getAllUsers,
+  getTotalUserCount, getNewTodayCount, getRecentUsers,
   deleteUser, isUsingPersistentDB,
   setPriceDB, getPricesDB, deletePriceDB,
   saveChatLog, getChatLogs, getUserChatHistory,
-  getCacheFromDB, setCacheInDB,
+  getCacheFromDB, setCacheInDB, flushCacheDB, getCacheStats,
+  logAuditAction, getAuditLogs,
   logAIUsage, getAIUsage, getAIUsageStats: getAIUsage,
   createEmergencyAlert, getEmergencyAlerts, updateEmergencyAlertStatus, deleteEmergencyAlert,
   exportAllData, purgeChatLogs
 };
+

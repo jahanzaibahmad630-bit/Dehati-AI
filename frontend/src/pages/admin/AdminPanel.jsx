@@ -205,7 +205,7 @@ function HealthBadge({ status, latency, dark }) {
   );
 }
 
-const PUNJAB_DISTRICTS = ['lahore','faisalabad','multan','rawalpindi','gujranwala','sialkot','bahawalpur','sargodha','sheikhupura','rahim_yar_khan','jhang','gujrat','okara','sahiwal','kasur','dera_ghazi_khan','vehari','mianwali','khanewal','pakpattan'];
+const PUNJAB_DISTRICTS = ['lahore','faisalabad','multan','rawalpindi','gujranwala','sialkot','bahawalpur','sargodha','jhang','rahim_yar_khan','sahiwal','okara','dera_ghazi_khan','mianwali','khanewal','vehari','hafizabad','sheikhupura','gujrat','kasur','chiniot','muzaffargarh','pakpattan','attock','chakwal','jhelum','narowal','nankana_sahib','toba_tek_singh','bhakkar','layyah','mandi_bahauddin','khushab','lodhran'];
 
 function AIUsageTab({ dark }) {
   const [data, setData] = useState(null);
@@ -433,7 +433,7 @@ function EmergencyAlertsTab({ dark }) {
             <label style={{ display: 'block', fontSize: '.78rem', fontWeight: 700, color: dark ? '#94A3B8' : '#374151', marginBottom: '.5rem' }}>Target Districts (empty = all Punjab)</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.4rem' }}>
               {PUNJAB_DISTRICTS.map(d => (
-                <button type="button" key={d} onClick={() => toggleDistrict(d)} style={{ padding: '.3rem .7rem', borderRadius: 20, border: '1.5px solid', borderColor: form.targetDistricts.includes(d) ? '#EF4444' : (dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'), background: form.targetDistricts.includes(d) ? '#FEF2F2' : 'transparent', color: form.targetDistricts.includes(d) ? '#EF4444' : (dark ? '#94A3B8' : '#6b7280'), fontSize: '.72rem', fontWeight: form.targetDistricts.includes(d) ? 700 : 400, cursor: 'pointer', textTransform: 'capitalize' }}>{d.replace('_', ' ')}</button>
+                <button type="button" key={d} onClick={() => toggleDistrict(d)} style={{ padding: '.3rem .7rem', borderRadius: 20, border: '1.5px solid', borderColor: form.targetDistricts.includes(d) ? '#EF4444' : (dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'), background: form.targetDistricts.includes(d) ? '#FEF2F2' : 'transparent', color: form.targetDistricts.includes(d) ? '#EF4444' : (dark ? '#94A3B8' : '#6b7280'), fontSize: '.72rem', fontWeight: form.targetDistricts.includes(d) ? 700 : 400, cursor: 'pointer', textTransform: 'capitalize' }}>{d.replaceAll('_', ' ')}</button>
               ))}
             </div>
           </div>
@@ -796,13 +796,13 @@ export default function AdminPanel({ onLogout }) {
         )}
 
         <div style={{ color: textPrimary }}>
-          {tab === 'users'         && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Users Management</h2><UsersTab /></>}
-          {tab === 'chatlogs'      && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>User Questions Log</h2><ChatLogsTab /></>}
-          {tab === 'announcements' && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Announcements</h2><AnnouncementsTab /></>}
-          {tab === 'schemes'       && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Government Schemes</h2><SchemesTab /></>}
-          {tab === 'prices'        && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Market Prices Editor</h2><PricesTab /></>}
-          {tab === 'health'        && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>System Health</h2><HealthTab /></>}
-          {tab === 'recent'        && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Recent Registrations</h2><RecentTab /></>}
+          {tab === 'users'         && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Users Management</h2><UsersTab dark={dark} /></>}
+          {tab === 'chatlogs'      && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>User Questions Log</h2><ChatLogsTab dark={dark} /></>}
+          {tab === 'announcements' && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Announcements</h2><AnnouncementsTab dark={dark} /></>}
+          {tab === 'schemes'       && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Government Schemes</h2><SchemesTab dark={dark} /></>}
+          {tab === 'prices'        && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Market Prices Editor</h2><PricesTab dark={dark} /></>}
+          {tab === 'health'        && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>System Health</h2><HealthTab dark={dark} /></>}
+          {tab === 'recent'        && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Recent Registrations</h2><RecentTab dark={dark} /></>}
           {tab === 'ai-usage'      && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>AI Token & Cost Usage</h2><AIUsageTab dark={dark} /></>}
           {tab === 'audit'         && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Admin Audit Log</h2><AuditLogTab dark={dark} /></>}
           {tab === 'emergency'     && <><h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Emergency Alert Dispatcher</h2><EmergencyAlertsTab dark={dark} /></>}
@@ -1095,6 +1095,14 @@ function PricesTab() {
               >
                 {saving === crop ? '...' : 'Save'}
               </button>
+              {data.isReal && (
+                <button
+                  onClick={() => revert(crop)}
+                  style={btnStyle('#dc2626')}
+                >
+                  ↩️ Revert
+                </button>
+              )}
             </div>
           </div>
         ))}

@@ -19,6 +19,8 @@ const URDU_ARABIC_RE = /[\u0600-\u06ff\u0750-\u077f\ufb50-\ufdff\ufe70-\ufeff]/;
  */
 export function getDir(text) {
   if (!text || !text.trim()) return 'rtl';
+  const urduMatches = text.match(/[\u0600-\u06ff\u0750-\u077f\ufb50-\ufdff\ufe70-\ufeff]/g);
+  if (urduMatches && urduMatches.length >= 2) return 'rtl';
   const first = text.trim()[0];
   return URDU_ARABIC_RE.test(first) ? 'rtl' : 'ltr';
 }

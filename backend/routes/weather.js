@@ -42,7 +42,7 @@ function safeNum(val, fallback) {
 function getSevereAlerts(maxTemp, minTemp, windSpeed, rainProb) {
   const alerts = [];
   if (maxTemp > 40)  alerts.push({ type: 'heatwave', label: '🔥 شدید گرمی', color: '#dc2626', bg: '#fef2f2' });
-  if (minTemp < 12)  alerts.push({ type: 'frost',    label: '🧊 ٹھنڈ خطرہ', color: '#0284c7', bg: '#e0f2fe' });
+  if (minTemp <= 4)  alerts.push({ type: 'frost',    label: '🧊 کورا / شدید ٹھنڈ', color: '#0284c7', bg: '#e0f2fe' });
   if (rainProb > 60) alerts.push({ type: 'rain',     label: '🌧️ بھاری بارش', color: '#1d4ed8', bg: '#eff6ff' });
   if (windSpeed > 20) alerts.push({ type: 'wind',   label: '💨 تیز ہوا',    color: '#6d28d9', bg: '#f5f3ff' });
   return alerts;

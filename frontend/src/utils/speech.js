@@ -650,14 +650,27 @@ export async function speakText(text, langKey = 'ur', rate = 0.85) {
  * playAudioCue — Synthetic, zero-asset Web Audio API audio feedback for voice start/stop.
  * @param {'start' | 'stop' | 'error'} type
  */
-export function playAudioCue(type = 'start') {
+let _sharedAudioCtx = null;
+function getAudioContext() {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    if (ctx.state === 'suspended') {
-      ctx.resume();
+    if (!AudioCtx) return null;
+    if (!_sharedAudioCtx || _sharedAudioCtx.state === 'closed') {
+      _sharedAudioCtx = new AudioCtx();
     }
+    if (_sharedAudioCtx.state === 'suspended') {
+      _sharedAudioCtx.resume().catch(() => {});
+    }
+    return _sharedAudioCtx;
+  } catch {
+    return null;
+  }
+}
+
+export function playAudioCue(type = 'start') {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
     const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -698,3 +711,4 @@ export function playAudioCue(type = 'start') {
     // Non-fatal if audio context is restricted
   }
 }
+

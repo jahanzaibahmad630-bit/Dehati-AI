@@ -1,6 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../lib/db');
+const { requireAdmin } = require('../middleware/auth');
 
 // Official Punjab Govt Schemes Fallback Records
 const OFFICIAL_SCHEMES = [
@@ -112,7 +113,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/schemes — Admin add/update scheme
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const scheme = req.body;
     if (!scheme || !scheme.title_ur) {

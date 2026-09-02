@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getWeatherByCoords, getWeatherByCity, askAI } from '../services/api';
 import { usePermission, PERMISSION_MESSAGES } from '../hooks/usePermission';
 import { useOffline } from '../hooks/useOffline';
+import { useAuth } from '../context/AuthContext';
 import AIDisclaimer from '../components/ui/AIDisclaimer';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import AudioPlayer from '../components/ui/AudioPlayer';
@@ -221,18 +222,19 @@ function getWeatherAdvisory(weather) {
   const humid = weather.humidity ?? 50;
   const rain  = weather.forecast?.[0]?.rainProb ?? 0;
 
-  if (rain >= 60) return { icon: '🌧️', text: 'آج بارش کا زیادہ امکان ہے — سپرے بالکل نہ کریں، بیج ڈھک کر رکھیں۔', color: '#1d4ed8', bg: '#eff6ff', border: '#93c5fd' };
-  if (rain >= 30) return { icon: '☁️', text: 'کل بارش کا امکان ہے — آبپاشی آج کریں، سپرے کل تک ملتوی کریں۔', color: '#0369a1', bg: '#f0f9ff', border: '#7dd3fc' };
-  if (wind >= 25) return { icon: '💨', text: 'ہوا تیز ہے — سپرے کریں گے تو دوائی اڑ جائے گی، PKR 2,000–5,000 ضائع ہوگا۔ شام کا انتظار کریں۔', color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' };
-  if (temp >= 42) return { icon: '🔥', text: 'شدید گرمی — کوئی بھی سپرے پتوں کو جھلسا سکتا ہے۔ صرف صبح 6-8 بجے سپرے کریں۔', color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' };
+  if (rain >= 60) return { icon: '🌧️', text: 'آج بارش کا قوی امکان ہے — سپرے اور کھاد بالکل نہ ڈالیں، کٹائی شدہ فصل ڈھانپیں۔', color: '#1d4ed8', bg: '#eff6ff', border: '#93c5fd' };
+  if (rain >= 30) return { icon: '☁️', text: 'بارش کا خدشہ ہے — سپرے مؤخر کریں ورنہ بارش سے دوائی بہہ جائے گی۔', color: '#0369a1', bg: '#f0f9ff', border: '#7dd3fc' };
+  if (wind >= 16) return { icon: '💨', text: `تیز ہوا (${wind} km/h) — سپرے نہ کریں! دوائی اڑ کر ضائع ہوگی اور زہر پھیلنے کا خطرہ ہے۔`, color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' };
+  if (temp >= 42) return { icon: '🔥', text: 'شدید گرمی و لو — دوپہر میں کوئی بھی سپرے پتوں کو جھلسا دے گا۔ صرف صبح سویرے سپرے کریں۔', color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' };
   if (temp >= 35 && humid < 30) return { icon: '🌡️', text: 'گرمی اور خشک ہوا — آبپاشی کا بہترین وقت ہے۔ فصل کو پانی دیں۔', color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
-  if (temp <= 5)  return { icon: '❄️', text: 'پالے کا خطرہ — نازک فصلیں ڈھانپ لیں، آبپاشی صبح کریں تاکہ پالا کم لگے۔', color: '#1e3a8a', bg: '#eff6ff', border: '#93c5fd' };
-  if (wind < 15 && rain < 20 && temp >= 20 && temp <= 35) return { icon: '✅', text: 'آج سپرے کا بہترین وقت — ہوا کم، بارش نہیں، درجہ حرارت مناسب۔ فصل کا دورہ کریں۔', color: '#15803d', bg: '#f0fdf4', border: '#86efac' };
+  if (temp <= 4)  return { icon: '❄️', text: 'پالے اور شدید ٹھنڈ کا خطرہ — نازک فصلیں ڈھانپیں، شام کو ہلکا پانی لگائیں۔', color: '#1e3a8a', bg: '#eff6ff', border: '#93c5fd' };
+  if (wind < 16 && rain < 20 && temp >= 12 && temp <= 38) return { icon: '✅', text: 'آج سپرے کے لیے مثالی موسم — ہوا پرسکون، بارش نہیں اور درجہ حرارت مناسب ہے۔', color: '#15803d', bg: '#f0fdf4', border: '#86efac' };
   return null;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function WeatherPage() {
+  const { user } = useAuth();
   const [weather, setWeather]           = useState(null);
   const [advice, setAdvice]             = useState('');
   const [loading, setLoading]           = useState(false);
@@ -263,8 +265,11 @@ export default function WeatherPage() {
       }
     } else if (lastCity && !weather) {
       handleCitySelect(lastCity);
+    } else if (user?.district && !weather) {
+      const match = Object.keys(CITY_LABELS).find(k => CITY_LABELS[k] === user.district) || user.district.toLowerCase();
+      handleCitySelect(match);
     }
-  }, [isOffline]); // eslint-disable-line
+  }, [isOffline, user]); // eslint-disable-line
 
   const fetchWeatherAndAdvice = async (weatherData) => {
     setWeather(weatherData);

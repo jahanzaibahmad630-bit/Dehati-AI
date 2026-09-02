@@ -459,7 +459,7 @@ export default function ChatPage() {
       id: currentSessionId.current,
       title: title || 'گفتگو',
       date: new Date().toISOString(),
-      messages: convo.slice(-20), // store last 20 msgs per session
+      messages: convo.slice(-20).map(m => ({ ...m, streaming: false })), // store last 20 msgs per session
       messageCount: userMsgs.length
     };
 
@@ -808,7 +808,13 @@ export default function ChatPage() {
     setShowQuickReplies(false);
 
     // Bug fix: use messagesRef.current so history is always current (not stale closure)
-    const history = [...messagesRef.current, userMsg].slice(-10).map(m => ({ role: m.role, content: m.content }));
+    const soilCtx = getSoilChatContext();
+    const history = [...messagesRef.current, userMsg].slice(-10).map((m, idx, arr) => {
+      if (idx === arr.length - 1 && soilCtx) {
+        return { role: m.role, content: m.content + '\n' + soilCtx };
+      }
+      return { role: m.role, content: m.content };
+    });
 
     // Add streaming placeholder
     const streamingMsg = { role: 'assistant', content: '', streaming: true, time: new Date() };
@@ -837,9 +843,16 @@ export default function ChatPage() {
       let buffer    = '';
       let gotFirstChunk = false;
 
-      // ── 10-second no-data timeout ─────────────────────────────────────────
-      // If no actual text arrives within 10s (Railway buffering / DB hang),
-      // abort the stream and fall back to the reliable non-streaming endpoint.
+      // ── Rolling watchdog timeout ─────────────────────────────────────────
+      // If initial connection or mid-stream stalls for >12s, abort cleanly
+      let streamTimer = null;
+      const resetStreamTimer = () => {
+        clearTimeout(streamTimer);
+        streamTimer = setTimeout(() => {
+          try { controller.abort(); } catch {}
+        }, 12000);
+      };
+
       const noDataTimer = setTimeout(() => {
         if (!gotFirstChunk) {
           try { controller.abort(); } catch {}
@@ -847,9 +860,11 @@ export default function ChatPage() {
       }, 10000);
 
       try {
+        resetStreamTimer();
         outer: while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          resetStreamTimer();
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
@@ -874,6 +889,7 @@ export default function ChatPage() {
           }
         }
       } finally {
+        clearTimeout(streamTimer);
         clearTimeout(noDataTimer);
         reader.cancel().catch(() => {});
       }

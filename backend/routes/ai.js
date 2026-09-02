@@ -42,22 +42,29 @@ const AGRI_KEYWORDS_UR = [
   'فصل','گندم','چاول','مکئی','کپاس','گنا','آلو','ٹماٹر','پیاز','مرچ','لہسن','سرسوں',
   'چنا','مسور','مونگ','ماش','جوار','باجرہ','تل','السی','کماد','دھان','مٹر','تارا میرہ',
   'موٹھ','گوار','سویابین','سورج مکھی','زیتون','انار','آم','کینو','مالٹا','امرود',
+  // سبزیاں و چارہ
+  'برسیم','لوسرن','جنتر','روڑی','گوبر','بھنڈی','بینگن','کریلا','کدو','کھیرا','تربوز',
+  'خربوزہ','پالک','مولی','گاجر','شلجم','بند گوبھی','پھول گوبھی','چقندر','مونگ پھلی',
   // انپٹ
   'کھاد','DAP','یوریا','پوٹاش','نائٹروجن','فاسفورس','سپرے','زہر','دوائی',
   'بیج','پنیری','ٹیکہ','ٹیکے',
   // کیڑے و بیماری
   'بیماری','کیڑا','سنڈی','تیلا','چیپا','دیمک','پھپھوندی','زنگ','جھلساؤ','کٹوا',
-  'سفید مکھی','تھرپس','مکڑی','شائنر',
-  // زمین و پانی
+  'سفید مکھی','تھرپس','مکڑی','شائنر','گلابی سنڈی','لشکری سنڈی',
+  // زمین، رقبہ و پیمائش
   'آبپاشی','پانی','مٹی','زمین','نمی','سیم','تھور','نہر','کھال','نلکی','ڈرپ',
-  'ٹیوب ویل','موٹر','پمپ','بارش','اولے','سیلاب','خشک سالی',
-  // عملیات
+  'ٹیوب ویل','موٹر','پمپ','بارش','اولے','سیلاب','خشک سالی','مرلہ','کنال','ایکڑ',
+  'مربع','پٹواری','فرد','خسرہ','انتقال','پیمائش','ٹھیکہ','رقبہ','وارابندی',
+  // عملیات و مشینری
   'بوائی','کٹائی','گوڈی','روٹاویٹر','ہل','ٹریکٹر','تھریشر','کمبائن','کاشت',
+  'ڈیزل','پیٹرول','موبل آئل','فلٹر','بیٹری','بور','پیٹر','سولر پینل',
   // منڈی
   'منڈی','قیمت','ریٹ','فروخت','خریداری','آڑھتی','اناج','ذخیرہ',
-  // جانور
+  // جانور، مویشی، مرغی و ویٹرنری
   'گائے','بھینس','بکری','مرغی','جانور','دودھ','چارہ','مویشی','بیل','اونٹ',
-  'خرگوش','مچھلی','جھینگا','مرغا','ہانڈی',
+  'خرگوش','مچھلی','جھینگا','مرغا','کٹڑا','کٹڑی','بچھڑا','لےلا','ہانڈی',
+  'رانی کھیت','گمبورو','کوکسی','منہ کھر','گل گھوٹو','چمچڑی','چچڑی','اپھارہ',
+  'سرہ','تھن','مستائیٹس','ہوانہ','تخم کاری','مستی','حمل','ویٹرنری',
   // عمومی
   'زراعت','کسان','کھیت','فارم','باغ','پھل','سبزی','موسم','درجہ حرارت',
   'کسان کارڈ','ZTBL','فصلی بیمہ','زرعی','ہرے چارے','قرضہ','سبسڈی','اسکیم',
@@ -139,16 +146,16 @@ const CLEARLY_OFF_TOPIC = [
   // Entertainment
   'movie','film','actor','actress','drama','song','gana','music','cricket','football',
   'match','game','gaming','pubg','tiktok','youtube','instagram','facebook',
-  // Politics (not agri-related)
-  'election','vote','imran khan','nawaz','zardari','party politics','pm',
+  // Politics (not agri-related - strictly full words/phrases, NEVER short substrings like 'pm')
+  'election','vote','imran khan','nawaz','zardari','party politics','prime minister','wazir e azam','pmln','pti',
   // Tech (not agri-related)
-  'mobile','phone','laptop','computer','software','coding','programming','bitcoin',
+  'laptop','computer','software','coding','programming','bitcoin','crypto',
   // Love/Personal
   'love','pyaar','ishq','larki','larka','shaddi','rishta','divorce',
-  // Medical (non-livestock)
-  'doctor','hospital','medicine for human','aspirin','fever in human',
+  // Human Medical (non-veterinary)
+  'human doctor','hospital for humans','medicine for human','aspirin for human',
   // Other clearly off-topic
-  'recipe','cooking','khana pakana','hotel','tourism','travel abroad'
+  'cooking recipe','khana pakana','hotel booking','tourism','travel abroad'
 ];
 
 function isAgricultureRelated(text) {
@@ -347,11 +354,14 @@ async function geminiAsk(prompt, systemPrompt, maxTokens = 700) {
     return '';
   }
   try {
-    const fullPrompt = sysText + '\n\n---\n\n' + prompt;
     const response = await gemini.models.generateContent({
       model: GEMINI_MODEL,
-      contents: fullPrompt,
-      config: { maxOutputTokens: maxTokens, temperature: 0.6 }
+      contents: prompt,
+      config: {
+        systemInstruction: sysText,
+        maxOutputTokens: maxTokens,
+        temperature: 0.6
+      }
     });
     const text = response.text || '';
     db.logAIUsage({
@@ -373,7 +383,7 @@ router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
   try {
     const { question, language = 'ur' } = req.body;
     if (!question?.trim()) return res.status(400).json({ error: 'سوال خالی نہیں ہونا چاہیے' });
-    if (!claude)           return res.json(aiUnavailable());
+    if (!gemini && !claude) return res.json(aiUnavailable());
 
     const q = question.trim().slice(0, 1000); // safety length cap
 
@@ -946,6 +956,7 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
 
     // ─── Stream with Gemini (primary) or Claude (failover) ──────────────────────
     let fullReply = '';
+    let finalMsg = null;
 
     if (gemini) {
       // ── Gemini SSE Streaming (primary) ──
@@ -1011,7 +1022,7 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
       }
     });
 
-    const finalMsg = await stream.finalMessage();
+    finalMsg = await stream.finalMessage().catch(() => null);
     } // end else-if(claude)
     // Non-blocking token tracking (fire and forget)
     if (finalMsg?.usage) {
@@ -1023,9 +1034,11 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
         cacheTokens: finalMsg.usage.cache_read_input_tokens || 0
       }).catch(() => {});
     }
-    clearInterval(heartbeat);
-    res.write('data: [DONE]\n\n');
-    res.end();
+    if (heartbeat) clearInterval(heartbeat);
+    if (!res.writableEnded) {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
 
     // Post-response: save to cache + chat_logs (non-blocking)
     if (lastMsg.role === 'user' && fullReply) {

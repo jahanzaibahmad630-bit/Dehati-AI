@@ -18,6 +18,18 @@ const FEATURES = [
   { icon: '📊', text: 'فصل موازنہ کیلکولیٹر' },
 ];
 
+function normalizePhone(raw) {
+  if (!raw) return '';
+  let digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('0092')) digits = digits.slice(4);
+  else if (digits.startsWith('92')) digits = digits.slice(2);
+  else if (digits.startsWith('0')) digits = digits.slice(1);
+  if (digits.length === 10 && digits.startsWith('3')) {
+    return '0' + digits;
+  }
+  return raw.trim();
+}
+
 export default function AuthPage() {
   const { register, login } = useAuth();
   const [tab, setTab] = useState('login');
@@ -40,7 +52,7 @@ export default function AuthPage() {
     setError('');
     setLoading(true);
     try {
-      await login(loginPhone, loginPass);
+      await login(normalizePhone(loginPhone), loginPass);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -53,7 +65,7 @@ export default function AuthPage() {
     setError('');
     setLoading(true);
     try {
-      await register(regName, regPhone, regDistrict, regLand, regPass);
+      await register(regName, normalizePhone(regPhone), regDistrict, regLand, regPass);
     } catch (err) {
       setError(err.message);
     } finally {

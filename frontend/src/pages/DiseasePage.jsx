@@ -1,9 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
-import imageCompression from 'browser-image-compression';
 import { useOffline } from '../hooks/useOffline';
-import { detectDisease, getDiseaseCatalog } from '../services/api';
+import { detectDisease, getDiseaseCatalog, compressImage } from '../services/api';
 import AnimalHealthAdvisor from '../components/tools/AnimalHealthAdvisor';
 import AudioPlayer from '../components/ui/AudioPlayer';
+
+function calculateTotalDose(dosageStr, acres) {
+  if (!dosageStr || !acres || acres <= 1) return dosageStr;
+  const rangeMatch = dosageStr.match(/^(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)\s*(.*)$/);
+  if (rangeMatch) {
+    const min = (parseFloat(rangeMatch[1]) * acres).toFixed(0);
+    const max = (parseFloat(rangeMatch[2]) * acres).toFixed(0);
+    const unit = rangeMatch[3].trim();
+    return `${min} تا ${max} ${unit}`;
+  }
+  const singleMatch = dosageStr.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
+  if (singleMatch) {
+    const total = (parseFloat(singleMatch[1]) * acres).toFixed(0);
+    return `${total} ${singleMatch[2].trim()}`;
+  }
+  return `${dosageStr} × ${acres}`;
+}
 
 // ─── Read saved soil profile for disease context ──────────────────────────────
 function readSoilForDisease() {
@@ -14,14 +30,7 @@ function readSoilForDisease() {
   } catch { return null; }
 }
 
-async function compressImage(file, maxSizeMB = 0.4) {
-  try {
-    const options = { maxSizeMB, maxWidthOrHeight: 1024, useWebWorker: true };
-    return await imageCompression(file, options);
-  } catch {
-    return file;
-  }
-}
+// Using canvas-optimized compressImage from api.js
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -466,8 +475,7 @@ export default function DiseasePage() {
             ref={fileRef}
             type="file"
             accept="image/*"
-            capture="environment"
-            onChange={handleFileChange}
+                        onChange={handleFileChange}
             style={{ display: 'none' }}
             id="disease-file-input"
           />
@@ -613,15 +621,15 @@ export default function DiseasePage() {
 
               {/* Trilingual Titles: Urdu + Roman Urdu + English */}
               {/* Line 1 — Primary Urdu (Deep Forest Green, high contrast) */}
-              <div style={{ fontWeight: 900, fontSize: '1.25rem', color: 'var(--green-900)', direction: 'rtl', marginBottom: '.15rem', lineHeight: 1.4 }}>
+              <div style={{ fontWeight: 900, fontSize: '1.25rem', color: '#ffffff', direction: 'rtl', marginBottom: '.15rem', lineHeight: 1.4 }}>
                 🔬 {result.disease_ur || result.disease}
               </div>
               {/* Line 2 — Roman Urdu subtitle */}
-              <div style={{ fontSize: '.85rem', color: 'var(--text-secondary)', direction: 'ltr', fontWeight: 700, marginBottom: '.1rem', letterSpacing: '.01em' }}>
+              <div style={{ fontSize: '.85rem', color: '#fef08a', direction: 'ltr', fontWeight: 700, marginBottom: '.1rem', letterSpacing: '.01em' }}>
                 🌾 {result.disease_roman || getRomanUrdu(result.disease_en, result.disease_ur)}
               </div>
               {/* Line 3 — English subtitle (italic) */}
-              <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', direction: 'ltr', fontStyle: 'italic', fontWeight: 500 }}>
+              <div style={{ fontSize: '.78rem', color: 'rgba(255,255,255,0.75)', direction: 'ltr', fontStyle: 'italic', fontWeight: 500 }}>
                 {result.disease_en || result.disease || '—'}
               </div>
             </div>
@@ -743,11 +751,7 @@ export default function DiseasePage() {
                           borderRadius: 8, padding: '6px 10px', marginBottom: '.4rem', direction: 'rtl',
                           fontSize: '.82rem', color: '#6b4a2b', fontWeight: 800
                         }}>
-                          🧮 {landSize} ایکڑ کے لیے کل مقدار: {(() => {
-                            const num = parseFloat(med.dosage);
-                            const unit = med.dosage.replace(/[\d.]+/, '').trim();
-                            return isNaN(num) ? `${med.dosage} × ${landSize}` : `${(num * landSize).toFixed(0)} ${unit}`;
-                          })()}
+                          🧮 {landSize} ایکڑ کے لیے کل مقدار: {calculateTotalDose(med.dosage, landSize)}
                         </div>
                       )}
 

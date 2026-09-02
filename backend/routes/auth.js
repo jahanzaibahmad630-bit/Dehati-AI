@@ -7,6 +7,18 @@ const db = require('../lib/db');
 const router      = express.Router();
 const SALT_ROUNDS = 10;
 
+function normalizePakPhone(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  let digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('0092')) digits = digits.slice(4);
+  else if (digits.startsWith('92')) digits = digits.slice(2);
+  else if (digits.startsWith('0')) digits = digits.slice(1);
+  if (digits.length === 10 && digits.startsWith('3')) {
+    return '0' + digits; // 03XXXXXXXXX (11 digits)
+  }
+  return raw.replace(/[^0-9+]/g, '');
+}
+
 function makeUserObj(data, passwordHash) {
   return {
     id:            randomUUID(),          // proper UUID — required by Supabase
@@ -29,7 +41,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'نام، فون نمبر اور پاسورڈ ضروری ہیں' });
     }
 
-    const cleanPhone = phone.replace(/[^0-9+]/g, '');
+    const cleanPhone = normalizePakPhone(phone);
     if (cleanPhone.length < 10) {
       return res.status(400).json({ error: 'درست فون نمبر داخل کریں (کم از کم 10 ہندسے)' });
     }
@@ -72,7 +84,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'فون نمبر اور پاسورڈ ضروری ہیں' });
     }
 
-    const cleanPhone = phone.replace(/[^0-9+]/g, '');
+    const cleanPhone = normalizePakPhone(phone);
 
     // Timing-safe: always run bcrypt (prevents user enumeration)
     const user = await db.findUserByPhone(cleanPhone);
@@ -99,12 +111,7 @@ router.post('/login', async (req, res) => {
 
 // ─── POST /api/auth/guest ──────────────────────────────────────────────────────
 router.post('/guest', (req, res) => {
-  const guestUser = {
-    id: 'guest-' + Date.now(), phone: 'guest',
-    name: 'مہمان کسان', district: null, land_size: null, is_guest: true
-  };
-  const token = signToken(guestUser);
-  res.json({ token, user: { name: 'مہمان کسان', phone: 'guest', isGuest: true } });
+  return res.status(410).json({ error: 'مہمان موڈ ختم کر دیا گیا ہے۔ براہ کرم اپنا مفت اکاؤنٹ بنائیں یا لاگ ان کریں۔' });
 });
 
 // ─── DELETE /api/auth/account ─────────────────────────────────────────────────

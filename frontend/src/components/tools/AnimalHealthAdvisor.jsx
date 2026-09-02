@@ -166,7 +166,11 @@ export default function AnimalHealthAdvisor() {
     const catLabel = CATEGORIES.find(c => c.id === activeCategory)?.label || activeCategory;
     setAiLoading(true); setAiError(''); setAiResult('');
     try {
-      const data = await askAnimalHealth(catLabel, selectedSymptoms.join(', '), aiQuestion || searchQuery, animalWeight);
+      const pregTag = isPregnant ? ' [نوٹ: جانور گابھن / حاملہ ہے — اسقاطِ حمل والی ادویات جیسے Dexamethasone یا Dalmazin سخت ممنوع ہیں]' : '';
+      const weightTag = animalWeight ? ` [وزن: ${animalWeight} kg]` : '';
+      const symptomsWithExtra = (selectedSymptoms.join(', ') + pregTag + weightTag).trim();
+      const questionWithExtra = ((aiQuestion || searchQuery) + pregTag + weightTag).trim();
+      const data = await askAnimalHealth(catLabel, symptomsWithExtra, questionWithExtra, animalWeight);
       setAiResult(data.answer);
     } catch (err) {
       setAiError(err.message || 'جواب نہیں ملا — دوبارہ کوشش کریں');
@@ -644,6 +648,26 @@ export default function AnimalHealthAdvisor() {
           اگر آپ کو مخصوص علامات کے بارے میں مزید گہرائی سے معلوم کرنا ہے تو DehatiAI سے لائیو سوال پوچھیں:
         </p>
 
+        <div style={{ display: 'flex', gap: '.5rem', marginBottom: '.6rem', flexWrap: 'wrap' }}>
+          <input
+            type="number"
+            placeholder="جانور کا وزن (کلوگرام) مثلاً: 450"
+            value={animalWeight}
+            onChange={e => setAnimalWeight(e.target.value)}
+            className="input"
+            style={{ flex: 1, minWidth: '150px', background: 'white', color: '#111827', borderRadius: '10px', fontSize: '.82rem', padding: '6px 10px' }}
+          />
+          <select
+            value={weightTier}
+            onChange={e => setWeightTier(e.target.value)}
+            className="input"
+            style={{ width: '130px', background: 'white', color: '#111827', borderRadius: '10px', fontSize: '.82rem', padding: '6px 10px' }}
+          >
+            <option value="tier1">بچھڑا (&lt;150kg)</option>
+            <option value="tier2">درمیانہ (150-350kg)</option>
+            <option value="tier3">بڑا جانور (&gt;350kg)</option>
+          </select>
+        </div>
         <textarea
           className="input"
           rows={2}
