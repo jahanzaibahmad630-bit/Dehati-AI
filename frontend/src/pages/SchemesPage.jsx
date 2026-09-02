@@ -8,8 +8,8 @@ const NAS = { fontFamily: '"Noto Nastaliq Urdu", serif' };
 
 // ─── Helper: relative date label ─────────────────────────────────────────────
 function deadlineBadge(deadline) {
-  if (!deadline || deadline === 'جاری ہے' || deadline.includes('فعال')) {
-    return { label: '🟢 جاری', color: '#15803d', bg: '#f0fdf4', border: '#86efac' };
+  if (!deadline || deadline === 'جاری ہے' || deadline.includes('فعال') || deadline.includes('جاری') || deadline.includes('قرعہ اندازی') || deadline.includes('سیزن')) {
+    return { label: '🟢 فعال و جاری', color: '#15803d', bg: '#f0fdf4', border: '#86efac' };
   }
   return { label: `⏳ ${deadline}`, color: '#b45309', bg: '#fffbeb', border: '#fde68a' };
 }
@@ -244,9 +244,9 @@ function GreenTractorBanner() {
     <div style={{ background: 'linear-gradient(135deg, #14532d, #166534)', borderRadius: 12, padding: '0.85rem 1rem', marginBottom: 8, color: 'white', display: 'flex', alignItems: 'center', gap: 12 }} dir="rtl">
       <div style={{ fontSize: '2rem', flexShrink: 0 }}>🚜</div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 800, fontSize: '0.88rem', ...NAS }}>گرین ٹریکٹر پروگرام 2026</div>
-        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#86efac', fontFamily: 'Inter, sans-serif' }} dir="ltr">₨15,00,000 سبسڈی</div>
-        <div style={{ fontSize: '0.68rem', color: '#bbf7d0', marginTop: 2, ...NAS }}>ڈیڈ لائن: 15 اگست 2026 — فوری درخواست دیں</div>
+        <div style={{ fontWeight: 800, fontSize: '0.88rem', ...NAS }}>گرین ٹریکٹر پروگرام 2024–2026</div>
+        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#86efac', fontFamily: 'Inter, sans-serif' }} dir="ltr">₨10,00,000 نقد سبسڈی</div>
+        <div style={{ fontSize: '0.68rem', color: '#bbf7d0', marginTop: 2, ...NAS }}>مرحلہ 2 قرعہ اندازی — پورٹل پر شفاف انتخاب فعال ہے</div>
       </div>
       <a href="sms:8070?body=GTR" id="gt-sms-btn"
         style={{ background: '#E9C46A', color: '#14532d', padding: '0.5rem 0.8rem', borderRadius: 8, textDecoration: 'none', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, textAlign: 'center', ...NAS }}
@@ -439,7 +439,7 @@ export default function SchemesPage() {
           const formatted = data.schemes.map(s => ({
             id:           s.id,
             name:         s.title_ur || s.titleUrdu || s.name || 'اسکیم',
-            icon:         s.icon || '📋',
+            icon:         s.icon || (s.id?.includes('kissan') ? '💳' : s.id?.includes('tractor') ? '🚜' : s.id?.includes('oil') ? '🌻' : s.id?.includes('mall') ? '🏪' : s.id?.includes('dastak') ? '🚪' : '📋'),
             tagline:      s.category || s.tagline || 'سرکاری اسکیم',
             amount:       s.subsidy_amount || s.loan_limit || s.amount || '',
             amountDetail: s.description_ur || s.description || s.amountDetail || '',
