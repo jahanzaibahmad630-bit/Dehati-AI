@@ -1,26 +1,26 @@
 import { useState } from 'react';
 
-// ─── Punjab Agriculture Dept crop yield & price data ─────────────────────────
+// ─── Punjab Agriculture Dept crop yield, mandi price & benchmark cost data ────
 const CROP_DATA = {
-  'گندم':   { yieldPerAcre: 35,  mandiPrice: 3900,  unit: 'من',   icon: '🌾' },
-  'کپاس':   { yieldPerAcre: 40,  mandiPrice: 6500,  unit: 'من',   icon: '🌿' },
-  'چاول':   { yieldPerAcre: 30,  mandiPrice: 5200,  unit: 'من',   icon: '🌾' },
-  'گنا':    { yieldPerAcre: 900, mandiPrice: 425,   unit: 'من',   icon: '🎋' },
-  'مکئی':   { yieldPerAcre: 50,  mandiPrice: 1800,  unit: 'من',   icon: '🌽' },
-  'آلو':    { yieldPerAcre: 120, mandiPrice: 1200,  unit: 'من',   icon: '🥔' },
-  'ٹماٹر':  { yieldPerAcre: 200, mandiPrice: 1500,  unit: 'من',   icon: '🍅' },
-  'پیاز':   { yieldPerAcre: 100, mandiPrice: 1000,  unit: 'من',   icon: '🧅' },
-  'مرچ':    { yieldPerAcre: 15,  mandiPrice: 12000, unit: 'من',   icon: '🌶️' },
-  'سرسوں':  { yieldPerAcre: 20,  mandiPrice: 4500,  unit: 'من',   icon: '🌻' },
+  'گندم':   { yieldPerAcre: 40,  mandiPrice: 3900,  unit: 'من', icon: '🌾', defaultCost: 85000 },
+  'کپاس':   { yieldPerAcre: 22,  mandiPrice: 7500,  unit: 'من', icon: '🌿', defaultCost: 110000 },
+  'چاول':   { yieldPerAcre: 45,  mandiPrice: 4200,  unit: 'من', icon: '🌾', defaultCost: 95000 },
+  'گنا':    { yieldPerAcre: 850, mandiPrice: 425,   unit: 'من', icon: '🎋', defaultCost: 180000 },
+  'مکئی':   { yieldPerAcre: 75,  mandiPrice: 1800,  unit: 'من', icon: '🌽', defaultCost: 90000 },
+  'آلو':    { yieldPerAcre: 260, mandiPrice: 850,   unit: 'من', icon: '🥔', defaultCost: 160000 },
+  'ٹماٹر':  { yieldPerAcre: 250, mandiPrice: 1200,  unit: 'من', icon: '🍅', defaultCost: 150000 },
+  'پیاز':   { yieldPerAcre: 150, mandiPrice: 1400,  unit: 'من', icon: '🧅', defaultCost: 120000 },
+  'مرچ':    { yieldPerAcre: 18,  mandiPrice: 16000, unit: 'من', icon: '🌶️', defaultCost: 140000 },
+  'سرسوں':  { yieldPerAcre: 22,  mandiPrice: 5000,  unit: 'من', icon: '🌻', defaultCost: 55000 },
 };
 
 const COST_FIELDS = [
-  { key: 'seed',    label: 'بیج / پنیری',       icon: '🌱', placeholder: '2000' },
-  { key: 'prep',    label: 'زمین تیاری',        icon: '🚜', placeholder: '4500' },
-  { key: 'fert',    label: 'کھاد (DAP+یوریا)',  icon: '🧪', placeholder: '8000' },
-  { key: 'water',   label: 'پانی / ڈیزل',      icon: '💧', placeholder: '6000' },
-  { key: 'spray',   label: 'سپرے / ادویات',    icon: '💊', placeholder: '3000' },
-  { key: 'harvest', label: 'کٹائی / مزدوری',   icon: '✂️', placeholder: '4000' },
+  { key: 'seed',    label: 'بیج / پنیری',                 icon: '🌱', placeholder: '7000' },
+  { key: 'prep',    label: 'زمین تیاری (لیزر+ہل)',       icon: '🚜', placeholder: '12000' },
+  { key: 'fert',    label: 'کھاد (DAP+یوریا+پوٹاش)',     icon: '🧪', placeholder: '30000' },
+  { key: 'water',   label: 'آبپاشی / ڈیزل / ٹیوب ویل',    icon: '💧', placeholder: '15000' },
+  { key: 'spray',   label: 'سپرے / جڑی بوٹی و کیڑے',      icon: '💊', placeholder: '10000' },
+  { key: 'harvest', label: 'کٹائی / تھریشر / مزدوری',     icon: '✂️', placeholder: '12000' },
 ];
 
 const DISCLAIMER = '⚠️ یہ تجاویز زرعی تحقیقاتی ڈیٹا پر مبنی ہیں۔ حتمی فیصلے سے قبل مقامی زراعت آفیسر سے مشورہ کریں۔';
@@ -49,8 +49,10 @@ export default function ProfitEstimator() {
     } catch {}
     if (mandiOverride && parseFloat(mandiOverride) > 0) mandiPrice = parseFloat(mandiOverride);
 
-    // Investment
-    const totalCostPerAcre = COST_FIELDS.reduce((sum, f) => sum + (parseFloat(costs[f.key]) || 0), 0);
+    // Investment: sum user-entered costs; if all left blank, fallback to crop's realistic benchmark
+    const customSum = COST_FIELDS.reduce((sum, f) => sum + (parseFloat(costs[f.key]) || 0), 0);
+    const isDefaultCostUsed = customSum === 0;
+    const totalCostPerAcre = isDefaultCostUsed ? (cropInfo.defaultCost || 85000) : customSum;
     const totalCost = totalCostPerAcre * a;
 
     // Revenue
@@ -60,7 +62,10 @@ export default function ProfitEstimator() {
     const roi = totalCost > 0 ? ((netProfit / totalCost) * 100).toFixed(1) : 0;
     const breakevenPerUnit = totalCost > 0 && totalYield > 0 ? Math.ceil(totalCost / totalYield) : 0;
 
-    setResult({ a, crop, cropInfo, totalCost, grossRevenue, netProfit, roi, totalYield, mandiPrice, breakevenPerUnit });
+    setResult({
+      a, crop, cropInfo, totalCost, grossRevenue, netProfit, roi,
+      totalYield, mandiPrice, breakevenPerUnit, isDefaultCostUsed, totalCostPerAcre
+    });
   };
 
   const fmt = n => Math.abs(n).toLocaleString('ur-PK');
@@ -142,7 +147,7 @@ export default function ProfitEstimator() {
                 { label: 'کل پیداوار', value: `${result.totalYield.toLocaleString()} من`, color: '#0369a1', bg: '#eff6ff' },
                 { label: 'مارکیٹ قیمت', value: `₨${fmt(result.mandiPrice)}/من`, color: '#7c3aed', bg: '#f5f3ff' },
                 { label: 'مجموعی آمدنی', value: `₨${fmt(result.grossRevenue)}`, color: '#15803d', bg: '#f0fdf4' },
-                { label: 'کل خرچہ', value: `₨${fmt(result.totalCost)}`, color: '#dc2626', bg: '#fef2f2' },
+                { label: result.isDefaultCostUsed ? 'کل خرچہ (علاقائی اوسط)' : 'کل خرچہ', value: `₨${fmt(result.totalCost)}`, color: '#dc2626', bg: '#fef2f2' },
               ].map(({ label, value, color, bg }) => (
                 <div key={label} style={{ background: bg, borderRadius: 12, padding: '0.75rem', textAlign: 'center' }}>
                   <div style={{ fontSize: '0.68rem', color: '#6b7280', marginBottom: 4, ...nas }}>{label}</div>
@@ -150,6 +155,12 @@ export default function ProfitEstimator() {
                 </div>
               ))}
             </div>
+
+            {result.isDefaultCostUsed && (
+              <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '6px 10px', fontSize: '.72rem', color: '#166534', marginBottom: 8, textAlign: 'center' }}>
+                💡 خرچہ فیلڈز خالی تھیں، اس لیے پنجاب زرعی اکنامکس کی اوسط لاگت (₨{result.totalCostPerAcre.toLocaleString()} فی ایکڑ) لاگو کی گئی ہے۔
+              </div>
+            )}
 
             {/* Net Profit Banner */}
             <div style={{ background: result.netProfit >= 0 ? 'linear-gradient(135deg, #14532d, #15803d)' : 'linear-gradient(135deg, #7f1d1d, #dc2626)', borderRadius: 14, padding: '1rem', textAlign: 'center', marginBottom: 8 }}>

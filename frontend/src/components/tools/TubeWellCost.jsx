@@ -83,7 +83,9 @@ export default function TubeWellCost() {
 
     const pipeData = PIPE_SIZES[pipeSize];
     const gpm = pipeData ? pipeData.gpmPerHP * h : null;
-    const acresPerDay = gpm ? Math.round((gpm * hrs * 60) / 27154) : null;
+    // 1 acre-inch = 27,154 gallons. Normal irrigation depth = 3 inches.
+    const totalGallons = gpm ? gpm * hrs * 60 : 0;
+    const acresPerDay = gpm ? +((totalGallons / 27154) / 3).toFixed(1) : null;
 
     setSolarResult({
       hp: h, hrs, depth: d, pipeSize,
@@ -309,6 +311,9 @@ export default function TubeWellCost() {
                 </div>
                 <div style={{ marginTop: 8, fontSize: '.72rem', color: '#bae6fd' }}>
                   💡 ڈیزل بچت سے <strong>{solarResult.paybackDiesel} ماہ</strong> میں سسٹم فری ہو جائے گا۔
+                  {solarResult.acresPerDay && (
+                    <span> • روزانہ سیراب رقبہ: <strong>{solarResult.acresPerDay} ایکڑ</strong> (3 انچ گہرائی)</span>
+                  )}
                 </div>
               </div>
 

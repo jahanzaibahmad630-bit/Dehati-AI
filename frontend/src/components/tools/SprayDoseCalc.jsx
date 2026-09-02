@@ -370,9 +370,47 @@ export default function SprayDoseCalc() {
 
     const waterVol = itemData.waterPerAcre || 100;
     const products = itemData.products.map(p => {
-      const dosePerTank = ((p.dose / waterVol) * tank).toFixed(1);
-      const totalQuantity = (p.dose * a).toFixed(0);
-      return { ...p, dosePerTank, totalQuantity };
+      // Check if product is physical trap/bait (not mixed in spray water tank)
+      if (p.unit?.includes('ٹریپ')) {
+        return {
+          ...p,
+          isTrap: true,
+          dosePerTank: 'نصب کریں',
+          unitDisplay: 'باغ میں لٹکائیں',
+          totalQuantity: (p.dose * a).toFixed(0),
+          totalUnit: 'عدد ٹریپس',
+          perAcreText: `${p.dose} ٹریپس فی ایکڑ`
+        };
+      }
+
+      // Orchard foliar sprays specified per 100L water
+      if (p.unit?.includes('100L')) {
+        const rawPerTank = (p.dose * (tank / 100));
+        const rawTotal = (p.dose * (waterVol / 100) * a);
+        const baseUnit = p.unit.replace(' فی 100L', '').trim();
+        return {
+          ...p,
+          isTrap: false,
+          dosePerTank: rawPerTank < 1 ? rawPerTank.toFixed(2) : rawPerTank.toFixed(1),
+          unitDisplay: baseUnit,
+          totalQuantity: Math.round(rawTotal),
+          totalUnit: baseUnit,
+          perAcreText: `${Math.round(p.dose * (waterVol / 100))} ${baseUnit} فی ایکڑ (${waterVol}L پانی)`
+        };
+      }
+
+      // Standard field crop sprays (dose per acre)
+      const dosePerTankNum = (p.dose / waterVol) * tank;
+      const totalQuantityNum = p.dose * a;
+      return {
+        ...p,
+        isTrap: false,
+        dosePerTank: dosePerTankNum < 1 ? dosePerTankNum.toFixed(2) : dosePerTankNum.toFixed(1),
+        unitDisplay: p.unit,
+        totalQuantity: Math.round(totalQuantityNum),
+        totalUnit: p.unit,
+        perAcreText: `فی ایکڑ: ${p.dose} ${p.unit}`
+      };
     });
 
     setResult({
@@ -725,19 +763,23 @@ export default function SprayDoseCalc() {
                   {/* Dose Cards */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 10 }}>
                     <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '0.6rem', textAlign: 'center', border: '1px solid #bae6fd' }}>
-                      <div style={{ fontSize: '0.68rem', color: '#6b7280' }}>فی {result.tank}L ٹینک خوراک</div>
+                      <div style={{ fontSize: '0.68rem', color: '#6b7280' }}>
+                        {p.isTrap ? 'طریقہ کار' : `فی ${result.tank}L ٹینک خوراک`}
+                      </div>
                       <div style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0369a1', fontFamily: 'Inter' }} dir="ltr">
                         {p.dosePerTank}
                       </div>
-                      <div style={{ fontSize: '0.68rem', color: '#0369a1', fontWeight: 700 }}>{p.unit}</div>
+                      <div style={{ fontSize: '0.68rem', color: '#0369a1', fontWeight: 700 }}>{p.unitDisplay}</div>
                     </div>
 
                     <div style={{ background: '#f8fafc', borderRadius: 8, padding: '0.6rem', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: '0.68rem', color: '#6b7280' }}>کل درکار مقدار ({result.a} ایکڑ)</div>
+                      <div style={{ fontSize: '0.68rem', color: '#6b7280' }}>
+                        {p.isTrap ? `کل درکار ٹریپس (${result.a} ایکڑ)` : `کل درکار دوا (${result.a} ایکڑ)`}
+                      </div>
                       <div style={{ fontWeight: 900, fontSize: '1.15rem', color: '#0f172a', fontFamily: 'Inter' }} dir="ltr">
                         {p.totalQuantity}
                       </div>
-                      <div style={{ fontSize: '0.68rem', color: '#475569', fontWeight: 700 }}>{p.unit} (فی ایکڑ: {p.dose} {p.unit})</div>
+                      <div style={{ fontSize: '0.68rem', color: '#475569', fontWeight: 700 }}>{p.totalUnit} ({p.perAcreText})</div>
                     </div>
                   </div>
 

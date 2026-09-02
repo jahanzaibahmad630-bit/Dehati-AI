@@ -12,25 +12,25 @@ const NPK_DB = {
     notes: 'تمام فاسفورس (DAP) اور پوٹاش (SOP) بوائی پر دیں۔ نائٹروجن (یوریا) 3 برابر اقساط میں۔',
     stages: {
       'بوائی (Basal)': {
-        medium: { dap: 2.0, urea: 0.5, sop: 1.0, zinc: 0, gypsum: 0 },
-        low:    { dap: 2.5, urea: 0.75, sop: 1.25, zinc: 5, gypsum: 0 },
-        high:   { dap: 1.5, urea: 0.5, sop: 0.75, zinc: 0, gypsum: 0 },
-        saline: { dap: 2.0, urea: 0.5, sop: 1.25, zinc: 10, gypsum: 80 },
-        sandy:  { dap: 2.0, urea: 0.5, sop: 1.0, zinc: 5, gypsum: 0 },
+        medium: { dap: 1.25, urea: 0.5, sop: 0.5, zinc: 0, gypsum: 0 },
+        low:    { dap: 1.5,  urea: 0.75, sop: 0.75, zinc: 5, gypsum: 0 },
+        high:   { dap: 1.0,  urea: 0.5, sop: 0.5, zinc: 0, gypsum: 0 },
+        saline: { dap: 1.25, urea: 0.5, sop: 0.75, zinc: 10, gypsum: 50 },
+        sandy:  { dap: 1.25, urea: 0.5, sop: 0.75, zinc: 5, gypsum: 0 },
       },
       'پہلا پانی (تاج جڑیں CRI — 21–25 دن)': {
-        medium: { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
-        low:    { dap: 0, urea: 2.25, sop: 0, zinc: 0, gypsum: 0 },
-        high:   { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
-        saline: { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
-        sandy:  { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
+        medium: { dap: 0, urea: 1.0,  sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 0.75, sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 1.0,  sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 1.0,  sop: 0, zinc: 0, gypsum: 0 },
       },
       'دوسرا پانی (شگوفے Tillering — 40–45 دن)': {
-        medium: { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
-        low:    { dap: 0, urea: 2.0,  sop: 0, zinc: 0, gypsum: 0 },
-        high:   { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
-        saline: { dap: 0, urea: 1.5,  sop: 0, zinc: 0, gypsum: 0 },
-        sandy:  { dap: 0, urea: 1.75, sop: 0, zinc: 0, gypsum: 0 },
+        medium: { dap: 0, urea: 1.0,  sop: 0, zinc: 0, gypsum: 0 },
+        low:    { dap: 0, urea: 1.25, sop: 0, zinc: 0, gypsum: 0 },
+        high:   { dap: 0, urea: 0.75, sop: 0, zinc: 0, gypsum: 0 },
+        saline: { dap: 0, urea: 0.75, sop: 0, zinc: 0, gypsum: 0 },
+        sandy:  { dap: 0, urea: 1.0,  sop: 0, zinc: 0, gypsum: 0 },
       },
     }
   },
@@ -170,9 +170,9 @@ const COLORS = ['#15803d', '#ca8a04', '#7c3aed', '#0369a1'];
 const DISCLAIMER = '⚠️ یہ تجاویز ادارہ تحقیقات برائے زرخیزی زمین پنجاب (SFRI) اور ایوب زرعی تحقیقاتی ادارہ (AARI) فیصل آباد کے 2024-26 ریسرچ اعداد پر مبنی ہیں۔ ذاتی مٹی ٹیسٹ کے بغیر یہ علاقائی اوسط ہے۔ تصدیق کیلئے: 0800-17000';
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
-// Market vs Kissan Card Subsidized Prices (PKR per bag / kg)
-const MARKET_PRICES  = { dap: 8500, urea: 3200, sop: 9500, zinc: 280 };
-const SUBSIDY_PRICES = { dap: 6800, urea: 2560, sop: 7600, zinc: 224 };
+// Market vs Kissan Card Subsidized Prices (PKR per 50kg bag / kg zinc) — 2024–2026
+const MARKET_PRICES  = { dap: 14200, urea: 4600, sop: 15500, zinc: 380 };
+const SUBSIDY_PRICES = { dap: 12500, urea: 3950, sop: 13500, zinc: 320 };
 
 export default function FertilizerRecommender() {
   // Load last used crop from localStorage (farmer's habit)
