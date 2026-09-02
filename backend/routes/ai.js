@@ -32,9 +32,10 @@ if (process.env.GEMINI_API_KEY) {
 } else {
   console.warn('⚠️  GEMINI_API_KEY not set — Falling back to Claude for text endpoints');
 }
-const GEMINI_MODEL = 'gemini-2.0-flash'; // primary text engine
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash'; // primary text engine
 
-// â”€â”€â”€ Agriculture keyword guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+// ————————————————————————————————————————————————————————————————————————————————
 // Urdu script keywords
 const AGRI_KEYWORDS_UR = [
   // فصلیں
