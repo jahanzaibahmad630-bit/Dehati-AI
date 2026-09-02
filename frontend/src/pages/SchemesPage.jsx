@@ -14,129 +14,225 @@ function deadlineBadge(deadline) {
   return { label: `⏳ ${deadline}`, color: '#b45309', bg: '#fffbeb', border: '#fde68a' };
 }
 
-// ─── CM Kissan Card Eligibility Checker ──────────────────────────────────────
+// ─── CM Punjab Initiatives Eligibility & Loan Calculator ─────────────────────
 function KisanCardCriteriaChecker() {
-  const [landHolding, setLandHolding] = useState('');
-  const [tenancy, setTenancy]         = useState('');
-  const [bankDefault, setBankDefault] = useState('');
+  const [acres, setAcres]             = useState('');
+  const [cnic, setCnic]               = useState('');
+  const [bankDefault, setBankDefault] = useState('no');
 
-  const isIncomplete  = !landHolding || !tenancy || !bankDefault;
-  const isLandFail    = landHolding === '12.5 ایکڑ سے زیادہ';
-  const isDefaultFail = bankDefault === 'ہاں';
-  const isEligible    = !isIncomplete && !isLandFail && !isDefaultFail;
+  const a = parseFloat(acres) || 0;
+  const isKisanEligible = a >= 1 && a <= 12.5 && bankDefault === 'no';
+  const isTractorEligible = a >= 1 && a <= 50;
+  const isSolarEligible = a >= 1;
+
+  // Auto-calculated interest-free loan limit: Rs. 30,000/acre up to Rs. 150,000
+  const loanLimit = Math.min(150000, Math.round(a * 30000));
+
+  // Clean CNIC for 8070 SMS
+  const cleanCnic = cnic.replace(/[^0-9]/g, '');
+  const smsBody = cleanCnic ? `PKC ${cleanCnic}` : 'PKC';
 
   return (
-    <div style={{ background: '#162410', borderRadius: 16, padding: '1.25rem', color: 'white', marginBottom: '1.25rem' }} dir="rtl">
+    <div style={{ background: '#162410', borderRadius: 16, padding: '1.25rem', color: 'white', marginBottom: '1.25rem', border: '1.5px solid #2e5a27', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }} dir="rtl">
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #E9C46A 0%, #f59e0b 100%)', padding: '0.75rem 1rem', borderRadius: 10, textAlign: 'center', marginBottom: '1rem', color: '#162410' }}>
-        <div style={{ fontWeight: 800, fontSize: '0.95rem', ...NAS }}>🏦 وزیراعلیٰ پنجاب کسان کارڈ 2026</div>
-        <div style={{ fontSize: '0.72rem', fontWeight: 600, marginTop: 2 }}>اہلیت چیکر — 12.5 ایکڑ سے کم | 0٪ سود</div>
-      </div>
-
-      {/* Inputs */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-        <div>
-          <div style={{ fontSize: '0.72rem', color: '#86efac', marginBottom: 4, ...NAS }}>زرعی زمین کا رقبہ</div>
-          <select value={landHolding} onChange={e => setLandHolding(e.target.value)}
-            id="kc-land" className="input"
-            style={{ background: '#1E3A1E', color: 'white', border: '1px solid #3a7232', ...NAS, direction: 'rtl' }}
-          >
-            <option value="">زمین کا سائز منتخب کریں</option>
-            <option value="5 ایکڑ سے کم">5 ایکڑ سے کم</option>
-            <option value="5 سے 12.5 ایکڑ">5 سے 12.5 ایکڑ</option>
-            <option value="12.5 ایکڑ سے زیادہ">12.5 ایکڑ سے زیادہ</option>
-          </select>
-        </div>
-
-        <div>
-          <div style={{ fontSize: '0.72rem', color: '#86efac', marginBottom: 4, ...NAS }}>زمین پر حیثیت</div>
-          <select value={tenancy} onChange={e => setTenancy(e.target.value)}
-            id="kc-tenancy" className="input"
-            style={{ background: '#1E3A1E', color: 'white', border: '1px solid #3a7232', ...NAS, direction: 'rtl' }}
-          >
-            <option value="">حیثیت منتخب کریں</option>
-            <option value="مالک">مالک (Owner)</option>
-            <option value="مزارع / کرایہ دار">مزارع / کرایہ دار (Tenant)</option>
-          </select>
-        </div>
-
-        <div>
-          <div style={{ fontSize: '0.72rem', color: '#86efac', marginBottom: 4, ...NAS }}>بینک نادہندگی</div>
-          <select value={bankDefault} onChange={e => setBankDefault(e.target.value)}
-            id="kc-default" className="input"
-            style={{ background: '#1E3A1E', color: 'white', border: '1px solid #3a7232', ...NAS, direction: 'rtl' }}
-          >
-            <option value="">کیا آپ پر بینک واجبات ہیں؟</option>
-            <option value="نہیں">نہیں — کوئی واجبات نہیں</option>
-            <option value="ہاں">ہاں — واجبات موجود ہیں</option>
-          </select>
+      <div style={{ background: 'linear-gradient(135deg, #15803d 0%, #166534 100%)', padding: '0.85rem 1rem', borderRadius: 12, textAlign: 'center', marginBottom: '1rem', color: 'white' }}>
+        <div style={{ fontWeight: 800, fontSize: '1rem', ...NAS }}>🏛️ وزیراعلیٰ پنجاب کسان پیکیج اہلیت و قرضہ کیلکولیٹر</div>
+        <div style={{ fontSize: '0.72rem', color: '#bbf7d0', marginTop: 2 }}>
+          محکمہ زراعت پنجاب، PITB، بینک آف پنجاب (BOP) و PLRA مصدقہ ڈیٹا 2024–2026
         </div>
       </div>
 
-      {/* Results */}
-      <div style={{ marginTop: '1rem' }}>
-        {isIncomplete && (
-          <div style={{ color: '#E9C46A', textAlign: 'center', fontSize: '0.82rem', ...NAS }}>
-            ⚠️ تمام معلومات درج کریں
+      {/* Input Grid */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {/* Acres Input */}
+        <div>
+          <div style={{ fontSize: '0.75rem', color: '#86efac', marginBottom: 4, fontWeight: 700, ...NAS }}>
+            آپ کی زرعی اراضی کا رقبہ (ایکڑ میں):
           </div>
-        )}
+          <input
+            type="number"
+            className="input"
+            placeholder="مثلاً: 3"
+            value={acres}
+            onChange={e => setAcres(e.target.value)}
+            min="0.5"
+            step="0.5"
+            style={{ width: '100%', background: '#1E3A1E', color: 'white', border: '1.5px solid #3a7232', padding: '.65rem .85rem', borderRadius: 8, fontSize: '1rem', fontWeight: 800, fontFamily: 'Inter, sans-serif' }}
+          />
+        </div>
 
-        {!isIncomplete && isEligible && (
-          <div style={{ background: 'rgba(58,114,50,0.2)', border: '1px solid #3a7232', padding: '1rem', borderRadius: 10 }}>
-            <div style={{ color: '#86efac', fontWeight: 800, fontSize: '0.88rem', marginBottom: '0.75rem', ...NAS }}>
-              ✅ مبارک ہو! آپ کسان کارڈ کے اہل ہیں
-            </div>
-            <div style={{ color: 'rgba(255,255,255,.85)', fontSize: '0.75rem', marginBottom: '0.75rem', ...NAS }}>
-              12.5 ایکڑ سے کم زمین + کوئی بینک واجبات نہیں — شرائط پوری ہیں
-            </div>
-            {/* Action buttons */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <a href="sms:8070?body=PKC"
-                id="kc-sms-btn"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#E9C46A', color: '#162410', padding: '0.65rem 1rem', borderRadius: 8, textDecoration: 'none', fontWeight: 800, fontSize: '0.88rem' }}
-              >
-                📱 SMS: PKC → 8070 بھیجیں
-              </a>
-              <a href="tel:0800-17000" id="kc-call-btn"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'rgba(255,255,255,.12)', color: 'white', padding: '0.6rem 1rem', borderRadius: 8, textDecoration: 'none', fontWeight: 700, fontSize: '0.82rem' }}
-              >
-                📞 ہیلپ لائن: 0800-17000
-              </a>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <a href="https://www.bop.com.pk/" target="_blank" rel="noopener noreferrer"
-                  style={{ flex: 1, textAlign: 'center', background: 'rgba(233,196,106,.15)', color: '#E9C46A', padding: '0.5rem', borderRadius: 8, textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700 }}
-                >🏛 BOP بینک</a>
-                <a href="https://plra.punjab.gov.pk/" target="_blank" rel="noopener noreferrer"
-                  style={{ flex: 1, textAlign: 'center', background: 'rgba(233,196,106,.15)', color: '#E9C46A', padding: '0.5rem', borderRadius: 8, textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700 }}
-                >📋 PLRA فرد</a>
-                <a href="https://agripunjab.gov.pk/kissan-card" target="_blank" rel="noopener noreferrer"
-                  style={{ flex: 1, textAlign: 'center', background: 'rgba(233,196,106,.15)', color: '#E9C46A', padding: '0.5rem', borderRadius: 8, textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700 }}
-                >🌐 ویب سائٹ</a>
+        {/* CNIC Input for direct 8070 SMS */}
+        <div>
+          <div style={{ fontSize: '0.75rem', color: '#86efac', marginBottom: 4, fontWeight: 700, ...NAS }}>
+            شناختی کارڈ نمبر (8070 پر فوری SMS بھیجنے کیلئے):
+          </div>
+          <input
+            type="text"
+            className="input"
+            placeholder="3520212345671 (بغیر ڈیش)"
+            value={cnic}
+            maxLength={13}
+            onChange={e => setCnic(e.target.value)}
+            style={{ width: '100%', background: '#1E3A1E', color: 'white', border: '1.5px solid #3a7232', padding: '.65rem .85rem', borderRadius: 8, fontSize: '1rem', fontWeight: 800, fontFamily: 'Inter, sans-serif' }}
+          />
+        </div>
+
+        {/* Bank Default */}
+        <div>
+          <div style={{ fontSize: '0.75rem', color: '#86efac', marginBottom: 4, fontWeight: 700, ...NAS }}>
+            کیا آپ کسی بینک کے نادہندہ (Default) ہیں؟
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            <button
+              onClick={() => setBankDefault('no')}
+              style={{
+                padding: '.55rem', borderRadius: 8,
+                border: `1.5px solid ${bankDefault === 'no' ? '#16a34a' : '#3a7232'}`,
+                background: bankDefault === 'no' ? '#15803d' : '#1E3A1E',
+                color: 'white', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer', ...NAS
+              }}
+            >
+              نہیں (صاف ریکارڈ)
+            </button>
+            <button
+              onClick={() => setBankDefault('yes')}
+              style={{
+                padding: '.55rem', borderRadius: 8,
+                border: `1.5px solid ${bankDefault === 'yes' ? '#dc2626' : '#3a7232'}`,
+                background: bankDefault === 'yes' ? '#991b1b' : '#1E3A1E',
+                color: 'white', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer', ...NAS
+              }}
+            >
+              ہاں (واجبات ہیں)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Results Matrix */}
+      {a > 0 && (
+        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {/* 1. CM Kissan Card Status */}
+          {isKisanEligible ? (
+            <div style={{ background: 'rgba(22, 101, 52, 0.3)', border: '1.5px solid #16a34a', borderRadius: 12, padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                <div style={{ color: '#86efac', fontWeight: 800, fontSize: '0.92rem', ...NAS }}>
+                  ✅ آپ وزیراعلیٰ کسان کارڈ کے اہل ہیں!
+                </div>
+                <div style={{ background: '#15803d', color: 'white', padding: '3px 8px', borderRadius: 6, fontSize: '.7rem', fontWeight: 800 }}>
+                  0% سود (بلاسود)
+                </div>
+              </div>
+
+              {/* Calculated Loan Limit */}
+              <div style={{ background: '#162410', borderRadius: 10, padding: '10px 14px', marginTop: 8, textAlign: 'center', border: '1px solid #2e5a27' }}>
+                <div style={{ fontSize: '.72rem', color: '#a7f3d0' }}>آپ کا تخمینہ منظور شدہ کریڈٹ لمٹ ({a} ایکڑ):</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fbc02d', fontFamily: 'Inter', marginTop: 2 }}>
+                  PKR {loanLimit.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '.68rem', color: '#86efac', marginTop: 2 }}>
+                  (شرح: ₨30,000 فی ایکڑ | زیادہ سے زیادہ حد ₨1,50,000)
+                </div>
+              </div>
+
+              {/* Operational Rules */}
+              <div style={{ fontSize: '.72rem', color: '#cbd5e1', marginTop: 8, lineHeight: 1.5 }}>
+                • <strong>کارڈ استعمال:</strong> صرف رجسٹرڈ کھاد، بیج و زرعی ادویات ڈیلرز کی POS مشین پر سوائپ ہو گا۔<br />
+                • <strong>کیش نکلوانا:</strong> ATM سے نقد رقم نکالنا سختی سے ممنوع ہے۔<br />
+                • <strong>واپسی مدت:</strong> فصلی پیداوار آنے کے بعد 6 ماہ کے اندر بلاسود واپس کریں۔
+              </div>
+
+              {/* 1-Tap 8070 SMS Button */}
+              <div style={{ marginTop: 10 }}>
+                <a
+                  href={`sms:8070?body=${encodeURIComponent(smsBody)}`}
+                  id="kc-sms-btn"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#162410',
+                    padding: '0.75rem 1rem', borderRadius: 10, textDecoration: 'none',
+                    fontWeight: 900, fontSize: '0.9rem', boxShadow: '0 2px 8px rgba(245,158,11,0.3)'
+                  }}
+                >
+                  📱 1-کلک SMS: 8070 پر "{smsBody}" بھیجیں
+                </a>
               </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div style={{ background: 'rgba(220, 38, 38, 0.15)', border: '1.5px solid #ef4444', borderRadius: 12, padding: '0.85rem' }}>
+              <div style={{ color: '#fca5a5', fontWeight: 800, fontSize: '.88rem' }}>
+                ❌ کسان کارڈ کیلئے غیر اہل
+              </div>
+              <div style={{ fontSize: '.72rem', color: '#fecaca', marginTop: 3 }}>
+                {a > 12.5
+                  ? 'کسان کارڈ صرف 1 تا 12.5 ایکڑ اراضی والے کسانوں کیلئے ہے۔ آپ نیچے دیا گیا گرین ٹریکٹر پروگرام دیکھیں۔'
+                  : bankDefault === 'yes'
+                  ? 'بینک نادہندگی کی صورت میں کسان کارڈ جاری نہیں کیا جاتا۔'
+                  : 'کم از کم 1 ایکڑ اراضی PLRA ریکارڈ میں رجسٹرڈ ہونا لازمی ہے۔'}
+              </div>
+            </div>
+          )}
 
-        {!isIncomplete && !isEligible && (
-          <div style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.4)', padding: '1rem', borderRadius: 10 }}>
-            <div style={{ color: '#fca5a5', fontWeight: 800, fontSize: '0.88rem', marginBottom: 6, ...NAS }}>
-              {isLandFail ? '❌ غیر اہل — وجہ: 12.5 ایکڑ سے زیادہ زمین' : '❌ غیر اہل — وجہ: بینک واجبات موجود ہیں'}
+          {/* 2. CM Green Tractor Status */}
+          <div style={{ background: isTractorEligible ? 'rgba(4, 120, 87, 0.25)' : 'rgba(255,255,255,0.05)', border: `1.5px solid ${isTractorEligible ? '#059669' : '#334155'}`, borderRadius: 12, padding: '0.85rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontWeight: 800, fontSize: '.88rem', color: isTractorEligible ? '#6ee7b7' : '#94a3b8' }}>
+                🚜 گرین ٹریکٹر پروگرام (1 تا 50 ایکڑ):
+              </div>
+              <span style={{ fontSize: '.75rem', fontWeight: 800, color: isTractorEligible ? '#34d399' : '#f87171' }}>
+                {isTractorEligible ? '✅ آپ اہل ہیں (10 لاکھ سبسڈی)' : '❌ غیر اہل'}
+              </span>
             </div>
-            <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '0.75rem', ...NAS }}>
-              {isLandFail
-                ? 'کسان کارڈ صرف 12.5 ایکڑ تک والے کسانوں کے لیے ہے۔ ZTBL قرضہ یا گرین ٹریکٹر اسکیم دیکھیں۔'
-                : 'پہلے بینک واجبات کلیئر کریں۔ اخوت قرضِ حسن سے مدد لی جا سکتی ہے۔'
-              }
-            </div>
+            {isTractorEligible && (
+              <div style={{ fontSize: '.72rem', color: '#cbd5e1', marginTop: 6, lineHeight: 1.5 }}>
+                • <strong>سبسڈی:</strong> فلیٹ 10 لاکھ روپے (1,000,000 PKR) فی ٹریکٹر۔<br />
+                • <strong>شامل برانڈز:</strong> ملت میسی فرگوسن (MF 240, MF 385) اور الغازی (NH 480, NH 640)۔<br />
+                • <strong>پورٹل:</strong> <a href="https://gts.punjab.gov.pk" target="_blank" rel="noopener noreferrer" style={{ color: '#fbc02d', fontWeight: 700 }}>gts.punjab.gov.pk</a> پر شفاف ڈیجیٹل قرعہ اندازی۔
+              </div>
+            )}
           </div>
-        )}
+
+          {/* 3. Solar Tubewell Status */}
+          <div style={{ background: isSolarEligible ? 'rgba(217, 119, 6, 0.25)' : 'rgba(255,255,255,0.05)', border: `1.5px solid ${isSolarEligible ? '#d97706' : '#334155'}`, borderRadius: 12, padding: '0.85rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontWeight: 800, fontSize: '.88rem', color: isSolarEligible ? '#fde68a' : '#94a3b8' }}>
+                ☀️ زرعی ٹیوب ویل سولرائزیشن (67% گرانٹ):
+              </div>
+              <span style={{ fontSize: '.75rem', fontWeight: 800, color: isSolarEligible ? '#fde68a' : '#f87171' }}>
+                {isSolarEligible ? '✅ 67% گرانٹ کے اہل' : '❌ غیر اہل'}
+              </span>
+            </div>
+            {isSolarEligible && (
+              <div style={{ fontSize: '.72rem', color: '#cbd5e1', marginTop: 6, lineHeight: 1.5 }}>
+                • <strong>شرائط:</strong> پہلے سے موجود فنکشنل ڈیزل یا 3 فیز الیکٹرک ٹیوب ویل + پانی کی سطح ≤60 فٹ۔<br />
+                • <strong>لاگت شراکت:</strong> 67% حکومت پنجاب ادا کرے گی، کسان کا حصہ صرف 33% ہو گا۔
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Official External Links */}
+      <div style={{ display: 'flex', gap: 6, marginTop: '1rem' }}>
+        <a href="https://kisancard.punjab.gov.pk" target="_blank" rel="noopener noreferrer"
+          style={{ flex: 1, textAlign: 'center', background: 'rgba(255,255,255,0.08)', color: '#86efac', padding: '0.5rem 0.3rem', borderRadius: 8, textDecoration: 'none', fontSize: '0.72rem', fontWeight: 700 }}
+        >
+          🌐 کسان کارڈ پورٹل
+        </a>
+        <a href="https://gts.punjab.gov.pk" target="_blank" rel="noopener noreferrer"
+          style={{ flex: 1, textAlign: 'center', background: 'rgba(255,255,255,0.08)', color: '#86efac', padding: '0.5rem 0.3rem', borderRadius: 8, textDecoration: 'none', fontSize: '0.72rem', fontWeight: 700 }}
+        >
+          🚜 ٹریکٹر پورٹل
+        </a>
+        <a href="tel:0800-17000"
+          style={{ flex: 1, textAlign: 'center', background: '#15803d', color: 'white', padding: '0.5rem 0.3rem', borderRadius: 8, textDecoration: 'none', fontSize: '0.72rem', fontWeight: 800 }}
+        >
+          📞 0800-17000
+        </a>
       </div>
 
-      <div style={{ marginTop: '0.75rem', fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', textAlign: 'center', ...NAS }}>
-        ⚠️ حتمی منظوری صرف بینک آف پنجاب اور محکمہ زراعت کرے گا — یہ صرف اہلیت کا اندازہ ہے
-      </div>
       <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'center' }}>
-        <DataProvenance type="criteria" source="CM Punjab Kisan Card 2026 شرائط" lastUpdated="جولائی 2026" />
+        <DataProvenance type="criteria" source="حکومت پنجاب — کسان پیکیج 2024–2026 شرائط" lastUpdated="مارچ 2026" />
       </div>
     </div>
   );
