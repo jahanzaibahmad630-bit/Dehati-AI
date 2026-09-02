@@ -571,7 +571,13 @@ export default function DiseasePage() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.68rem', color: '#cbd5e1', marginBottom: 3 }}>
                           <span>تشخیص اعتماد</span>
                           <span style={{ color: barColor, fontWeight: 800 }}>
-                            {confPct.toFixed(1)}% {confPct >= 85 ? ' ✅ High' : ' ⚠️ Low → AI Verified'}
+                            {confPct.toFixed(1)}%{' '}
+                            {confPct >= 85
+                              ? <span style={{ color:'#10b981', fontWeight:800 }}> ✅ اعلی اعتماد</span>
+                              : confPct >= 70
+                              ? <span style={{ color:'#f59e0b', fontWeight:800 }}> ⚠️ درمیانہ — تصدیق کریں</span>
+                              : <span style={{ color:'#ef4444', fontWeight:800 }}> &#x1F534; کم اعتماد — ماہر سے ملیں</span>
+                            }
                           </span>
                         </div>
                         <div style={{ height: 6, background: '#162410', borderRadius: 6, overflow: 'hidden' }}>
@@ -579,6 +585,14 @@ export default function DiseasePage() {
                         </div>
                       </div>
                     )}
+                    <div style={{ fontSize: '.65rem', color: '#94a3b8', marginTop: 4, direction: 'rtl', lineHeight: 1.5 }}>
+                      {confPct >= 85
+                        ? 'ڈیٹابیس ریکارڈ سے مطابقت — قابل اعتماد نتیجہ'
+                        : confPct >= 70
+                        ? 'AI تجزیہ پر مبنی — مقامی زراعت آفیسر سے ایک بار تصدیق کریں'
+                        : 'کم اعتماد — واضح روشنی میں دوبارہ تصویر لیں یا ہیلپ لائن سے رابطہ کریں'
+                      }
+                    </div>
                     {isOffline && (
                       <div style={{ marginTop: '.5rem', background: 'rgba(239,68,68,0.15)', border: '1px solid #ef4444', borderRadius: 8, padding: '4px 10px', fontSize: '.72rem', color: '#fca5a5', direction: 'rtl' }}>
                         ⚠️ آف لائن موڈ: انٹرنیٹ جڑنے کے بعد دوبارہ اسکین کریں۔
@@ -615,6 +629,29 @@ export default function DiseasePage() {
               <div style={{ color: '#9f1239', fontSize: '.88rem', fontWeight: 700, marginTop: '.4rem', lineHeight: 1.6 }}>
                 اس سپرے کے <strong>{result.withholding_period_days || 14} دن</strong> بعد تک فصل منڈی میں نہ بیچیں اور نہ ہی استعمال کریں۔
               </div>
+            </div>
+
+
+            {/* Verification CTA Card */}
+            <div style={{ background: '#fef3c7', border: '2px solid #f59e0b', borderRadius: 12, padding: '12px 16px', direction: 'rtl', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontSize: '1.5rem' }}>&#x1F50D;</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: '0.82rem', color: '#92400e', marginBottom: 3 }}>
+                  {result.source === 'ai_vision'
+                    ? 'AI تشخیص (~72% درستگی) — تصدیق ضروری ہے'
+                    : 'ڈیٹابیس ریکارڈ — اعلی اعتماد (90%+)'}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#78350f', lineHeight: 1.6 }}>
+                  {result.source === 'ai_vision'
+                    ? 'علاج شروع کرنے سے پہلے اپنے قریبی زرعی افسر یا محکمہ زراعت ہیلپ لائن سے تصدیق کروائیں۔'
+                    : 'پنجاب ایگریکلچر ایکسٹینشن ریسرچ کے مطابق نسخہ — مقامی صورتحال کے لیے ماہر سے مشورہ لیں۔'}
+                </div>
+              </div>
+              <a href="tel:0800-17000"
+                style={{ background: '#f59e0b', color: '#fff', borderRadius: 10, padding: '8px 12px', fontSize: '0.72rem', fontWeight: 800, textDecoration: 'none', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'center', lineHeight: 1.4 }}>
+                &#x1F4DE; 0800-17000<br/>
+                <span style={{ fontSize: '0.6rem' }}>مفت زراعت ہیلپ</span>
+              </a>
             </div>
 
             {/* Treatment Summary & Cause */}

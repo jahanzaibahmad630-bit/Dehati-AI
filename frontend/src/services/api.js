@@ -62,20 +62,20 @@ export async function chatWithAI(messages, language = 'ur') {
   return handleResponse(res);
 }
 
-export async function askAnimalHealth(animalType, symptoms, question) {
+export async function askAnimalHealth(animalType, symptoms, question, animalWeight = '') {
   const res = await fetch(`${API_URL}/api/ai/animal`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ animalType, symptoms, question })
+    body: JSON.stringify({ animalType, symptoms, question, animalWeight })
   });
   return handleResponse(res);
 }
 
-export async function askFertilizer(crop, soilType, cropAge) {
+export async function askFertilizer(crop, soilType, cropAge, soilProfile = null) {
   const res = await fetch(`${API_URL}/api/ai/fertilizer`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ crop, soilType, cropAge })
+    body: JSON.stringify({ crop, soilType, cropAge, soilProfile })
   });
   return handleResponse(res);
 }

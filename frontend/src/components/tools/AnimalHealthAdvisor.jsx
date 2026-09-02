@@ -20,6 +20,7 @@ export default function AnimalHealthAdvisor() {
   const [selectedDisease, setSelectedDisease] = useState(null);
 
   // Hybrid AI state
+  const [animalWeight, setAnimalWeight] = useState('');
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiResult, setAiResult] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -68,7 +69,7 @@ export default function AnimalHealthAdvisor() {
     const catLabel = CATEGORIES.find(c => c.id === activeCategory)?.label || activeCategory;
     setAiLoading(true); setAiError(''); setAiResult('');
     try {
-      const data = await askAnimalHealth(catLabel, selectedSymptoms.join(', '), aiQuestion || searchQuery);
+      const data = await askAnimalHealth(catLabel, selectedSymptoms.join(', '), aiQuestion || searchQuery, animalWeight);
       setAiResult(data.answer);
     } catch (err) {
       setAiError(err.message || 'جواب نہیں ملا — دوبارہ کوشش کریں');

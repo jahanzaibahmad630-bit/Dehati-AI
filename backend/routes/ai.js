@@ -1,5 +1,6 @@
 const express   = require('express');
 const Anthropic  = require('@anthropic-ai/sdk');
+const { GoogleGenAI } = require('@google/genai');
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { aiLimiter, diseaseLimiter } = require('../middleware/rateLimit');
 const db                    = require('../lib/db');
@@ -14,7 +15,7 @@ let claude = null;
 
 if (process.env.CLAUDE_API_KEY) {
   claude = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
-  console.log('✅ Claude API configured — model: claude-sonnet-4-5');
+  console.log('✅ Claude API configured — Disease Vision ONLY: claude-sonnet-4-5');
 } else {
   console.warn('⚠️  CLAUDE_API_KEY not set — AI features disabled');
 }
@@ -22,6 +23,16 @@ if (process.env.CLAUDE_API_KEY) {
 // claude-sonnet-4-5 = Claude Sonnet 4.x (platform.claude.com enterprise)
 const CLAUDE_MODEL     = 'claude-sonnet-4-5';
 const CLAUDE_MODEL_VIS = 'claude-sonnet-4-5'; // supports vision
+
+// ─── Gemini Client (Chat, Ask, Fertilizer, Animal — ALL text endpoints) ───────
+let gemini = null;
+if (process.env.GEMINI_API_KEY) {
+  gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  console.log('✅ Gemini API configured — Primary text engine: gemini-2.0-flash');
+} else {
+  console.warn('⚠️  GEMINI_API_KEY not set — Falling back to Claude for text endpoints');
+}
+const GEMINI_MODEL = 'gemini-2.0-flash'; // primary text engine
 
 // â”€â”€â”€ Agriculture keyword guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Urdu script keywords
@@ -313,6 +324,36 @@ async function claudeAsk(prompt, systemPrompt, maxTokens = 700, temperature = 0.
   return response.content?.[0]?.text ?? '';
 }
 
+// ─── Gemini Ask Helper (primary text engine — all non-vision endpoints) ────────
+async function geminiAsk(prompt, systemPrompt, maxTokens = 700) {
+  const sysText = systemPrompt || buildFarmingSystem();
+  if (!gemini) {
+    // No Gemini configured — fall back to Claude
+    if (claude) return claudeAsk(prompt, systemPrompt, maxTokens);
+    return '';
+  }
+  try {
+    const fullPrompt = sysText + '\n\n---\n\n' + prompt;
+    const response = await gemini.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: fullPrompt,
+      config: { maxOutputTokens: maxTokens, temperature: 0.6 }
+    });
+    const text = response.text || '';
+    db.logAIUsage({
+      endpoint: 'gemini_ask',
+      tokensIn:  response.usageMetadata?.promptTokenCount || 0,
+      tokensOut: response.usageMetadata?.candidatesTokenCount || 0,
+      cacheTokens: 0
+    }).catch(() => {});
+    return text;
+  } catch (geminiErr) {
+    console.warn('[Gemini] Error — falling back to Claude:', geminiErr.message);
+    if (claude) return claudeAsk(prompt, systemPrompt, maxTokens);
+    return '';
+  }
+}
+
 // ——— POST /api/ai/ask ——————————————————————————————————————————————————
 router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
   try {
@@ -342,7 +383,7 @@ router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
       return res.json({ answer: cached, fromCache: true });
     }
 
-    const text = await claudeAsk(q, buildChatSystem(language), 700, 0.6);
+    const text = await geminiAsk(q, buildChatSystem(language), 700);
 
     // M4 fix: Save to cache for future requests
     if (text) aiCache.set(q, language, text);
@@ -610,7 +651,24 @@ router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {
     const crop     = ((req.body.crop     || '') + '').slice(0, 100);
     const soilType = ((req.body.soilType || '') + '').slice(0, 100);
     const cropAge  = ((req.body.cropAge  || '') + '').slice(0, 100);
-    if (!claude) return res.json({ answer: '⚠️ AI سروس دستیاب نہیں' });
+    if (!gemini && !claude) return res.json({ answer: '⚠️ AI سروس دستیاب نہیں' });
+
+    // Soil Profile injection — personalize fertilizer advice with lab test data
+    const soilProfile = req.body.soilProfile || null;
+    let soilContextBlock = '';
+    if (soilProfile && typeof soilProfile === 'object') {
+      const { pH, ec, om, p, k, zn } = soilProfile;
+      const pFloat = parseFloat(p) || 0;
+      const znFloat = parseFloat(zn) || 0;
+      soilContextBlock = [
+        '',
+        '[\u06A9\u0633\u0627\u0646 \u06A9\u0627 \u0630\u0627\u062A\u06CC \u0644\u06CC\u0628\u0627\u0631\u06CC\u0679\u0631\u06CC \u0645\u0679\u06CC \u0679\u06CC\u0633\u0679 \u0631\u06CC\u06A9\u0627\u0631\u0688]:',
+        'pH: ' + (pH||'?') + ' | EC: ' + (ec||'?') + ' mS/cm | OM: ' + (om||'?') + '%',
+        'P: ' + (p||'?') + ' ppm | K: ' + (k||'?') + ' ppm | Zn: ' + (zn||'?') + ' ppm',
+        '(' + (pFloat > 14 ? 'P \u06A9\u0627\u0641\u06CC \u06C1\u06D2 \u2014 DAP \u0628\u0627\u0644\u06A9\u0644 \u0646\u06C1 \u062F\u06CC\u06BA' : 'P \u06A9\u0645 \u06C1\u06D2 \u2014 DAP \u0636\u0631\u0648\u0631\u06CC') +
+        ' | ' + (znFloat < 0.5 ? 'Zn \u0628\u06C1\u062A \u06A9\u0645 \u2014 \u0632\u0646\u06A9 \u0633\u0644\u0641\u06CC\u0679 8 \u06A9\u0644\u0648 \u0644\u0627\u0632\u0645\u06CC' : 'Zn \u0645\u0646\u0627\u0633\u0628') + ')',
+      ].join('\n');
+    }
 
     const month  = new Date().getMonth() + 1;
     const season = (month >= 5 && month <= 10) ? 'خریف' : 'ربیع';
@@ -628,7 +686,7 @@ router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {
 
 مختصر اور واضح — قیمت اور دستیابی کا خیال رکھیں`;
 
-    const text = await claudeAsk(prompt, buildFarmingSystem(), 600, 0.5);
+    const text = await geminiAsk(prompt + soilContextBlock, buildFarmingSystem(), 650);
 
     // Log to Questions tab: prefix with tool name so admin knows which page
     if (text) {
@@ -666,7 +724,7 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
 
     const lastMsg = messages[messages.length - 1];
 
-    if (!claude) {
+    if (!gemini && !claude) {
       res.setHeader('Content-Type',  'text/event-stream; charset=utf-8');
       res.setHeader('Cache-Control', 'no-cache, no-transform');
       res.setHeader('Connection',    'keep-alive');
@@ -751,9 +809,48 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
 
     const chatSystemText = buildChatSystem(language) + contextBlock;
 
-    // Stream with Claude — ephemeral caching on system prompt reduces costs 90%
+    // ─── Stream with Gemini (primary) or Claude (failover) ──────────────────────
     let fullReply = '';
-    const stream = claude.messages.stream({
+
+    if (gemini) {
+      // ── Gemini SSE Streaming (primary) ──
+      try {
+        const sysText = chatSystemText;
+        const history = claudeMessages.slice(0, -1).map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content || '' }]
+        }));
+        const lastUserMsg = claudeMessages[claudeMessages.length - 1];
+        const chat = gemini.chats.create({
+          model: GEMINI_MODEL,
+          history,
+          config: { maxOutputTokens: 500, temperature: 0.65, systemInstruction: sysText }
+        });
+        const stream = await chat.sendMessageStream(lastUserMsg.content || '');
+        for await (const chunk of stream) {
+          const text = chunk.text || '';
+          if (text) {
+            fullReply += text;
+            res.write(`data: ${JSON.stringify({ text })}\n\n`);
+          }
+        }
+      } catch (geminiErr) {
+        console.warn('[Gemini Stream] Error — falling back to Claude:', geminiErr.message);
+        if (claude) {
+          const fallbackStream = claude.messages.stream({
+    model: CLAUDE_MODEL, max_tokens: 500, temperature: 0.65,
+    system: [{ type: 'text', text: chatSystemText, cache_control: { type: 'ephemeral' } }],
+    messages: claudeMessages
+          });
+          fallbackStream.on('text', (text) => {
+            if (text) { fullReply += text; res.write(`data: ${JSON.stringify({ text })}\n\n`); }
+          });
+          await fallbackStream.finalMessage().catch(() => {});
+        }
+      }
+    } else if (claude) {
+      // ── Claude fallback (no Gemini configured) ──
+      const stream = claude.messages.stream({
       model: CLAUDE_MODEL,
       max_tokens: 500,
       temperature: 0.65,
@@ -780,6 +877,7 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
     });
 
     const finalMsg = await stream.finalMessage();
+    } // end else-if(claude)
     // Non-blocking token tracking (fire and forget)
     if (finalMsg?.usage) {
       const db = require('../lib/db');
@@ -826,7 +924,7 @@ router.post('/animal', aiLimiter, optionalAuth, async (req, res) => {
     const { animalType, symptoms, question } = req.body;
     if (!animalType && !symptoms && !question)
       return res.status(400).json({ error: 'جانور کی قسم یا علامات ضروری ہیں' });
-    if (!claude) return res.json({ answer: '⚠️ AI سروس دستیاب نہیں' });
+    if (!gemini && !claude) return res.json({ answer: '⚠️ AI سروس دستیاب نہیں' });
 
     // Find relevant diseases from livestockDatabase for context alignment
     const allDiseases = [
@@ -866,7 +964,7 @@ ${matchedContext || 'تمام ادویات DRAP پاکستان کی رجسٹرڈ
 
 مختصر، جامع اور آسان اردو زبان میں جواب دیں۔`;
 
-    const text = await claudeAsk(prompt, systemPrompt, 700, 0.4);
+    const text = await geminiAsk(prompt, systemPrompt, 700);
 
     // Log to Questions tab: prefix with tool name
     if (text) {

@@ -117,6 +117,25 @@ const PESTS = {
 };
 
 const TANK_SIZES = [15, 16, 20, 25, 100, 400];
+const ACTIVE_INGREDIENTS = {
+  'Emamectin Benzoate 1.9% EC': 'Emamectin Benzoate 1.9% — ایمامیکٹن بینزویٹ',
+  'Spinosad 48% SC': 'Spinosad 48% SC — سپیناسیڈ',
+  'Imidacloprid 200 SL': 'Imidacloprid 20% SL — امیڈاکلوپریڈ',
+  'Acetamiprid 20 SP': 'Acetamiprid 20% SP — ایسیٹامی پرڈ',
+  'Chlorpyrifos 40% EC': 'Chlorpyrifos 40% EC — کلورپائری فاس',
+  'Dimethoate 40% EC': 'Dimethoate 40% EC — ڈائی میتھویٹ',
+  'Propiconazole 25% EC': 'Propiconazole 25% EC — پروپی کونازول (Tilt / Bumper / Radar)',
+  'Tebuconazole 25% WG': 'Tebuconazole 25% WG — ٹیبوکونازول (Folicur / Orius)',
+  'Tricyclazole 75% WP': 'Tricyclazole 75% WP — ٹرائی سائکلازول',
+  'Isoprothiolane 40% EC': 'Isoprothiolane 40% EC — آئسوپروتھیولین',
+  'Cartap Hydrochloride 4% GR': 'Cartap Hydrochloride 4% GR — کارٹاپ ہائیڈروکلورائیڈ (Padan)',
+  'Chlorantraniliprole 18.5% SC': 'Chlorantraniliprole 18.5% SC — کلورینٹرینی لیپرول (Coragen)',
+  'Spinetoram 12% SC': 'Spinetoram 12% SC — سپائنٹورم (Radiant)',
+  'Emamectin Benzoate 1.9%': 'Emamectin Benzoate 1.9% EC — ایمامیکٹن',
+  'Mancozeb 80% WP': 'Mancozeb 80% WP — مینکوزیب (Indofil M-45 / Dithane)',
+  'Metalaxyl + Mancozeb': 'Metalaxyl 8% + Mancozeb 64% WP — (Ridomil Gold)',
+};
+
 const DISCLAIMER = '⚠️ یہ تجاویز زرعی تحقیقاتی ڈیٹا پر مبنی ہیں۔ حتمی فیصلے سے قبل مقامی زراعت آفیسر سے مشورہ کریں۔';
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
@@ -288,9 +307,15 @@ export default function SprayDoseCalc() {
             {result.products.map((p, i) => (
               <div key={i} style={{ background: 'white', border: '1.5px solid #e0f2fe', borderRadius: 12, padding: '0.85rem', marginBottom: 8, borderRight: '4px solid #0369a1' }}>
                 <div style={{ fontWeight: 800, color: '#0c4a6e', fontSize: '0.88rem', ...nas }}>{i === 0 ? '✅ پہلی پسند:' : '🔄 متبادل:'} {p.name}</div>
+                {ACTIVE_INGREDIENTS[p.name] && (
+                  <div style={{ fontSize: '0.68rem', color: '#0369a1', marginTop: 2, ...nas }}>🧪 فارمولا: {ACTIVE_INGREDIENTS[p.name]}</div>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8 }}>
                   <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '0.55rem', textAlign: 'center' }}>
                     <div style={{ fontSize: '0.65rem', color: '#6b7280', ...nas }}>فی {tankSize}L ٹینک</div>
+                    {tankSize !== 20 && p.tankMl && (
+                      <div style={{ fontSize: '0.6rem', color: '#0369a1', ...nas }}>20L ٹینکی: {((p.dose / pestData.waterPerAcre) * 20).toFixed(1)} مل</div>
+                    )}
                     <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0369a1', fontFamily: 'Inter' }} dir="ltr">{p.dosePerTank}</div>
                     <div style={{ fontSize: '0.65rem', color: '#6b7280', ...nas }}>مل/گرام</div>
                   </div>
@@ -306,6 +331,24 @@ export default function SprayDoseCalc() {
             <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '0.65rem 0.8rem', fontSize: '0.72rem', color: '#92400e', ...nas }}>
               {DISCLAIMER}
             </div>
+            <button onClick={() => {
+              const lines = [
+                '💧 DehatiAI سپرے نسخہ',
+                `کیڑا/بیماری: ${pest} | فصل: ${result.pestData.crop}`,
+                `رقبہ: ${result.a} ایکڑ | ٹینک: ${tankSize}L | کل ٹینک: ${result.totalTanks}`,
+                '━━━━━━━━━━━━━━━━━',
+                ...result.products.map((p,i) => `${i===0?'✅':'🔄'} ${p.name}\n   فی ٹینک: ${p.dosePerTank} مل | فی ایکڑ: ${p.dose} مل\n   ${p.note}`),
+                '━━━━━━━━━━━━━━━━━',
+                `بہترین وقت: ${result.pestData.bestTime}`,
+                '⚠️ استعمال سے پہلے مقامی زرعی افسر سے تصدیق کروائیں',
+                '📞 0800-17000 | 🌐 dehati-ai.vercel.app',
+              ];
+              window.open('https://wa.me/?text=' + encodeURIComponent(lines.join('\n')), '_blank');
+            }}
+              style={{ width: '100%', padding: '10px', borderRadius: 10, border: 'none',
+                background: '#25D366', color: '#fff', fontWeight: 700, fontSize: '0.85rem',
+                cursor: 'pointer', marginTop: 8, direction: 'rtl' }}
+            >📤 ڈیلر کو واٹس ایپ پر سپرے نسخہ بھیجیں</button>
           </div>
         )}
       </div>

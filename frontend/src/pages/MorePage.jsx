@@ -14,6 +14,7 @@ import LivestockFeedCalc from '../components/tools/LivestockFeedCalc';
 import MarketPrices from '../components/tools/MarketPrices';
 import AnimalHealthAdvisor from '../components/tools/AnimalHealthAdvisor';
 import FertilizerRecommender from '../components/tools/FertilizerRecommender';
+import SoilProfile from '../components/tools/SoilProfile';
 import Profile from '../components/tools/Profile';
 
 // Tools that open as bottom sheets
@@ -21,6 +22,7 @@ const SHEET_TOOLS = [
   { id: 'market',     icon: '📈', name: 'مارکیٹ قیمتیں', component: MarketPrices,         badge: 'قیمتیں' },
   { id: 'animal',     icon: '🐄', name: 'جانور صحت',      component: AnimalHealthAdvisor  },
   { id: 'fertilizer', icon: '🧪', name: 'NPK کھاد',       component: FertilizerRecommender, badge: '⚡ اسمارٹ' },
+  { id: 'soil',       icon: '🔬', name: 'مٹی پروفائل',   component: SoilProfile,           badge: '100% درست' },
   { id: 'spray',      icon: '🌤️', name: 'سپرے موسم',     component: SprayDoseCalc,          badge: '⚡ اسمارٹ' },
   { id: 'profit',     icon: '📊', name: 'ROI منافع',      component: ProfitEstimator,        badge: '⚡ اسمارٹ' },
   { id: 'seed',       icon: '🌱', name: 'ورائٹی بیج',     component: SeedRateCalc,           badge: '⚡ اسمارٹ' },
