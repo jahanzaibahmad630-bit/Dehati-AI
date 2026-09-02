@@ -9,8 +9,17 @@ const DISTRICTS = [
   'چکوال', 'جہلم', 'نارووال', 'ننکانہ صاحب', 'ٹوبہ ٹیک سنگھ'
 ];
 
+const FEATURES = [
+  { icon: '🌾', text: 'AARI مصدقہ کھاد نسخہ' },
+  { icon: '🐛', text: 'بیماری و کیڑے تشخیص' },
+  { icon: '📈', text: 'لائیو منڈی قیمتیں' },
+  { icon: '🌤️', text: 'سپرے ونڈو موسم' },
+  { icon: '🐄', text: 'جانور صحت مشورہ' },
+  { icon: '📊', text: 'فصل موازنہ کیلکولیٹر' },
+];
+
 export default function AuthPage() {
-  const { register, login, guestLogin } = useAuth();
+  const { register, login } = useAuth();
   const [tab, setTab] = useState('login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -52,30 +61,32 @@ export default function AuthPage() {
     }
   };
 
-  const handleGuest = async () => {
-    setLoading(true);
-    try {
-      await guestLogin();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--cream)' }}>
       {/* Hero */}
       <div style={{
         background: 'linear-gradient(145deg, var(--green-900) 0%, var(--green-800) 60%, var(--green-700) 100%)',
-        padding: '3rem 1.5rem 2rem',
+        padding: '2.5rem 1.5rem 1.75rem',
         textAlign: 'center',
         color: 'white'
       }}>
-        <div style={{ fontSize: '3.5rem', marginBottom: '.75rem' }}>🌾</div>
-        <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: '2rem', fontWeight: 700, color: 'white', direction: 'ltr', letterSpacing: '-.02em' }}>DehatiAI</h1>
-        <p style={{ opacity: .85, fontSize: '.95rem', marginTop: '.3rem' }}>کسان کا ذہین ساتھی</p>
-        <div className="truck-art-border" style={{ marginTop: '1.5rem', borderRadius: '2px' }} />
+        <div style={{ fontSize: '3rem', marginBottom: '.5rem' }}>🌾</div>
+        <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: '2rem', fontWeight: 700, color: 'white', direction: 'ltr', letterSpacing: '-.02em', margin: 0 }}>DehatiAI</h1>
+        <p style={{ opacity: .85, fontSize: '.95rem', marginTop: '.3rem', marginBottom: '1rem' }}>کسان کا ذہین ساتھی</p>
+
+        {/* Feature chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.4rem', justifyContent: 'center', marginTop: '.5rem' }}>
+          {FEATURES.map((f, i) => (
+            <div key={i} style={{
+              background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.2)',
+              borderRadius: 20, padding: '3px 10px', fontSize: '.68rem', fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 4
+            }}>
+              {f.icon} {f.text}
+            </div>
+          ))}
+        </div>
+        <div className="truck-art-border" style={{ marginTop: '1.25rem', borderRadius: '2px' }} />
       </div>
 
       {/* Form Card */}
@@ -141,12 +152,18 @@ export default function AuthPage() {
               <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} id="login-submit-btn">
                 {loading ? '...' : '✓ لاگ ان کریں'}
               </button>
+              <p style={{ textAlign: 'center', fontSize: '.75rem', color: 'var(--text-secondary)', marginTop: '.5rem', direction: 'rtl' }}>
+                اکاؤنٹ نہیں ہے؟ &nbsp;
+                <button type="button" onClick={() => { setTab('register'); setError(''); }}
+                  style={{ background: 'none', border: 'none', color: 'var(--green-700)', fontWeight: 800, cursor: 'pointer', fontSize: '.75rem', padding: 0 }}>
+                  ابھی رجسٹر کریں
+                </button>
+              </p>
             </form>
           ) : (
             <form onSubmit={handleRegister} className="form-group" dir="rtl">
               <div>
                 <label className="input-label" htmlFor="reg-name">پورا نام</label>
-                {/* dir=auto: browser detects RTL (اردو) vs LTR (English) as user types */}
                 <input
                   id="reg-name" type="text" className="input"
                   placeholder="محمد علی / Ali Ahmed"
@@ -195,26 +212,13 @@ export default function AuthPage() {
                 />
               </div>
               <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} id="register-submit-btn">
-                {loading ? '...' : '✓ اکاؤنٹ بنائیں'}
+                {loading ? '...' : '✓ مفت اکاؤنٹ بنائیں'}
               </button>
+              <p style={{ textAlign: 'center', fontSize: '.72rem', color: 'var(--text-secondary)', direction: 'rtl', marginTop: '.5rem', lineHeight: 1.5 }}>
+                ✅ مفت | 🔒 محفوظ | 📴 آف لائن بھی کام کرتا ہے
+              </p>
             </form>
           )}
-
-          <div style={{ textAlign: 'center', margin: '1rem 0', color: 'var(--text-muted)', fontSize: '.85rem' }}>— یا —</div>
-
-          <button
-            className="btn btn-outline btn-full"
-            onClick={handleGuest}
-            disabled={loading}
-            id="guest-login-btn"
-            dir="rtl"
-          >
-            👤 مہمان کی طرح جاری رکھیں
-          </button>
-
-          <p style={{ textAlign: 'center', fontSize: '.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '.75rem', direction: 'rtl' }}>
-            مہمان موڈ میں پروفائل محفوظ نہیں ہوگا
-          </p>
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 
 export default function Profile() {
-  const { user, logout, isGuest } = useAuth();
+  const { user, logout } = useAuth();
   const { largeText, toggleLargeText } = useLanguage();
 
   return (
@@ -10,10 +10,12 @@ export default function Profile() {
       {/* User Info Card */}
       <div style={{ background: 'var(--green-100)', borderRadius: 'var(--radius-md)', padding: '1rem' }}>
         <div style={{ fontSize: '2.5rem', textAlign: 'center', marginBottom: '.5rem' }}>
-          {isGuest ? '👤' : '👨‍🌾'}
+          👨‍🌾
+        </div>
+        <div style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.05rem', color: 'var(--green-900)', marginBottom: '.75rem' }}>
+          {user?.name || '—'}
         </div>
         {[
-          { label: 'نام', value: user?.name },
           { label: 'فون', value: user?.phone, ltr: true },
           { label: 'ضلع', value: user?.district },
           { label: 'زمین', value: user?.landSize ? `${user.landSize} ایکڑ` : null }
@@ -25,11 +27,9 @@ export default function Profile() {
             </span>
           </div>
         ))}
-        {isGuest && (
-          <div style={{ marginTop: '.5rem', fontSize: '.8rem', color: 'var(--warning)', textAlign: 'center', fontWeight: 700 }}>
-            ⚠️ مہمان موڈ — ڈیٹا محفوظ نہیں
-          </div>
-        )}
+        <div style={{ marginTop: '.75rem', background: '#f0fdf4', borderRadius: 8, padding: '.5rem .75rem', fontSize: '.72rem', color: '#15803d', fontWeight: 600, textAlign: 'center' }}>
+          ✅ آپ کا ڈیٹا محفوظ ہے — DehatiAI اکاؤنٹ
+        </div>
       </div>
 
       {/* AI Status */}
@@ -82,7 +82,7 @@ export default function Profile() {
       </button>
 
       <p style={{ textAlign: 'center', fontSize: '.72rem', color: 'var(--text-light)', lineHeight: 1.5 }}>
-        DehatiAI v1.0 — پنجاب کے کسانوں کے لیے
+        DehatiAI v1.0 — پنجاب کے کسانوں کے لیے | ماخذ: AARI/CCRI/UVAS
       </p>
     </div>
   );

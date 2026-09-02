@@ -719,13 +719,13 @@ export default function AdminPanel({ onLogout }) {
             {/* KPI Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
               <StatCard dark={dark} ring ringPct={stats?.aiCache?.hitRate || 0} icon="⚡" label="Cache Hit Rate" value={`${stats?.aiCache?.hitRate || 0}%`} sub={`${stats?.aiCache?.entries ?? 0} entries`} color="#10B981" />
-              <StatCard dark={dark} icon="📅" label="New Users Today" value={stats?.newToday} sub="Last 24h" color="#3B82F6" />
-              <StatCard dark={dark} icon="👤" label="Guest Users" value={stats?.guestUsers} sub="Trial Mode" color="#F59E0B" />
-              <StatCard dark={dark} icon="👨‍🌾" label="Registered Users" value={stats?.registeredUsers} sub="Verified" color="#8B5CF6" />
-              <StatCard dark={dark} icon="👥" label="Total Users" value={stats?.totalUsers} sub="Combined" color="#6366F1" />
+              <StatCard dark={dark} icon="📅" label="New Registrations Today" value={stats?.newToday} sub="Last 24h" color="#3B82F6" />
+              <StatCard dark={dark} icon="👨‍🌾" label="Total Registered Farmers" value={stats?.registeredUsers ?? stats?.totalUsers} sub="All time" color="#8B5CF6" />
+              <StatCard dark={dark} icon="📋" label="Total Questions Asked" value={stats?.totalQuestions ?? '—'} sub="All chat logs" color="#F59E0B" />
               <StatCard dark={dark} icon="🔗" label="Environment" value={stats?.nodeVersion || 'v20'} sub={stats?.environment || 'Production'} color="#64748B" />
               <StatCard dark={dark} icon="⏱️" label="System Uptime" value={formatUptime(uptimeSeconds)} sub="Continuous" color="#EC4899" />
-              <StatCard dark={dark} icon="💾" label="Cache Performance" value={stats?.aiCache?.hits || 0} sub={`${stats?.aiCache?.misses ?? 0} misses`} color="#14B8A6" />
+              <StatCard dark={dark} icon="💾" label="Cache Hits" value={stats?.aiCache?.hits || 0} sub={`${stats?.aiCache?.misses ?? 0} misses`} color="#14B8A6" />
+              <StatCard dark={dark} icon="💰" label="AI Cost Today" value={`$${stats?.costToday?.toFixed(4) ?? '0.0000'}`} sub="Claude API spend" color="#EF4444" />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
@@ -815,17 +815,15 @@ export default function AdminPanel({ onLogout }) {
 
 // ── Users Tab ──────────────────────────────────────────────────────────────────
 function UsersTab() {
-  const [users, setUsers]     = useState([]);
-  const [total, setTotal]     = useState(0);
-  const [page, setPage]       = useState(1);
-  const [search, setSearch]   = useState('');
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers]       = useState([]);
+  const [total, setTotal]       = useState(0);
+  const [page, setPage]         = useState(1);
+  const [search, setSearch]     = useState('');
+  const [loading, setLoading]   = useState(true);
   const [deleting, setDeleting] = useState(null);
-  const [msg, setMsg]         = useState('');
-
+  const [msg, setMsg]           = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // H2 fix: debounce search to prevent a request on every keystroke
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
@@ -845,11 +843,11 @@ function UsersTab() {
   useEffect(() => { load(); }, [load]);
 
   const handleDelete = async (id, name) => {
-    if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+    if (!confirm(`Delete farmer "${name}"? This cannot be undone.`)) return;
     setDeleting(id);
     try {
       await adminFetch(`/users/${id}`, { method: 'DELETE' });
-      setMsg(`✅ User "${name}" deleted`);
+      setMsg(`✅ Farmer "${name}" deleted`);
       load();
     } catch { setMsg('❌ Delete failed'); }
     setDeleting(null);
@@ -858,55 +856,88 @@ function UsersTab() {
 
   const exportCSV = () => {
     const csv = [
-      ['Name','Phone','District','Land (acres)','Registered','Guest'],
-      ...users.map(u => [u.name, u.phone, u.district||'', u.land_size||'', u.created_at?.split('T')[0]||'', u.is_guest?'Yes':'No'])
+      ['Name', 'Phone', 'District', 'Land (acres)', 'Registered At'],
+      ...users.map(u => [
+        `"${u.name}"`, u.phone, u.district || '', u.land_size || '',
+        u.created_at?.split('T')[0] || ''
+      ])
     ].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'dehati_users.csv'; a.click();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `dehati_farmers_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
   };
+
+  const totalAcres = users.reduce((s, u) => s + (parseFloat(u.land_size) || 0), 0);
+
+  // District breakdown from current page
+  const districtMap = {};
+  users.forEach(u => { if (u.district) districtMap[u.district] = (districtMap[u.district] || 0) + 1; });
+  const topDistricts = Object.entries(districtMap).sort((a,b) => b[1]-a[1]).slice(0, 5);
 
   return (
     <div>
+      {/* Quick stats bar */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '.75rem', marginBottom: '1.25rem' }}>
+        {[
+          { icon: '👨‍🌾', label: 'Total Farmers', value: total, color: '#10B981' },
+          { icon: '🌾', label: 'Acres (this page)', value: totalAcres.toFixed(0) + ' ac', color: '#3B82F6' },
+          { icon: '📋', label: 'Showing', value: `${users.length} of ${total}`, color: '#8B5CF6' },
+        ].map(s => (
+          <div key={s.label} style={{ background: 'white', borderRadius: 10, padding: '.875rem 1rem', border: `1px solid #f0f0f0`, borderLeft: `3px solid ${s.color}` }}>
+            <div style={{ fontSize: '.72rem', color: '#6b7280', fontWeight: 600 }}>{s.icon} {s.label}</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', marginTop: 2 }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           placeholder="🔍 Search name or phone..."
           value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
           style={{ flex: 1, minWidth: 200, padding: '.6rem 1rem', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: '.875rem', fontFamily: 'Inter, sans-serif' }}
         />
-        <span style={{ color: '#6b7280', fontSize: '.875rem', whiteSpace: 'nowrap' }}>{total} users</span>
+        <button onClick={load} style={btnStyle('#0369a1')}>🔄 Refresh</button>
         <button onClick={exportCSV} style={btnStyle('#2e5a27')}>⬇ Export CSV</button>
       </div>
 
-      {msg && <div style={{ background: '#f0fdf4', color: '#16a34a', padding: '.6rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '.875rem', fontWeight: 600 }}>{msg}</div>}
+      {msg && <div style={{ background: msg.startsWith('✅') ? '#f0fdf4' : '#fef2f2', color: msg.startsWith('✅') ? '#16a34a' : '#dc2626', padding: '.6rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '.875rem', fontWeight: 600 }}>{msg}</div>}
 
       {loading ? <Spinner /> : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.875rem' }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
-                {['Name','Phone','District','Land','Joined','Type','Action'].map(h => (
+                {['#', 'Name', 'Phone', 'District', 'Land', 'Joined', 'Action'].map(h => (
                   <th key={h} style={{ padding: '.75rem 1rem', textAlign: 'left', fontWeight: 700, color: '#374151', borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {users.map((u, i) => (
-                <tr key={u.id} style={{ background: i % 2 ? '#fafafa' : 'white', transition: 'background .15s' }}
+                <tr key={u.id}
+                  style={{ background: i % 2 ? '#fafafa' : 'white', transition: 'background .15s' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#f0fdf4'}
                   onMouseLeave={e => e.currentTarget.style.background = i % 2 ? '#fafafa' : 'white'}
                 >
+                  <td style={{ ...tdStyle, color: '#9ca3af', fontSize: '.75rem' }}>{(page-1)*15 + i + 1}</td>
                   <td style={tdStyle}><strong>{u.name}</strong></td>
-                  <td style={{ ...tdStyle, fontFamily: 'monospace' }}>{u.phone}</td>
-                  <td style={tdStyle}>{u.district || '—'}</td>
-                  <td style={tdStyle}>{u.land_size ? `${u.land_size} acres` : '—'}</td>
-                  <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: '#6b7280' }}>
-                    {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
+                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '.8rem' }}>{u.phone}</td>
+                  <td style={tdStyle}>
+                    {u.district
+                      ? <span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 6, padding: '2px 8px', fontSize: '.72rem', fontWeight: 600 }}>{u.district}</span>
+                      : <span style={{ color: '#d1d5db' }}>—</span>
+                    }
                   </td>
                   <td style={tdStyle}>
-                    <span style={{ background: u.is_guest ? '#fef3c7' : '#dcfce7', color: u.is_guest ? '#d97706' : '#16a34a', padding: '.15rem .5rem', borderRadius: 20, fontSize: '.72rem', fontWeight: 700 }}>
-                      {u.is_guest ? 'Guest' : 'Registered'}
-                    </span>
+                    {u.land_size
+                      ? <span style={{ fontWeight: 700, color: '#15803d' }}>{u.land_size} ac</span>
+                      : <span style={{ color: '#d1d5db' }}>—</span>
+                    }
+                  </td>
+                  <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: '#6b7280', fontSize: '.8rem' }}>
+                    {u.created_at ? new Date(u.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}
                   </td>
                   <td style={tdStyle}>
                     <button
@@ -920,7 +951,7 @@ function UsersTab() {
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af' }}>No users found</td></tr>
+                <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af' }}>No farmers found</td></tr>
               )}
             </tbody>
           </table>
