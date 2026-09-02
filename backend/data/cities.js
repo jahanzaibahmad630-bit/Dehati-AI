@@ -28,6 +28,13 @@ const PUNJAB_CITIES = {
   'narowal': { lat: 32.1023, lon: 74.8702, name: 'نارووال' },
   'nankana sahib': { lat: 31.4500, lon: 73.7167, name: 'ننکانہ صاحب' },
   'toba tek singh': { lat: 30.9700, lon: 72.4833, name: 'ٹوبہ ٹیک سنگھ' },
+  'bhakkar': { lat: 31.6253, lon: 71.0657, name: 'بھکر' },
+  'layyah': { lat: 30.9613, lon: 70.9427, name: 'لیہ' },
+  'mandi bahauddin': { lat: 32.5870, lon: 73.4912, name: 'منڈی بہاؤالدین' },
+  'khushab': { lat: 32.2967, lon: 72.3525, name: 'خوشاب' },
+  'lodhran': { lat: 29.5405, lon: 71.6336, name: 'لودھراں' },
+  'bahawalnagar': { lat: 29.9984, lon: 73.2527, name: 'بہاولنگر' },
+  'rajanpur': { lat: 29.1035, lon: 70.3250, name: 'راجن پور' },
   'wah cantt': { lat: 33.7667, lon: 72.7833, name: 'واہ کینٹ' }
 };
 

@@ -342,7 +342,11 @@ async function claudeAsk(prompt, systemPrompt, maxTokens = 700, temperature = 0.
       cacheTokens: response.usage.cache_read_input_tokens || 0
     }).catch(() => {});
   }
-  return response.content?.[0]?.text ?? '';
+  const textBlock = response.content?.find(b => b.type === 'text');
+  let text = textBlock?.text ?? response.content?.[0]?.text ?? '';
+  text = text.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim();
+  text = text.replace(/^[ \t]*Heading starts with[^\n]*\n+/i, '').trim();
+  return text;
 }
 
 // ─── Gemini Ask Helper (primary text engine — all non-vision endpoints) ────────
