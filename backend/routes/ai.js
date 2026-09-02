@@ -676,6 +676,110 @@ Respond strictly in valid JSON:
 
 
 // ——— POST /api/ai/fertilizer ————————————————————————————————————————————————
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/ai/soil-scan  — Scan soil test report image and extract values
+// Uses Claude vision (same model as disease detection) to read lab report OCR
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/soil-scan', diseaseLimiter, optionalAuth, async (req, res) => {
+  try {
+    if (!claude) return res.status(503).json({ error: 'Vision AI دستیاب نہیں — CLAUDE_API_KEY ترتیب دیں' });
+
+    const { imageBase64, mimeType = 'image/jpeg' } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: 'تصویر نہیں ملی' });
+
+    const VALID_MIMES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    const safeMime = VALID_MIMES.includes(mimeType) ? mimeType : 'image/jpeg';
+
+    if (Buffer.byteLength(imageBase64, 'base64') > 5 * 1024 * 1024) {
+      return res.status(413).json({ error: 'تصویر 5MB سے چھوٹی ہونی چاہیے' });
+    }
+
+    const systemPrompt = `You are an expert agricultural soil lab report reader for Pakistan (SFRI Punjab standards).
+Your ONLY job is to extract numerical values from a soil test / soil health card image and return them as a strict JSON object.
+
+Pakistani soil test reports (SFRI / Model Agri Mall / NARC labs) typically show these parameters:
+- pH (soil reaction, usually 6.0–9.0 in Pakistan)
+- EC (Electrical Conductivity, in mS/cm or dS/m, same unit)
+- Organic Matter / OM (%, or sometimes shown as Organic Carbon — convert: OM = OC × 1.724)
+- Nitrogen / N (% or ppm — if ppm, divide by 10000 to get %)
+- Phosphorus / P (ppm or mg/kg)
+- Potassium / K (ppm or mg/kg)
+- Zinc / Zn (ppm or mg/kg)
+
+Return ONLY this JSON, no extra text:
+{
+  "pH": <number or null>,
+  "ec": <number or null>,
+  "om": <number or null>,
+  "n": <number or null>,
+  "p": <number or null>,
+  "k": <number or null>,
+  "zn": <number or null>,
+  "lab_name": "<lab/institution name from report if visible, else null>",
+  "report_date": "<date from report if visible, else null>",
+  "confidence": "<high|medium|low — how confident you are the image is a soil test report>",
+  "notes": "<any important notes or warnings about the extraction, in Urdu if possible>"
+}
+
+If the image is NOT a soil test report (e.g. it's a selfie, landscape, etc.), return:
+{ "error": "یہ مٹی ٹیسٹ رپورٹ نہیں ہے — مٹی ٹیسٹ کارڈ یا لیب رپورٹ کی تصویر لیں" }`;
+
+    const response = await claude.messages.create({
+      model: CLAUDE_MODEL_VIS,
+      max_tokens: 600,
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: safeMime, data: imageBase64 } },
+          { type: 'text',  text: 'اس مٹی ٹیسٹ رپورٹ سے تمام قدریں نکالیں اور JSON دیں۔' }
+        ]
+      }]
+    });
+
+    const rawText = response.content?.[0]?.text ?? '';
+    let parsed = null;
+    try {
+      const m = rawText.match(/\{[\s\S]*\}/);
+      if (m) parsed = JSON.parse(m[0]);
+    } catch (_) {}
+
+    if (!parsed) {
+      return res.status(422).json({ error: 'رپورٹ پڑھنے میں ناکامی — واضح روشنی میں دوبارہ تصویر لیں' });
+    }
+
+    if (parsed.error) {
+      return res.status(422).json({ error: parsed.error });
+    }
+
+    console.log(`[SoilScan] Extracted → pH:${parsed.pH} EC:${parsed.ec} OM:${parsed.om} N:${parsed.n} P:${parsed.p} K:${parsed.k} Zn:${parsed.zn} | Confidence: ${parsed.confidence}`);
+
+    res.json({
+      success: true,
+      data: {
+        pH:   parsed.pH   !== null && parsed.pH   !== undefined ? String(parsed.pH)   : '',
+        ec:   parsed.ec   !== null && parsed.ec   !== undefined ? String(parsed.ec)   : '',
+        om:   parsed.om   !== null && parsed.om   !== undefined ? String(parsed.om)   : '',
+        n:    parsed.n    !== null && parsed.n    !== undefined ? String(parsed.n)    : '',
+        p:    parsed.p    !== null && parsed.p    !== undefined ? String(parsed.p)    : '',
+        k:    parsed.k    !== null && parsed.k    !== undefined ? String(parsed.k)    : '',
+        zn:   parsed.zn   !== null && parsed.zn   !== undefined ? String(parsed.zn)   : '',
+      },
+      meta: {
+        lab_name:    parsed.lab_name    || null,
+        report_date: parsed.report_date || null,
+        confidence:  parsed.confidence  || 'medium',
+        notes:       parsed.notes       || null,
+      }
+    });
+
+  } catch (err) {
+    console.error('[SoilScan] Error:', err.message);
+    res.status(500).json({ error: 'مٹی رپورٹ اسکین میں خرابی — دوبارہ کوشش کریں' });
+  }
+});
+
 router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {
   try {
     // M7 fix: Truncate inputs to prevent excessively long prompts reaching Claude

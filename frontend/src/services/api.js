@@ -197,3 +197,15 @@ export async function fileToBase64(file) {
     reader.readAsDataURL(file);
   });
 }
+
+// ─── Soil Report OCR — scans a photo of a soil test report ───────────────────
+export async function scanSoilReport(imageBase64, mimeType = 'image/jpeg') {
+  const res = await fetch(`${API_URL}/ai/soil-scan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageBase64, mimeType }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Soil scan failed');
+  return data;
+}

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { scanSoilReport } from '../../services/api';
 
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
@@ -70,11 +71,33 @@ export function buildSoilContextBlock(profile) {
 
 import InstitutionalBadge from '../ui/InstitutionalBadge';
 
+// ─── Image → base64 helper ────────────────────────────────────────────────────
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = reader.result;
+      const base64 = typeof res === 'string' ? res.split(',')[1] : '';
+      resolve({ base64, mimeType: file.type || 'image/jpeg' });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function SoilProfile() {
   const [values, setValues] = useState({ pH: '', ec: '', om: '', n: '', p: '', k: '', zn: '' });
-  const [saved, setSaved] = useState(false);
-  const [existing, setExisting] = useState(null);
+  const [saved, setSaved]           = useState(false);
+  const [existing, setExisting]     = useState(null);
   const [showAdvice, setShowAdvice] = useState(false);
+
+  // ── Scan / OCR state ──────────────────────────────────────────────────────
+  const [scanLoading, setScanLoading]   = useState(false);
+  const [scanError, setScanError]       = useState('');
+  const [scanSuccess, setScanSuccess]   = useState('');
+  const [scanMeta, setScanMeta]         = useState(null);  // { lab_name, report_date, confidence, notes }
+  const [previewUrl, setPreviewUrl]     = useState('');
+  const fileRef = useRef(null);
 
   useEffect(() => {
     const profile = getSavedSoilProfile();
@@ -97,7 +120,44 @@ export default function SoilProfile() {
   const handleClear = () => {
     localStorage.removeItem(SOIL_STORAGE_KEY);
     setValues({ pH: '', ec: '', om: '', n: '', p: '', k: '', zn: '' });
-    setExisting(null); setShowAdvice(false);
+    setExisting(null); setShowAdvice(false); setScanMeta(null);
+    setScanSuccess(''); setScanError(''); setPreviewUrl('');
+  };
+
+  // ── Handle report image scan ──────────────────────────────────────────────
+  const handleScan = async (file) => {
+    if (!file) return;
+    setScanError(''); setScanSuccess(''); setScanLoading(true); setScanMeta(null);
+
+    // Show preview
+    const objUrl = URL.createObjectURL(file);
+    setPreviewUrl(objUrl);
+
+    try {
+      const { base64, mimeType } = await fileToBase64(file);
+      const result = await scanSoilReport(base64, mimeType);
+
+      if (result.success && result.data) {
+        // Merge extracted values — only overwrite empty fields unless value found
+        setValues(prev => {
+          const next = { ...prev };
+          for (const key of ['pH', 'ec', 'om', 'n', 'p', 'k', 'zn']) {
+            if (result.data[key] && result.data[key] !== '') {
+              next[key] = result.data[key];
+            }
+          }
+          return next;
+        });
+        setScanMeta(result.meta);
+        setShowAdvice(true);
+        const filled = Object.values(result.data).filter(v => v !== '').length;
+        setScanSuccess(`✅ ${filled} قدریں خودبخود بھر گئیں${result.meta?.lab_name ? ' — لیب: ' + result.meta.lab_name : ''}`);
+      }
+    } catch (err) {
+      setScanError(err.message || 'رپورٹ پڑھنے میں ناکامی — صاف تصویر لیں');
+    } finally {
+      setScanLoading(false);
+    }
   };
 
   const anyFilled = Object.values(values).some(v => v !== '');
@@ -105,7 +165,7 @@ export default function SoilProfile() {
   return (
     <div dir="rtl" style={{ ...nas }}>
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div style={{ background: 'linear-gradient(135deg,#14532d,#166534)', borderRadius: 14, padding: '1rem 1.2rem', marginBottom: 14, color: 'white' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
@@ -122,7 +182,95 @@ export default function SoilProfile() {
         </div>
       </div>
 
-      {/* How-to get soil test */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* ── AI SCAN SECTION — Take photo of soil report ──────────────────── */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <div style={{ background: 'linear-gradient(135deg, #1e3a5f, #1e40af)', borderRadius: 14, padding: '1rem 1.2rem', marginBottom: 14, color: 'white' }}>
+        <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: 4 }}>
+          📸 مٹی رپورٹ کی تصویر لیں — AI خودبخود بھر دے گا
+        </div>
+        <div style={{ fontSize: '0.72rem', color: '#93c5fd', marginBottom: 10, lineHeight: 1.6 }}>
+          SFRI / ماڈل ایگری مال / ضلعی لیب کا Soil Health Card کیمرے سے اسکین کریں۔ Claude AI تمام قدریں خودبخود پڑھ کر فارم بھر دے گا۔
+        </div>
+
+        {/* Scan Tips */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginBottom: 10 }}>
+          {[
+            ['☀️', 'اچھی روشنی میں لیں'],
+            ['📄', 'پوری رپورٹ فریم میں ہو'],
+            ['🔍', 'تحریر واضح ہو'],
+            ['📐', 'کیمرہ سیدھا رکھیں'],
+          ].map(([icon, tip]) => (
+            <div key={tip} style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 6, padding: '4px 8px', fontSize: '0.68rem', color: '#bfdbfe', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span>{icon}</span>{tip}
+            </div>
+          ))}
+        </div>
+
+        {/* Preview if scanned */}
+        {previewUrl && (
+          <div style={{ marginBottom: 8, borderRadius: 8, overflow: 'hidden', border: '2px solid #3b82f6' }}>
+            <img src={previewUrl} alt="مٹی رپورٹ" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', display: 'block' }} />
+          </div>
+        )}
+
+        {/* Scan Button */}
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={scanLoading}
+          style={{
+            width: '100%', padding: '11px', borderRadius: 10, border: 'none',
+            background: scanLoading ? '#374151' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            color: 'white', fontWeight: 800, fontSize: '0.88rem', cursor: scanLoading ? 'not-allowed' : 'pointer',
+            direction: 'rtl', fontFamily: '"Noto Nastaliq Urdu", serif',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+          }}
+        >
+          {scanLoading
+            ? <><span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> AI رپورٹ پڑھ رہا ہے...</>
+            : '📷 رپورٹ کی تصویر لیں / اپلوڈ کریں'
+          }
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleScan(f); e.target.value = ''; }}
+        />
+
+        {/* Scan Success */}
+        {scanSuccess && (
+          <div style={{ marginTop: 8, background: 'rgba(34,197,94,0.15)', border: '1px solid #22c55e', borderRadius: 8, padding: '8px 12px', fontSize: '0.78rem', color: '#86efac', fontWeight: 700 }}>
+            {scanSuccess}
+            {scanMeta?.confidence === 'low' && (
+              <div style={{ fontSize: '0.68rem', color: '#fcd34d', marginTop: 4 }}>
+                ⚠️ AI کو یقین کم ہے — قدریں ایک بار چیک کریں
+              </div>
+            )}
+            {scanMeta?.notes && (
+              <div style={{ fontSize: '0.68rem', color: '#86efac', marginTop: 4 }}>💡 {scanMeta.notes}</div>
+            )}
+          </div>
+        )}
+
+        {/* Scan Error */}
+        {scanError && (
+          <div style={{ marginTop: 8, background: 'rgba(239,68,68,0.15)', border: '1px solid #ef4444', borderRadius: 8, padding: '8px 12px', fontSize: '0.78rem', color: '#fca5a5', fontWeight: 700 }}>
+            ⚠️ {scanError}
+          </div>
+        )}
+      </div>
+
+      {/* ── Divider ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+        <span style={{ fontSize: '0.72rem', color: '#6b7280' }}>یا خود درج کریں</span>
+        <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+      </div>
+
+      {/* ── How-to get soil test ── */}
       <div style={{ background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
         <div style={{ fontSize: '0.75rem', color: '#1e40af', lineHeight: 1.6 }}>
           <strong>مٹی ٹیسٹ کہاں سے ملے گا؟</strong><br />
@@ -134,7 +282,7 @@ export default function SoilProfile() {
         </a>
       </div>
 
-      {/* Soil Parameter Inputs */}
+      {/* ── Soil Parameter Inputs ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
         {SOIL_PARAMS.map(param => {
           const status = getStatus(param, values[param.key]);
@@ -159,7 +307,6 @@ export default function SoilProfile() {
                 </div>
               </div>
 
-              {/* Progress bar */}
               {status !== 'empty' && (
                 <div style={{ position: 'relative', height: 6, background: '#e5e7eb', borderRadius: 6, marginBottom: 6, overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', left: i0 + '%', width: (i1 - i0) + '%', height: '100%', background: 'rgba(34,197,94,0.3)' }} />
@@ -180,7 +327,7 @@ export default function SoilProfile() {
         })}
       </div>
 
-      {/* Save & Clear */}
+      {/* ── Save & Clear ── */}
       <button onClick={handleSave} disabled={!anyFilled}
         style={{ width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: anyFilled ? 'linear-gradient(135deg,#15803d,#16a34a)' : '#e5e7eb', color: anyFilled ? '#fff' : '#9ca3af', fontWeight: 800, fontSize: '0.92rem', cursor: anyFilled ? 'pointer' : 'not-allowed', marginBottom: 8, direction: 'rtl' }}>
         {saved ? '✅ پروفائل محفوظ ہو گیا!' : '💾 پروفائل محفوظ کریں — ذاتی کھاد نسخہ پائیں'}
@@ -192,7 +339,7 @@ export default function SoilProfile() {
         </button>
       )}
 
-      {/* Live Advice Panel */}
+      {/* ── Live Advice Panel ── */}
       {advice && advice.flags.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#14532d', marginBottom: 8 }}>
@@ -236,6 +383,12 @@ export default function SoilProfile() {
           </button>
         </div>
       )}
+
+      {/* SFRI Provenance Badge */}
+      <div style={{ marginTop: 12 }}>
+        <InstitutionalBadge type="sfri" helpline="0800-17000" />
+      </div>
+
     </div>
   );
 }
