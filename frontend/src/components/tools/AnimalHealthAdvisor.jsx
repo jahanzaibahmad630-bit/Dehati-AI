@@ -22,6 +22,7 @@ export default function AnimalHealthAdvisor() {
 
   // Hybrid AI state
   const [animalWeight, setAnimalWeight] = useState('');
+  const [weightTier, setWeightTier] = useState('tier3'); // default: adult dairy buffalo/cattle
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiResult, setAiResult] = useState('');
   const [aiLoading, setAiLoading] = useState(false);

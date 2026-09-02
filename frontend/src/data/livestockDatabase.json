@@ -16,15 +16,17 @@
       "common_brands_pakistan": "جراثیم کش: پوٹاشیم پرمینگنیٹ محلول، بیٹاڈین؛ اینٹی بایوٹک: آکسی ٹیٹراسائیکلین (مثلاً الفامائسن، ٹیراما ئسن-ایل اے)",
       "dosage": "رجسٹرڈ ویٹرنری ڈاکٹر سے خوراک ضرور معلوم کریں — وزن اور عمر کے حساب سے خوراک بدلتی ہے",
       "price_pkr": "مقامی پرچون/ویٹرنری اسٹور سے تازہ قیمت معلوم کریں — قیمت شہر اور وقت کے ساتھ بدلتی ہے",
-      "prevention_vaccine": "FMD ویکسین سال میں 2 بار (ہر 6 ماہ بعد) پنجاب لائیوسٹاک شیڈول کے مطابق",
+      "prevention_vaccine": "FMD ویکسین سال میں 2 بار (مارچ اور ستمبر) — ہر 6 ماہ بعد پنجاب لائیوسٹاک شیڈول کے مطابق۔",
       "drap_calibrated_dose": {
-        "tier1_small": "Oxytetracycline LA 20% (Alamycin): 10 mL IM + زخموں پر گلیسرین/پوٹاشیم پرمینگنیٹ",
-        "tier2_medium": "Oxytetracycline LA 20%: 25 mL IM + Flunixin 5% 5-7 mL",
-        "tier3_adult": "Oxytetracycline LA 20%: 40-50 mL IM + Flunixin 5% 10-15 mL"
+        "tier1": "Oxytetracycline LA 20%: 10 mL IM (ثانوی انفیکشن بچاؤ) + زخموں پر پائے اوڈین / گلیسرین",
+        "tier2": "Oxytetracycline LA 20%: 25 mL IM + Flunixin 5% 5-7 mL (درد و بخار کم کرنے)",
+        "tier3": "Oxytetracycline LA 20%: 40-50 mL IM + Flunixin 5% 10-15 mL + پوٹاشیم پرمینگنیٹ سے پاؤں کی صفائی"
       },
       "milk_withholding_hours": 72,
       "meat_withdrawal_days": 21,
-      "withholding_alert": "⚠️ گوشت 21 دن تک نہ کھائیں | دودھ 72 گھنٹے ابال کر صرف ضائع کریں"
+      "withholding_alert": "⚠️ دودھ 72 گھنٹے ابال کر ضائع کریں | گوشت 21 دن تک نہ کھائیں۔",
+      "first_line_molecules": "Oxytetracycline LA 20% | Penicillin-Streptomycin | Flunixin Meglumine 5%",
+      "typical_brands": "Alamycin LA (ICI Pakistan), Pen-Strep (Ghazi / Star Labs), Flunex (Univet / Prix)"
     },
     {
       "disease_name": "خونی بخار / گلا گھونٹو (Hemorrhagic Septicemia)",
@@ -35,7 +37,17 @@
       "common_brands_pakistan": "آکسی ٹیٹراسائیکلین ایل اے (الفامائسن-ایل اے، ویٹراما ئسن-ایل اے)، سلفا ڈائی مڈین بولس (سلفا-ڈی)",
       "dosage": "رجسٹرڈ ویٹرنری ڈاکٹر سے خوراک ضرور معلوم کریں — وزن اور عمر کے حساب سے خوراک بدلتی ہے",
       "price_pkr": "مقامی پرچون/ویٹرنری اسٹور سے تازہ قیمت معلوم کریں — قیمت شہر اور وقت کے ساتھ بدلتی ہے",
-      "prevention_vaccine": "ایچ ایس ویکسین — ہر سال، برسات سے پہلے"
+      "prevention_vaccine": "HS ویکسین سالانہ برسات/مون سون سے قبل (مئی تا جون) — ویکسین سے 7-10 دن قبل پیٹ کے کیڑوں کی دوا لازمی دیں۔",
+      "drap_calibrated_dose": {
+        "tier1": "Oxytetracycline LA 20% (Alamycin LA): 10 mL IM یا Pen-Strep 5 mL IM",
+        "tier2": "Oxytetracycline LA 20%: 25 mL IM یا Enrofloxacin 10% (Baytril) 10-15 mL IM",
+        "tier3": "Oxytetracycline LA 20%: 50 mL IM (ایک بار) یا Baytril 20-25 mL IM + Flunixin 5% 15 mL + ڈرپ نارمل سلائن"
+      },
+      "first_line_molecules": "Oxytetracycline LA 20% (200 mg/mL) | Penicillin-Streptomycin | Enrofloxacin 10%",
+      "typical_brands": "Alamycin LA (ICI Pakistan), Pen-Strep (Ghazi / Star Labs), Baytril (Bayer Pakistan)",
+      "milk_withholding_hours": 96,
+      "meat_withdrawal_days": 21,
+      "withholding_alert": "⚠️ دودھ کا ممنوع وقت: 96 گھنٹے | گوشت کا ممنوع وقت: 21 دن۔"
     },
     {
       "disease_name": "کالا بخار (Black Quarter)",
@@ -46,7 +58,15 @@
       "common_brands_pakistan": "پروکین پینسلین (پین ویٹ، پینٹڈز-ویٹ)",
       "dosage": "رجسٹرڈ ویٹرنری ڈاکٹر سے خوراک ضرور معلوم کریں — وزن اور عمر کے حساب سے خوراک بدلتی ہے",
       "price_pkr": "مقامی پرچون/ویٹرنری اسٹور سے تازہ قیمت معلوم کریں — قیمت شہر اور وقت کے ساتھ بدلتی ہے",
-      "prevention_vaccine": "کالا بخار ویکسین — ہر سال، برسات سے پہلے"
+      "prevention_vaccine": "بلیک کوارٹر (BQ) ویکسین — سالانہ مونسون سے قبل (مئی-جون)۔",
+      "drap_calibrated_dose": {
+        "tier1": "Procaine Penicillin 10-15 mL IM (ابتدائی علامات پر فوری)",
+        "tier2": "Procaine Penicillin 25-30 mL IM + اینٹی بائیوٹک سپورٹ",
+        "tier3": "Procaine Penicillin 40-50 mL IM + Flunixin 5% 15 mL"
+      },
+      "milk_withholding_hours": 72,
+      "meat_withdrawal_days": 14,
+      "withholding_alert": "⚠️ دودھ کا ممنوع وقت: 72 گھنٹے | گوشت کا ممنوع وقت: 14 دن۔"
     },
     {
       "disease_name": "تھن کی سوزش (Mastitis)",
@@ -59,13 +79,15 @@
       "price_pkr": "مقامی پرچون/ویٹرنری اسٹور سے تازہ قیمت معلوم کریں — قیمت شہر اور وقت کے ساتھ بدلتی ہے",
       "prevention_vaccine": "صاف ستھری دوہنے کی عادت، دودھ نکالنے کے بعد تھن کو جراثیم کش سے صاف کریں",
       "drap_calibrated_dose": {
-        "tier1_small": "انٹرا میمری ٹیوب (Mastijet) 1 ٹیوب فی متاثرہ تھن روزانہ 3-5 دن",
-        "tier2_medium": "1 ٹیوب فی تھن + Ceftiofur (Excenel) 1-2 mg/kg IM (5-7 mL)",
-        "tier3_adult": "1 ٹیوب فی تھن + Ceftiofur 1-2 mg/kg IM (10-15 mL) + Flunixin 5% 10-15 mL"
+        "tier1": "انٹرا میمری ٹیوب (Mastijet / Clox-Amp) 1 ٹیوب فی متاثرہ تھن روزانہ 3-5 دن",
+        "tier2": "1 ٹیوب فی تھن + Ceftiofur (Excenel) 5-7 mL IM یا Amoxicillin LA 15-20 mL IM",
+        "tier3": "1 ٹیوب فی تھن + Ceftiofur 10-15 mL IM یا Enrofloxacin 10% 20-25 mL IM + Flunixin 5% 15 mL"
       },
       "milk_withholding_hours": 72,
       "meat_withdrawal_days": 14,
-      "withholding_alert": "⚠️ دودھ کا ممنوع وقت: 72 سے 96 گھنٹے دودھ فروخت نہ کریں (اینٹی بائیوٹک باقیات خطرہ)"
+      "withholding_alert": "⚠️ دودھ کا ممنوع وقت: آخری خوراک کے 72 سے 96 گھنٹے بعد تک دودھ فروخت نہ کریں۔ گوشت 14 دن تک نہ کھائیں۔",
+      "first_line_molecules": "Cloxacillin + Ampicillin (Intramammary) | Ceftiofur | Enrofloxacin 10% | Flunixin 5%",
+      "typical_brands": "Mastijet (مقامی), Clox-Amp (Ghazi Brothers / Star Labs), Excenel (Ceftiofur), Baytril (Bayer), Flunex (Prix)"
     },
     {
       "disease_name": "تھیلیریا / چیچڑی بخار (Theileriosis)",
@@ -78,13 +100,15 @@
       "price_pkr": "مقامی پرچون/ویٹرنری اسٹور سے تازہ قیمت معلوم کریں — قیمت شہر اور وقت کے ساتھ بدلتی ہے",
       "prevention_vaccine": "باقاعدہ چیچڑی کا تدارک؛ پاکستان میں عام ویکسین دستیاب نہیں",
       "drap_calibrated_dose": {
-        "tier1_small": "Buparvaquone 2.5% (Butalex): 2.5 mg/kg یعنی 0.1 mL/kg (10 mL گردن کے پٹھے میں)",
-        "tier2_medium": "Buparvaquone 2.5%: 20-25 mL IM (دو جگہ تقسیم کریں) + اینٹی بائیوٹک",
-        "tier3_adult": "Buparvaquone 2.5%: 35-50 mL IM (دو الگ جگہ لگائیں) + کثیر الحیات انجکشن"
+        "tier1": "Buparvaquone 2.5% (Butalex): 10 mL IM (گردن کے پٹھے میں) + اینٹی بائیوٹک",
+        "tier2": "Buparvaquone 2.5%: 20-25 mL IM (دو جگہ تقسیم کریں) + اینٹی پائریٹک",
+        "tier3": "Buparvaquone 2.5%: 35-50 mL IM (دو الگ جگہ لگائیں) + کثیر الحیات ڈرپ"
       },
       "milk_withholding_hours": 96,
       "meat_withdrawal_days": 14,
-      "withholding_alert": "⚠️ دودھ دینے والے جانور پر Butalex کے بعد 96 گھنٹے دودھ ضائع کریں"
+      "withholding_alert": "⚠️ دودھ دینے والے جانور پر Butalex کے بعد 96 گھنٹے دودھ تلف کریں۔ گوشت 14 دن ممنوع۔",
+      "first_line_molecules": "Buparvaquone 2.5% (25 mg/mL) | Oxytetracycline LA",
+      "typical_brands": "Butalex (مقامی رجسٹرڈ), Zobion (ICI Pakistan)"
     },
     {
       "disease_name": "لال پیشاب کی بیماری (Babesiosis)",
