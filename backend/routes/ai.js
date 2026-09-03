@@ -1206,4 +1206,143 @@ router.get('/history', authenticateToken, async (req, res) => {
   }
 });
 
+// ─── POST /api/ai/animal-scan — Livestock Camera Visual Diagnosis (Claude Vision) ──
+// Uses Claude claude-sonnet-4-5 multimodal vision to diagnose visible animal conditions
+// Scope: Mastitis, Lumpy Skin, Foot Rot, Mouth Blisters, Mange, Wounds, Pinkeye
+// Safety: UVAS/L&DD Punjab protocols — topical first-aid only, no IM injectables prescribed
+router.post('/animal-scan', diseaseLimiter, optionalAuth, async (req, res) => {
+  try {
+    const {
+      imageBase64,
+      mimeType = 'image/jpeg',
+      bodyRegion = 'عمومی',   // e.g. تھن, جلد, کھر, منہ/آنکھ, زخم
+      animalType = 'گائے/بھینس',
+      isPregnant = false,
+      feedIntake = 'normal',  // 'normal' | 'reduced' | 'stopped'
+      hasFever = false,
+      animalWeight = ''
+    } = req.body;
+
+    if (!claude) {
+      return res.status(503).json({ error: 'Claude API not configured' });
+    }
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'تصویر لازمی ہے' });
+    }
+
+    // ── Clinical context string ─────────────────────────────────────────────
+    const pregnancyNote = isPregnant
+      ? '⚠️ جانور گابھن/حاملہ ہے — اسقاطِ حمل والی ادویات (Dexamethasone, PGF2-alpha / Dalmazin) سختی سے ممنوع ہیں۔'
+      : 'جانور غیر حاملہ ہے۔';
+    const feverNote = hasFever === true || hasFever === 'true' ? 'جانور کو بخار ہے۔' : hasFever === false || hasFever === 'false' ? 'بخار نہیں ہے۔' : 'بخار کی تصدیق نہیں ہوئی۔';
+    const feedNote = feedIntake === 'stopped' ? 'جانور نے چارہ بالکل چھوڑ دیا ہے۔' : feedIntake === 'reduced' ? 'جانور کا چارہ کم ہو گیا ہے۔' : 'چارہ ٹھیک کھا رہا ہے۔';
+    const weightNote = animalWeight ? `جانور کا وزن: ${animalWeight} کلوگرام۔` : '';
+
+    // ── UVAS/L&DD Punjab Veterinary System Prompt ───────────────────────────
+    const systemPrompt = `آپ پاکستان میں University of Veterinary and Animal Sciences (UVAS) لاہور اور محکمہ لائیوسٹاک پنجاب (L&DD) کے پروٹوکول پر مبنی ایک ماہر ویٹرنری AI ہیں۔
+آپ کی واحد ذمہ داری یہ ہے: تصویر میں نظر آنے والی ظاہری علامات کی بنیاد پر ویٹرنری تشخیص اور صرف محفوظ ابتدائی طبی امداد دینا۔
+
+بصری تشخیص کا دائرہ کار (صرف ان حالات کی تشخیص کریں جو تصویر میں واضح نظر آئیں):
+- ساڑو / تھن کی سوجن (Mastitis)
+- لمپی سکن / چمبل / داد (LSD, Mange, Ringworm)
+- کھر گلنا / منہ کھر کے چھالے (Foot Rot, FMD Blisters)
+- منہ / مسوڑھوں کے چھالے (Oral Ulcers)
+- آنکھ کی سوزش / دھندلا پن (Pinkeye / Keratoconjunctivitis)
+- کھلے زخم / کیڑے / پھوڑے (Wounds, Myiasis, Abscess)
+
+سخت طبی ضوابط (کبھی نہ توڑیں):
+1. کوئی نسخہ انجیکشن نہ لکھیں (Antibiotics IV/IM, Corticosteroids, Oxytocin ممنوع ہیں)
+2. صرف DRAP منظور شدہ بیرونی ادویات تجویز کریں: پوویڈون آیوڈین (Betadine)، پوٹاشیم پرمینگنیٹ (گلابی نمک)، زنک آکسائیڈ مرہم، نیم تیل، کیروسین
+3. حاملہ جانور کیلئے Dexamethasone اور PGF2-alpha ہرگز ذکر نہ کریں
+4. اگر تصویر میں کچھ واضح نہ ہو تو لکھیں: "تصویر واضح نہیں — متاثرہ حصہ قریب سے دوبارہ تصویر لیں"
+5. ہر جواب میں ویٹرنری ڈاکٹر سے ملنے اور 0800-15000 ہیلپ لائن کا ذکر لازمی کریں
+
+جواب کا فارمیٹ (صرف JSON):
+{
+  "visualObservation": "تصویر میں کیا نظر آ رہا ہے (اردو میں)",
+  "suspectedCondition": "ممکنہ بیماری کا نام (اردو + English)",
+  "urgency": "URGENT" | "WARNING" | "MILD",
+  "confidence": "85%",
+  "immediateFirstAid": ["پہلا قدم", "دوسرا قدم", "تیسرا قدم"],
+  "pregnancySafeNote": "حاملہ جانور کیلئے خصوصی ہدایت (اگر ضروری ہو)",
+  "withdrawalPeriod": { "milk": "72 گھنٹے دودھ نہ بیچیں", "meat": "14 دن" },
+  "doctorRecommendation": "ڈاکٹر سے رجوع اور 0800-15000 ہیلپ لائن"
+}`;
+
+    const userMessage = `جانور کی قسم: ${animalType}
+متاثرہ حصہ: ${bodyRegion}
+${pregnancyNote}
+${feverNote}
+${feedNote}
+${weightNote}
+
+براہ کرم منسلک تصویر دیکھ کر بصری ویٹرنری تشخیص کریں اور JSON فارمیٹ میں جواب دیں۔`;
+
+    // ── Claude Vision call ───────────────────────────────────────────────────
+    const response = await claude.messages.create({
+      model: CLAUDE_MODEL_VIS,
+      max_tokens: 900,
+      system: systemPrompt,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: mimeType,
+              data: imageBase64
+            }
+          },
+          { type: 'text', text: userMessage }
+        ]
+      }]
+    });
+
+    const rawText = response.content?.[0]?.text || '';
+
+    // ── Try to parse JSON from response ─────────────────────────────────────
+    let scanResult = null;
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try { scanResult = JSON.parse(jsonMatch[0]); } catch { /* fallback */ }
+    }
+
+    // Fallback: if JSON parse failed, return raw text
+    if (!scanResult) {
+      scanResult = {
+        visualObservation: rawText,
+        suspectedCondition: 'تشخیص نامکمل',
+        urgency: 'WARNING',
+        confidence: 'N/A',
+        immediateFirstAid: ['قریبی ویٹرنری ڈاکٹر سے فوری رجوع کریں'],
+        pregnancySafeNote: isPregnant ? 'حاملہ جانور کو بغیر ڈاکٹری مشورے کے کوئی دوائی نہ دیں' : '',
+        withdrawalPeriod: { milk: 'ڈاکٹر سے پوچھیں', meat: 'ڈاکٹر سے پوچھیں' },
+        doctorRecommendation: 'محکمہ لائیوسٹاک ہیلپ لائن: 0800-15000'
+      };
+    }
+
+    // Always enforce safety on pregnancy
+    if (isPregnant && !scanResult.pregnancySafeNote) {
+      scanResult.pregnancySafeNote = '⚠️ حاملہ جانور — Dexamethasone یا PGF2-alpha (Dalmazin) سختی سے ممنوع ہیں۔ محفوظ متبادل کیلئے ڈاکٹر سے مشورہ کریں۔';
+    }
+
+    // Log to admin chat-log
+    db.saveChatLog({
+      userId:    req.user?.id    || null,
+      userName:  req.user?.name  || null,
+      userPhone: req.user?.phone || null,
+      question:  `[بصری تشخیص] ${animalType} — ${bodyRegion}`,
+      answer:    JSON.stringify(scanResult),
+      language:  'ur'
+    }).catch(() => {});
+
+    res.json({ success: true, scan: scanResult });
+
+  } catch (err) {
+    console.error('Animal-scan error:', err.message);
+    res.status(500).json({ error: 'تصویری تجزیہ ناکام — دوبارہ کوشش کریں' });
+  }
+});
+
 module.exports = router;

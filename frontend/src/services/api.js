@@ -79,6 +79,15 @@ export async function askAnimalHealth(animalType, symptoms, question, animalWeig
   return handleResponse(res);
 }
 
+export async function scanAnimalHealth(imageBase64, mimeType, bodyRegion, animalType, isPregnant, feedIntake, hasFever, animalWeight = '') {
+  const res = await fetch(`${API_URL}/api/ai/animal-scan`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ imageBase64, mimeType, bodyRegion, animalType, isPregnant, feedIntake, hasFever, animalWeight })
+  });
+  return handleResponse(res);
+}
+
 export async function askFertilizer(crop, soilType, cropAge, soilProfile = null) {
   const res = await fetch(`${API_URL}/api/ai/fertilizer`, {
     method: 'POST',
