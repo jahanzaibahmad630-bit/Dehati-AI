@@ -5,6 +5,7 @@ const LanguageContext = createContext(null);
 export const LANGUAGES = {
   ur: { label: 'اردو', dir: 'rtl' },
   pj: { label: 'پنجابی', dir: 'rtl' },
+  skr: { label: 'سرائیکی', dir: 'rtl' },
   en: { label: 'English', dir: 'ltr' }
 };
 

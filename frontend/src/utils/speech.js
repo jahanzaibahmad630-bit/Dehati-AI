@@ -16,7 +16,7 @@
 const SILENCE_BUFFER_MS = 3500; // 3.5s — rural farmers pause mid-sentence naturally
 
 // ─── Language map ─────────────────────────────────────────────────────────────
-const LANGS = { ur: 'ur-PK', pj: 'pa-PK', en: 'en-US' };
+const LANGS = { ur: 'ur-PK', pj: 'pa-PK', skr: 'ur-PK', en: 'en-US' };
 
 const isIOS = typeof navigator !== 'undefined' &&
   /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;

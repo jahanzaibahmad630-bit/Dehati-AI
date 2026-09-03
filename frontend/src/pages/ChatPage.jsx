@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useOffline } from '../hooks/useOffline';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { getDir, getFont, getAlign } from '../utils/textDir';
 import { createSpeechEngine, correctUrduAgriPhonetics, playAudioCue } from '../utils/speech';
 import { searchOffline, saveAIAnswer, queueQuestion, getOfflineQueue, removeFromQueue } from '../services/offlineDB';
@@ -57,6 +58,16 @@ const QUICK_REPLIES = {
     'سپرے دا بہترین ویلا',
     'مجھ دا دُدھ گھٹ اے'
   ],
+  skr: [
+    'کھاد دی سفارش ݙیوو',
+    'فصل کوں پاݨی کݙاں ݙیوݨا اے',
+    'سرکاری قرضہ کیویں گھنیجے',
+    'کݨک وچ بیماری دیاں نشانیاں',
+    'منڈی دے اجوکے بھا (ریٹ)',
+    'DAP تے یوریا دا فرق',
+    'سپرے دا چنگا ویلا',
+    'مہی دا کِھیر (دُدھ) گھٹ اے'
+  ],
   en: [
     'Fertilizer recommendation',
     'When to irrigate wheat?',
@@ -72,18 +83,21 @@ const QUICK_REPLIES = {
 const PLACEHOLDERS = {
   ur: 'فصل، کھاد، بیماری، منڈی ریٹ پوچھیں...',
   pj: 'فصل، کھاد، بیماری، منڈی ریٹ پچھو...',
+  skr: 'فصل، کھاد، بیماری، منڈی بھا پچھو...',
   en: 'Ask about crops, fertilizer, disease, mandi rates...'
 };
 
 const WELCOME_MESSAGES = {
   ur: 'سلام! 👋 نئی گفتگو شروع کریں — فصل، کھاد، بیماری، موسم کچھ بھی پوچھیں 🌾',
   pj: 'جی آیاں نوں! 👋 نویں گل بات شروع کرو — فصل، کھاد، بیماری، موسم کجھ وی پچھو 🌾',
+  skr: 'ست بسم اللہ! سلام بھراوو 👋 نویں ڳالھ مہاڑ شروع کرو — فصل، کھاد، بیماری، منڈی بھا کجھ وی پچھو 🌾',
   en: 'Hello! 👋 Start a new conversation — ask about crops, fertilizers, weather, or market rates 🌾'
 };
 
 const LANGS = [
   { key: 'ur', label: 'اردو', srLang: 'ur-PK' },
   { key: 'pj', label: 'پنجابی', srLang: 'pa-PK' },
+  { key: 'skr', label: 'سرائیکی', srLang: 'ur-PK' },
   { key: 'en', label: 'English', srLang: 'en-US' }
 ];
 
@@ -512,7 +526,8 @@ export default function ChatPage() {
   const [interimText, setInterimText]   = useState(''); // live speech transcript
   const [finalSpeech, setFinalSpeech]   = useState(''); // finalized speech words
   const [input, setInput]               = useState(''); // text input box value
-  const [language, setLanguage]         = useState('ur');
+  const { language, changeLanguage }    = useLanguage();
+  const setLanguage = changeLanguage;
   const [isStreaming, setIsStreaming]   = useState(false);
   const [isListening, setIsListening]   = useState(false);
   const [showMicOverlay, setShowMicOverlay] = useState(false);
@@ -961,7 +976,7 @@ export default function ChatPage() {
             if (last?.streaming) copy.pop();
             return copy;
           });
-          const errText = language === 'en' ? '❌ Connection error — tap retry' : language === 'pj' ? '❌ سرور نال رابطہ نہیں ہویا — مڑ بھیجو' : '❌ سرور سے رابطہ نہیں — دوبارہ بھیجیں';
+          const errText = language === 'en' ? '❌ Connection error — tap retry' : language === 'pj' ? '❌ سرور نال رابطہ نہیں ہویا — مڑ بھیجو' : language === 'skr' ? '❌ سرور نال رابطہ نئیں تھیا — ول بھیجو' : '❌ سرور سے رابطہ نہیں — دوبارہ بھیجیں';
           setNetError(errText);
         }
       }
@@ -1068,8 +1083,33 @@ export default function ChatPage() {
           }}
         >
           <span>📜</span>
-          <span>سابقہ گفتگو ({chatHistory.length})</span>
+          <span>{language === 'en' ? 'History' : language === 'pj' ? 'پچھلی گل بات' : language === 'skr' ? 'پچھلی ڳالھ مہاڑ' : 'سابقہ گفتگو'} ({chatHistory.length})</span>
         </button>
+
+        {/* ── Language Switcher Pills ── */}
+        <div style={{ display: 'flex', gap: '3px', background: 'rgba(255,255,255,0.08)', padding: '3px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.15)' }}>
+          {LANGS.map(l => (
+            <button
+              key={l.key}
+              onClick={() => changeLanguage(l.key)}
+              style={{
+                background: language === l.key ? '#2e5a27' : 'transparent',
+                color: language === l.key ? '#fbc02d' : 'rgba(255,255,255,0.75)',
+                border: language === l.key ? '1px solid #4a8a3f' : '1px solid transparent',
+                borderRadius: 16,
+                padding: '2px 8px',
+                fontSize: '.68rem',
+                fontWeight: language === l.key ? 800 : 500,
+                cursor: 'pointer',
+                fontFamily: l.key === 'en' ? 'Inter, sans-serif' : '"Noto Nastaliq Urdu", serif',
+                lineHeight: 1.5,
+                transition: 'all .15s ease'
+              }}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
 
         <button
           onClick={confirmClearChat}
@@ -1088,7 +1128,7 @@ export default function ChatPage() {
             fontFamily: '"Noto Nastaliq Urdu", serif'
           }}
         >
-          <span>✨ نئی گفتگو</span>
+          <span>{language === 'en' ? '✨ New Chat' : language === 'pj' ? '✨ نویں گل بات' : language === 'skr' ? '✨ نویں ڳالھ مہاڑ' : '✨ نئی گفتگو'}</span>
         </button>
       </div>
 
@@ -1109,10 +1149,10 @@ export default function ChatPage() {
           }}>
             <div style={{ fontSize: '2rem', marginBottom: 8 }}>🗑️</div>
             <div style={{ fontWeight: 800, fontSize: '1rem', color: '#111827', marginBottom: 8 }}>
-              {language === 'en' ? 'Clear Conversation?' : language === 'pj' ? 'کیہ تسیں گل بات صاف کرنا چاہندے او؟' : 'کیا آپ گفتگو صاف کرنا چاہتے ہیں؟'}
+              {language === 'en' ? 'Clear Conversation?' : language === 'pj' ? 'کیہ تسیں گل بات صاف کرنا چاہندے او؟' : language === 'skr' ? 'کیا تساں ڳالھ مہاڑ صاف کرݨ چاہندے او؟' : 'کیا آپ گفتگو صاف کرنا چاہتے ہیں؟'}
             </div>
             <div style={{ fontSize: '.82rem', color: '#6b7280', marginBottom: 20, lineHeight: 1.5 }}>
-              {language === 'en' ? 'This action will clear all messages in this session.' : 'موجودہ گفتگو کے تمام پیغامات صاف ہو جائیں گے۔'}
+              {language === 'en' ? 'This action will clear all messages in this session.' : language === 'pj' ? 'اس گل بات دے سارے میسج مٹ جان گے۔' : language === 'skr' ? 'ایں ڳالھ مہاڑ دے سارے سنیہے مٹ ویسن۔' : 'موجودہ گفتگو کے تمام پیغامات صاف ہو جائیں گے۔'}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button

@@ -1,9 +1,9 @@
 import { useAuth } from '../../context/AuthContext';
-import { useLanguage } from '../../context/LanguageContext';
+import { useLanguage, LANGUAGES } from '../../context/LanguageContext';
 
 export default function Profile() {
   const { user, logout } = useAuth();
-  const { largeText, toggleLargeText } = useLanguage();
+  const { language, changeLanguage, largeText, toggleLargeText } = useLanguage();
 
   return (
     <div className="form-group">
@@ -39,6 +39,37 @@ export default function Profile() {
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--whatsapp)', display: 'inline-block', boxShadow: '0 0 6px var(--whatsapp)' }} />
           <span style={{ fontSize: '.85rem', fontFamily: 'Inter, sans-serif', color: 'var(--green-700)', fontWeight: 700 }}>Active</span>
         </span>
+      </div>
+
+      {/* Language Selector */}
+      <div style={{ background: 'var(--card)', border: '1px solid var(--green-200)', borderRadius: 'var(--radius-sm)', padding: '.875rem' }}>
+        <div style={{ fontWeight: 700, fontSize: '.9rem', marginBottom: '.6rem', color: 'var(--green-900)' }}>
+          🌐 زبان منتخب کریں (Language)
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '.4rem' }}>
+          {Object.entries(LANGUAGES).map(([k, v]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => changeLanguage(k)}
+              style={{
+                padding: '.55rem .25rem',
+                borderRadius: '8px',
+                border: language === k ? '2px solid var(--green-700)' : '1px solid #e5e7eb',
+                background: language === k ? 'var(--green-700)' : 'white',
+                color: language === k ? 'white' : '#374151',
+                fontWeight: language === k ? 800 : 600,
+                fontSize: '.78rem',
+                cursor: 'pointer',
+                fontFamily: k === 'en' ? 'Inter, sans-serif' : '"Noto Nastaliq Urdu", serif',
+                lineHeight: 1.4,
+                transition: 'all .15s ease'
+              }}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Large Text Toggle */}
