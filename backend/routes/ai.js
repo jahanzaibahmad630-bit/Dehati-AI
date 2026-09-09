@@ -32,7 +32,7 @@ if (process.env.GEMINI_API_KEY) {
 } else {
   console.warn('⚠️  GEMINI_API_KEY not set — Falling back to Claude for text endpoints');
 }
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash'; // primary text engine
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'; // primary text engine
 
 
 // ————————————————————————————————————————————————————————————————————————————————
@@ -1115,27 +1115,36 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
       // ── Gemini SSE Streaming (primary) ──
       try {
         const sysText = chatSystemText;
-        const history = claudeMessages.slice(0, -1).map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content || '' }]
-        }));
-        const lastUserMsg = claudeMessages[claudeMessages.length - 1];
-        const chat = gemini.chats.create({
+        const contents = [];
+        for (const m of claudeMessages) {
+          const role = m.role === 'assistant' ? 'model' : 'user';
+          const text = m.content || '';
+          if (!text) continue;
+          if (contents.length > 0 && contents[contents.length - 1].role === role) {
+            contents[contents.length - 1].parts[0].text += '\n' + text;
+          } else {
+            contents.push({ role, parts: [{ text }] });
+          }
+        }
+        if (contents.length === 0 || contents[contents.length - 1].role !== 'user') {
+          contents.push({ role: 'user', parts: [{ text: lastMsg?.content || 'سلام' }] });
+        }
+
+        const stream = await gemini.models.generateContentStream({
           model: GEMINI_MODEL,
-          history,
+          contents,
           config: { maxOutputTokens: 1500, temperature: 0.65, systemInstruction: sysText }
         });
-        const stream = await chat.sendMessageStream(lastUserMsg.content || '');
         for await (const chunk of stream) {
           if (req.destroyed || res.writableEnded) break;
-          const text = chunk.text || '';
+          const text = chunk.text || chunk.candidates?.[0]?.content?.parts?.[0]?.text || '';
           if (text) {
             fullReply += text;
             res.write(`data: ${JSON.stringify({ text })}\n\n`);
           }
         }
         if (fullReply) {
-          const promptEst = Math.ceil(((chatSystemText?.length || 0) + (lastUserMsg?.content?.length || 0)) / 3.5);
+          const promptEst = Math.ceil(((chatSystemText?.length || 0) + (lastMsg?.content?.length || 0)) / 3.5);
           const outEst = Math.ceil(fullReply.length / 3.5);
           db.logAIUsage({
             endpoint: 'chat_stream',
@@ -1210,6 +1219,16 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
     }
     if (heartbeat) clearInterval(heartbeat);
     if (!res.writableEnded) {
+      // If stream was empty due to provider lag, fetch non-streaming answer so user is never left without response
+      if (!fullReply) {
+        try {
+          const emergencyAnswer = await geminiAsk(lastMsg?.content || 'سلام', chatSystemText, 1500);
+          if (emergencyAnswer) {
+            fullReply = emergencyAnswer;
+            res.write(`data: ${JSON.stringify({ text: emergencyAnswer })}\n\n`);
+          }
+        } catch {}
+      }
       res.write('data: [DONE]\n\n');
       res.end();
     }
