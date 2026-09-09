@@ -340,13 +340,18 @@ export default function AnimalHealthAdvisor() {
         </div>
       </div>
 
-      {/* PVMC Legal Veterinary Disclaimer */}
+      {/* PVMC Legal Veterinary Disclaimer & Triage Shield */}
       <div style={{
-        background: '#fef2f2', borderRadius: 10, padding: '8px 12px',
-        border: '1px solid #fca5a5', fontSize: '.72rem', color: '#991b1b',
-        lineHeight: 1.5, direction: 'rtl'
+        background: '#fef2f2', borderRadius: 12, padding: '10px 14px',
+        border: '1.5px solid #ef4444', fontSize: '.75rem', color: '#991b1b',
+        lineHeight: 1.6, direction: 'rtl', boxShadow: '0 2px 6px rgba(239,68,68,0.08)'
       }}>
-        ⚠️ <strong>قانونی و ویٹرنری انتباہ (PVMC ایکٹ):</strong> یہ AI سروس صرف ابتدائی گھریلو نگہداشت و فرسٹ ایڈ کیلئے ہے۔ یہ مستند ویٹرنری ڈاکٹر (DVM) کا متبادل نہیں ہے۔ تیز بخار، سانس رکنے (گل گھوٹو)، یا جان لیوا علامات میں فوری 0800-15000 پر سرکاری ڈاکٹر سے رابطہ کریں۔
+        <div style={{ fontWeight: 900, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+          <span>⚠️</span> <span>قانونی و ویٹرنری انتباہ (PVMC ایکٹ — ریفرل و فرسٹ ایڈ سسٹم):</span>
+        </div>
+        <div>
+          DehatiAI کوئی ویٹرنری ڈاکٹر یا کلینک نہیں ہے، بلکہ کسانوں کے لیے ابتدائی گھریلو نگہداشت اور سول ویٹرنری ہسپتال (CVH) <strong>ریفرل گائیڈ</strong> ہے۔ تیز بخار، گل گھوٹو، اپھارہ یا جان لیوا علامات میں فوری طور پر قریبی سرکاری ویٹرنری ہسپتال جائیں یا فری ہیلپ لائن <strong>0800-15000</strong> پر رابطہ کریں۔ تمام اقدامات کی ذمہ داری کسان پر ہوگی۔
+        </div>
       </div>
 
       {/* ── Top Mode Switcher: Clinic vs Breeding vs Emergency vs Scan ── */}
@@ -798,13 +803,13 @@ export default function AnimalHealthAdvisor() {
       <div style={{ background: 'linear-gradient(135deg, #1e3a16, #2e5a27)', padding: '1.1rem', borderRadius: '18px', color: 'white', boxShadow: '0 4px 16px rgba(46,90,39,0.3)', marginTop: '.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.6rem' }}>
           <div style={{ fontWeight: 800, fontSize: '.95rem', color: '#fbc02d', fontFamily: '"Noto Nastaliq Urdu", serif' }}>
-            🤖 DehatiAI ویٹرنری ڈاکٹر (AI ہائبرڈ)
+            🤖 DehatiAI لائیوسٹاک علامتی مشیر (AI Advisory & Triage)
           </div>
           <AIDisclaimer small />
         </div>
         
         <p style={{ fontSize: '.78rem', color: 'rgba(255,255,255,0.85)', margin: '0 0 .75rem', lineHeight: '1.5' }}>
-          اگر آپ کو مخصوص علامات کے بارے میں مزید گہرائی سے معلوم کرنا ہے تو DehatiAI سے لائیو سوال پوچھیں:
+          اگر آپ کو مخصوص علامات کے بارے میں مزید گہرائی سے معلوم کرنا ہے تو DehatiAI سے لائیو رہنمائی لیں:
         </p>
 
         <div style={{ display: 'flex', gap: '.5rem', marginBottom: '.6rem', flexWrap: 'wrap' }}>
@@ -848,7 +853,7 @@ export default function AnimalHealthAdvisor() {
           }}
           id="livestock-ai-ask-btn"
         >
-          {aiLoading ? '🔍 DehatiAI تجویز کر رہا ہے...' : '✨ DehatiAI سے لائیو مشورہ لیں'}
+          {aiLoading ? '🔍 DehatiAI تجزیہ کر رہا ہے...' : '✨ DehatiAI سے علامتی مشورہ لیں'}
         </button>
 
         {aiError && (
@@ -860,11 +865,27 @@ export default function AnimalHealthAdvisor() {
         {aiResult && (
           <div style={{ marginTop: '1rem', background: 'white', color: '#1e293b', borderRadius: '14px', padding: '1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
             <div style={{ fontSize: '.82rem', fontWeight: 800, color: '#162410', marginBottom: '.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '.4rem' }}>
-              📋 DehatiAI کی ویٹرنری رپورٹ:
+              📋 DehatiAI علامتی رپورٹ و فرسٹ ایڈ رہنمائی:
             </div>
             <MarkdownRenderer text={aiResult} />
             <div style={{ marginTop: '.6rem', background: '#fffbe8', border: '1px solid #fde047', color: '#b45309', padding: '.5rem .75rem', borderRadius: '8px', fontSize: '.75rem', fontWeight: 700, fontFamily: '"Noto Nastaliq Urdu", serif' }}>
-              ⚠️ یہ AI طبی تجزیہ ہے۔ حتمی علاج اور ادویات کی مقدار طے کرنے سے پہلے متعلقہ ڈسپنسری، ویٹرنری آفیر یا مستند ڈاکٹر سے لازمی مشورہ کریں۔
+              ⚠️ یہ AI کی علامتی تجویز ہے۔ کسی بھی دوا کے استعمال، انجیکشن لگانے یا حتمی فیصلے سے قبل مستند ویٹرنری ڈاکٹر سے ضرور رجوع کریں۔
+            </div>
+
+            {/* Government Veterinary Hospital Referral Card */}
+            <div style={{ marginTop: '.8rem', background: 'linear-gradient(135deg, #0f2010, #1b3d16)', borderRadius: 12, padding: '12px', color: 'white' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ fontWeight: 800, fontSize: '.85rem', color: '#86efac' }}>
+                  🏥 پنجاب ویٹرنری ریفرل ہیلپ لائن
+                </div>
+                <a href="tel:0800-15000"
+                  style={{ background: '#22c55e', color: 'white', padding: '5px 10px', borderRadius: 14, textDecoration: 'none', fontWeight: 800, fontSize: '.75rem' }}>
+                  📞 0800-15000 (مفت کال)
+                </a>
+              </div>
+              <div style={{ fontSize: '.72rem', color: '#cbd5e1', lineHeight: 1.5 }}>
+                قریبی <strong>سول ویٹرنری ہسپتال (CVH)</strong> میں ڈاکٹر کو جانور کی بیماری کے دن، بخار کا ریکارڈ، اور اگر جانور گابھن ہو تو اس کی تفصیل ضرور بتائیں۔
+              </div>
             </div>
           </div>
         )}
@@ -937,16 +958,16 @@ export default function AnimalHealthAdvisor() {
           <div style={{ background: 'linear-gradient(135deg, #4c1d95, #7c3aed)', borderRadius: 16, padding: '0.9rem 1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <div style={{ fontSize: '1.6rem' }}>📷</div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>جانور کی بصری تشخیص (AI Camera)</div>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>جانور کا بصری معائنہ و ریفرل (AI Camera Triage)</div>
               <div style={{ color: '#ddd6fe', fontSize: '0.72rem', marginTop: 2 }}>
-                UVAS لاہور و محکمہ لائیوسٹاک پنجاب کے پروٹوکول پر مبنی | صرف ظاہری علامات کی تشخیص
+                UVAS لاہور و محکمہ لائیوسٹاک پنجاب پروٹوکول | صرف ظاہری علامات کا تجزیہ و فرسٹ ایڈ
               </div>
             </div>
           </div>
 
           {/* ── Safety Disclaimer ── */}
           <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 12, padding: '10px 12px', fontSize: '.72rem', color: '#92400e', lineHeight: 1.6 }}>
-            ⚠️ <strong>یہ ابتدائی طبی معاونت کا آلہ ہے۔</strong> تصویر پر مبنی AI تشخیص حتمی نہیں ہوتی — کوئی بھی انجیکشن یا نسخہ دوائی دینے سے پہلے <strong>ویٹرنری ڈاکٹر</strong> سے ضرور ملیں۔ ہیلپ لائن: <strong>0800-15000</strong>
+            ⚠️ <strong>قانونی ریفرل نوٹس (PVMC ایکٹ):</strong> تصویر پر مبنی تجزیہ حتمی ڈاکٹری معائنہ نہیں ہے۔ کوئی بھی انجیکشن یا نسخہ دوائی دینے سے پہلے <strong>سول ویٹرنری ہسپتال (CVH)</strong> سے ضرور رجوع کریں۔ ہیلپ لائن: <strong>0800-15000</strong>
           </div>
 
           {/* ── Step 1: Animal Type ── */}
@@ -1137,7 +1158,7 @@ export default function AnimalHealthAdvisor() {
             }}>
             {scanLoading
               ? (scanCompressing ? '🗜️ تصویر سکیڑی جا رہی ہے...' : '🔬 Claude AI تجزیہ کر رہا ہے...')
-              : '🔬 بصری تشخیص شروع کریں'}
+              : '🔬 بصری معائنہ شروع کریں'}
           </button>
 
           {/* ── Error ── */}
@@ -1177,7 +1198,7 @@ export default function AnimalHealthAdvisor() {
 
                   {/* Suspected condition */}
                   <div style={{ background: urg.bg, border: `1px solid ${urg.border}`, borderRadius: 8, padding: '8px 10px' }}>
-                    <div style={{ fontSize: '.72rem', fontWeight: 800, color: urg.color, marginBottom: 3 }}>🩺 ممکنہ تشخیص:</div>
+                    <div style={{ fontSize: '.72rem', fontWeight: 800, color: urg.color, marginBottom: 3 }}>🩺 ممکنہ علامتی تجزیہ (مشورہ):</div>
                     <div style={{ fontSize: '.9rem', fontWeight: 900, color: urg.color, fontFamily: '"Noto Nastaliq Urdu", serif' }}>{scanResult.suspectedCondition}</div>
                   </div>
 
@@ -1217,22 +1238,35 @@ export default function AnimalHealthAdvisor() {
                     </div>
                   )}
 
-                  {/* Doctor CTA */}
-                  {scanResult.doctorRecommendation && (
-                    <div style={{ background: '#1e293b', borderRadius: 10, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <div style={{ fontSize: '.75rem', color: '#cbd5e1', fontFamily: '"Noto Nastaliq Urdu", serif', lineHeight: 1.5, flex: 1 }}>
-                        👨‍⚕️ {scanResult.doctorRecommendation}
+                  {/* Government Veterinary Hospital Referral Card */}
+                  <div style={{ background: 'linear-gradient(135deg, #0f2010, #1b3d16)', borderRadius: 14, padding: '14px', border: '1.5px solid #3a7232', color: 'white', direction: 'rtl' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+                      <div style={{ fontWeight: 900, fontSize: '.9rem', color: '#86efac', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>🏥</span> <span>سرکاری ویٹرنری ریفرل گائیڈ (CVH)</span>
                       </div>
                       <a href="tel:0800-15000"
-                        style={{ background: '#22c55e', color: 'white', padding: '7px 12px', borderRadius: 10, textDecoration: 'none', fontWeight: 800, fontSize: '.78rem', whiteSpace: 'nowrap', fontFamily: 'Inter' }}>
-                        📞 0800-15000
+                        style={{ background: '#22c55e', color: 'white', padding: '6px 12px', borderRadius: 18, textDecoration: 'none', fontWeight: 800, fontSize: '.75rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span>📞 فری ہیلپ لائن:</span>
+                        <span style={{ fontFamily: 'Inter' }}>0800-15000</span>
                       </a>
                     </div>
-                  )}
+                    <p style={{ fontSize: '.78rem', color: '#d1fae5', margin: '0 0 10px 0', lineHeight: 1.6 }}>
+                      {scanResult.doctorRecommendation || 'پنجاب لائیوسٹاک قوانین کے تحت مستند معائنہ اور نسخہ صرف ویٹرنری ڈاکٹر ہی دے سکتا ہے۔'} اپنے قریبی <strong>سول ویٹرنری ہسپتال (CVH)</strong> تشریف لے جائیں۔
+                    </p>
+                    <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px', fontSize: '.74rem', color: '#f0fdf4' }}>
+                      <div style={{ fontWeight: 800, color: '#fde047', marginBottom: 6 }}>📋 ڈاکٹر کے پاس جاتے وقت یہ معلومات بتائیں:</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div>1. علامات کی تفصیل: {scanResult.suspectedCondition}</div>
+                        <div>2. جانور کا بخار: {scanFever === true ? 'بخار موجود ہے' : scanFever === false ? 'بخار نہیں ہے' : 'تھرمامیٹر سے چیک کروائیں'}</div>
+                        <div>3. چارہ پانی: {scanFeed === 'stopped' ? 'چارہ بند ہے' : scanFeed === 'reduced' ? 'چارہ کم کر دیا ہے' : 'نارمل ہے'}</div>
+                        <div>4. حاملہ حالت: {scanPregnant ? '⚠️ جانور گابھن ہے' : 'غیر حاملہ'}</div>
+                      </div>
+                    </div>
+                  </div>
 
-                  {/* AI Disclaimer */}
+                  {/* Legal AI Disclaimer */}
                   <div style={{ background: '#fffbeb', border: '1px solid #fde047', borderRadius: 8, padding: '7px 10px', fontSize: '.68rem', color: '#92400e', fontWeight: 700, textAlign: 'center', fontFamily: '"Noto Nastaliq Urdu", serif' }}>
-                    ⚠️ یہ AI بصری تجزیہ ہے — حتمی تشخیص اور علاج کیلئے مستند ویٹرنری ڈاکٹر سے لازمی رجوع کریں۔
+                    ⚠️ یہ AI بصری معائنہ ہے — حتمی تشخیص، نسخہ اور انجیکشن کیلئے مستند ویٹرنری ڈاکٹر سے رجوع کریں۔ ایپ کسی نقصان کی ذمہ دار نہیں ہے۔
                   </div>
                 </div>
               </div>
