@@ -96,7 +96,7 @@ const WELCOME_MESSAGES = {
 
 const LANGS = [
   { key: 'ur', label: 'اردو', srLang: 'ur-PK' },
-  { key: 'pj', label: 'پنجابی', srLang: 'pa-PK' },
+  { key: 'pj', label: 'پنجابی', srLang: 'ur-PK' },
   { key: 'skr', label: 'سرائیکی', srLang: 'ur-PK' },
   { key: 'en', label: 'English', srLang: 'en-US' }
 ];

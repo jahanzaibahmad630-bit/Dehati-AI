@@ -16,7 +16,10 @@
 const SILENCE_BUFFER_MS = 3500; // 3.5s — rural farmers pause mid-sentence naturally
 
 // ─── Language map ─────────────────────────────────────────────────────────────
-const LANGS = { ur: 'ur-PK', pj: 'pa-PK', skr: 'ur-PK', en: 'en-US' };
+// Note: 'pj' (Punjabi) must map to 'ur-PK' for Web Speech API in Pakistan.
+// 'pa-PK' forces Google Speech Services to output Indian Gurmukhi script (ਮੇਰੀ ਫਸਲ...).
+// 'ur-PK' outputs authentic Pakistani Shahmukhi script (میری فصل...).
+const LANGS = { ur: 'ur-PK', pj: 'ur-PK', skr: 'ur-PK', en: 'en-US' };
 
 const isIOS = typeof navigator !== 'undefined' &&
   /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -67,14 +70,102 @@ function numberToUrduWords(num) {
   return String(n);
 }
 
+// ─── Gurmukhi to Shahmukhi (Pakistan Punjabi) Transliteration Engine ────────
+const GURMUKHI_WORD_MAP = {
+  'ਮੇਰੀ': 'میری', 'ਮੇਰਾ': 'میرا', 'ਮੇਰੇ': 'میرے',
+  'ਤੇਰੀ': 'تیری', 'ਤੇਰਾ': 'تیرا', 'ਤੇਰੇ': 'تیرے',
+  'ਸਾਡੀ': 'ساڈی', 'ਸਾਡਾ': 'ساڈا', 'ਸਾਡੇ': 'ساڈے',
+  'ਤੁਹਾਡੀ': 'تہاڈی', 'ਤੁਹਾਡਾ': 'تہاڈا', 'ਤੁਹਾਡੇ': 'تہاڈے',
+  'ਫਸਲ': 'فصل', 'ਫ਼ਸਲ': 'فصل', 'ਖਰਾਬ': 'خراب', 'ਖ਼ਰਾਬ': 'خراب',
+  'ਹੋ': 'ہو', 'ਗਈ': 'گئی', 'ਗਿਆ': 'گیا', 'ਗਏ': 'گئے',
+  'ਹੈ': 'ہے', 'ਹਨ': 'ہن', 'ਸੀ': 'سی', 'ਸਨ': 'سن',
+  'ਕਿਆ': 'کیا', 'ਕੀ': 'کی', 'ਕੀਤਾ': 'کیتا',
+  'ਕਰੇ': 'کرے', 'ਕਰੋ': 'کرو', 'ਕਰਾਂ': 'کراں', 'ਕਰੀਏ': 'کریئے',
+  'ਕਿਵੇਂ': 'کیویں', 'ਕਿਉਂ': 'کیوں', 'ਕਦੋਂ': 'کدوں', 'ਕਿੱਥੇ': 'کتھے',
+  'ਪਾਣੀ': 'پانی', 'ਕਣਕ': 'کنک', 'ਕਪਾਹ': 'کپاہ', 'ਚੌਲ': 'چاول',
+  'ਝੋਨਾ': 'جھونا', 'ਮੱਕੀ': 'مکئی', 'ਕਮਾਦ': 'کماد', 'ਗੰਨਾ': 'گنا',
+  'ਸਰ੍ਹੋਂ': 'سرسوں', 'ਸਰਸੋਂ': 'سرسوں', 'ਨਾਲ': 'نال',
+  'ਵਿੱਚ': 'وچ', 'ਵਿਚ': 'وچ', 'ਉੱਤੇ': 'اتے', 'ਤੇ': 'تے',
+  'ਦੱਸੋ': 'دسو', 'ਦਸੋ': 'دسو', 'ਇਲਾਜ': 'علاج', 'ਸਪਰੇਅ': 'سپرے',
+  'ਸਪਰੇ': 'سپرے', 'ਖਾਦ': 'کھاد', 'ਯੂਰੀਆ': 'یوریا', 'ਡੀਏਪੀ': 'ڈی اے پی',
+  'ਕੀੜੇ': 'کیڑے', 'ਸੁੰਡੀ': 'سنڈی', 'ਬਿਮਾਰੀ': 'بیماری',
+  'ਜਾਨਵਰ': 'جانور', 'ਮੱਝ': 'مجھ', 'ਗਾਂ': 'گاں', 'ਵੱਛਾ': 'وچھا',
+  'ਕੱਟਾ': 'کٹا', 'ਦੁੱਧ': 'دودھ', 'ਪੱਤੇ': 'پتے', 'ਪੀਲੇ': 'پیلے',
+  'ਸੜ': 'سڑ', 'ਕੀੜਾ': 'کیڑا', 'ਦਵਾਈ': 'دوائی', 'ਕਿੰਨਾ': 'کنا',
+  'ਕਿੰਨੀ': 'کنی', 'ਵਾਰ': 'وار'
+};
+
+const GURMUKHI_CHAR_MAP = {
+  // Independent vowels
+  'ਅ': 'ا', 'ਆ': 'آ', 'ਇ': 'ا', 'ਈ': 'ای', 'ਉ': 'او', 'ਊ': 'او',
+  'ਏ': 'اے', 'ਐ': 'اے', 'ਓ': 'او', 'ਔ': 'او',
+
+  // Consonants
+  'ਕ': 'ک', 'ਖ': 'کھ', 'ਗ': 'گ', 'ਘ': 'گھ', 'ਙ': 'ن',
+  'ਚ': 'چ', 'ਛ': 'چھ', 'ਜ': 'ج', 'ਝ': 'جھ', 'ਞ': 'ن',
+  'ਟ': 'ٹ', 'ਠ': 'ٹھ', 'ਡ': 'ڈ', 'ਢ': 'ڈھ', 'ਣ': 'ن',
+  'ਤ': 'ت', 'ਥ': 'تھ', 'ਦ': 'د', 'ਧ': 'دھ', 'ਨ': 'ن',
+  'ਪ': 'پ', 'ਫ': 'پھ', 'ਬ': 'ب', 'ਭ': 'بھ', 'ਮ': 'م',
+  'ਯ': 'ی', 'ਰ': 'ر', 'ਲ': 'ل', 'ਲ਼': 'ل', 'ਵ': 'و',
+  'ਸ਼': 'ش', 'ਸ': 'س', 'ਹ': 'ہ',
+
+  // Nukta consonants
+  'ਖ਼': 'خ', 'ਗ਼': 'غ', 'ਜ਼': 'ز', 'ੜ': 'ڑ', 'ਫ਼': 'ف',
+
+  // Matras (dependent vowels)
+  'ਾ': 'ا', 'ਿ': '', 'ੀ': 'ی', 'ੁ': 'و', 'ੂ': 'و',
+  'ੇ': 'ے', 'ੈ': 'ے', 'ੋ': 'و', 'ੌ': 'و', '੍': '',
+
+  // Nasals & diacritics
+  'ਂ': 'ں', 'ੰ': 'ن', 'ੱ': '', 'ੴ': 'اک اونکار'
+};
+
+export function gurmukhiToShahmukhi(text) {
+  if (!text) return '';
+  if (!/[\u0A00-\u0A7F]/.test(text)) return text;
+
+  const words = text.split(/(\s+)/);
+  const converted = words.map(word => {
+    const cleanWord = word.replace(/[.,?!،؛؟]/g, '');
+    if (GURMUKHI_WORD_MAP[cleanWord]) {
+      return word.replace(cleanWord, GURMUKHI_WORD_MAP[cleanWord]);
+    }
+
+    let out = '';
+    for (let i = 0; i < word.length; i++) {
+      const ch = word[i];
+      if (i + 1 < word.length && word[i + 1] === '\u0A3C') {
+        const combo = ch + '\u0A3C';
+        if (combo === 'ਖ\u0A3C') { out += 'خ'; i++; continue; }
+        if (combo === 'ਗ\u0A3C') { out += 'غ'; i++; continue; }
+        if (combo === 'ਜ\u0A3C') { out += 'ز'; i++; continue; }
+        if (combo === 'ਫ\u0A3C') { out += 'ف'; i++; continue; }
+        if (combo === 'ਲ\u0A3C') { out += 'ل'; i++; continue; }
+        if (combo === 'ਸ\u0A3C') { out += 'ش'; i++; continue; }
+      }
+
+      if (ch === 'ੱ') continue;
+
+      if (GURMUKHI_CHAR_MAP[ch] !== undefined) {
+        out += GURMUKHI_CHAR_MAP[ch];
+      } else {
+        out += ch;
+      }
+    }
+    return out;
+  });
+
+  return converted.join('');
+}
+
 /**
- * correctUrduAgriPhonetics — Auto-corrects Urdu/Punjabi phonetic ASR mishearings
- * and eliminates duplicate words/phrases from speech recognition output.
+ * correctUrduAgriPhonetics — Auto-corrects Urdu/Punjabi phonetic ASR mishearings,
+ * converts Indian Gurmukhi to Pakistan Shahmukhi, and eliminates duplicate words/phrases.
  */
 export function correctUrduAgriPhonetics(text) {
   if (!text) return '';
 
-  let t = text;
+  let t = gurmukhiToShahmukhi(text);
 
   const corrections = [
     // Crop names
