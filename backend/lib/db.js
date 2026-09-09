@@ -84,8 +84,18 @@ async function initDB() {
       ALTER TABLE ai_cache ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'ur';
       ALTER TABLE ai_cache ADD COLUMN IF NOT EXISTS hits INTEGER DEFAULT 0;
       CREATE INDEX IF NOT EXISTS ai_cache_expires_idx ON ai_cache(expires_at);
+
+      CREATE TABLE IF NOT EXISTS farmer_profiles (
+        user_id    TEXT PRIMARY KEY,
+        crops      JSONB DEFAULT '[]'::jsonb,
+        livestock  JSONB DEFAULT '[]'::jsonb,
+        spray_log  JSONB DEFAULT '[]'::jsonb,
+        soil       JSONB DEFAULT '{}'::jsonb,
+        notes      TEXT DEFAULT '',
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
     `);
-    console.log('✅ PostgreSQL tables ready (users + mandi_prices + chat_logs + ai_cache)');
+    console.log('✅ PostgreSQL tables ready (users + mandi_prices + chat_logs + ai_cache + farmer_profiles)');
     await ensureAuditTables();
   } catch (err) {
     console.error('❌ initDB error:', err.message);
@@ -957,6 +967,125 @@ async function deleteScheme(id) {
   }
 }
 
+// ─── Farmer Profile (My Farm / میرا فارم) ──────────────────────────────────
+
+/**
+ * Get farmer profile by user ID. Returns null if no profile exists.
+ */
+async function getFarmerProfile(userId) {
+  if (!userId) return null;
+  if (!pool) return null;
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM farmer_profiles WHERE user_id = $1',
+      [userId]
+    );
+    return rows[0] || null;
+  } catch (err) {
+    console.warn('getFarmerProfile error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Upsert farmer profile. Merges JSONB arrays intelligently.
+ * @param {string} userId
+ * @param {object} data - { crops?, livestock?, spray_log?, soil?, notes? }
+ */
+async function upsertFarmerProfile(userId, data) {
+  if (!userId || !data) return null;
+  if (!pool) return null;
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO farmer_profiles (user_id, crops, livestock, spray_log, soil, notes, updated_at)
+       VALUES ($1, $2::jsonb, $3::jsonb, $4::jsonb, $5::jsonb, $6, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET
+         crops      = COALESCE($2::jsonb, farmer_profiles.crops),
+         livestock  = COALESCE($3::jsonb, farmer_profiles.livestock),
+         spray_log  = COALESCE($4::jsonb, farmer_profiles.spray_log),
+         soil       = COALESCE($5::jsonb, farmer_profiles.soil),
+         notes      = COALESCE($6, farmer_profiles.notes),
+         updated_at = NOW()
+       RETURNING *`,
+      [
+        userId,
+        JSON.stringify(data.crops || []),
+        JSON.stringify(data.livestock || []),
+        JSON.stringify(data.spray_log || []),
+        JSON.stringify(data.soil || {}),
+        data.notes || ''
+      ]
+    );
+    return rows[0] || null;
+  } catch (err) {
+    console.error('❌ upsertFarmerProfile error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Clear/delete farmer profile (privacy: "خالی کریں").
+ */
+async function clearFarmerProfile(userId) {
+  if (!userId) return false;
+  if (!pool) return false;
+  try {
+    await pool.query('DELETE FROM farmer_profiles WHERE user_id = $1', [userId]);
+    return true;
+  } catch (err) {
+    console.warn('clearFarmerProfile error:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Build a concise Urdu context summary from farmer profile for AI prompt injection.
+ * Returns empty string if profile is null/empty (zero overhead).
+ */
+function buildFarmerContext(profile) {
+  if (!profile) return '';
+  const parts = [];
+
+  // Crops
+  const crops = profile.crops;
+  if (Array.isArray(crops) && crops.length > 0) {
+    const cropTexts = crops.slice(0, 3).map(c => {
+      let t = c.name || '';
+      if (c.acres) t += ` ${c.acres} ایکڑ`;
+      if (c.variety) t += ` (${c.variety})`;
+      return t;
+    }).filter(Boolean);
+    if (cropTexts.length) parts.push('فصلیں: ' + cropTexts.join('، '));
+  }
+
+  // Livestock
+  const livestock = profile.livestock;
+  if (Array.isArray(livestock) && livestock.length > 0) {
+    const lvTexts = livestock.slice(0, 3).map(l => {
+      let t = '';
+      if (l.count) t += l.count + ' ';
+      t += l.type || '';
+      if (l.breed) t += ` ${l.breed}`;
+      if (l.milk_liters) t += ` (${l.milk_liters} لیٹر دودھ)`;
+      return t.trim();
+    }).filter(Boolean);
+    if (lvTexts.length) parts.push('مویشی: ' + lvTexts.join('، '));
+  }
+
+  // Soil
+  const soil = profile.soil;
+  if (soil && typeof soil === 'object' && Object.keys(soil).length > 0) {
+    const soilParts = [];
+    if (soil.ph) soilParts.push('pH ' + soil.ph);
+    if (soil.ec) soilParts.push('EC ' + soil.ec);
+    if (soil.om) soilParts.push('OM ' + soil.om + '%');
+    if (soilParts.length) parts.push('مٹی: ' + soilParts.join('، '));
+  }
+
+  if (parts.length === 0) return '';
+  return '\n🗂️ کسان پروفائل (میرا فارم): ' + parts.join(' | ');
+}
+
 module.exports = {
   pool, initDB, testConnection,
   findUserByPhone, createUser, getAllUsers,
@@ -969,6 +1098,7 @@ module.exports = {
   logAIUsage, getAIUsage, getAIUsageStats: getAIUsage,
   createEmergencyAlert, getEmergencyAlerts, updateEmergencyAlertStatus, deleteEmergencyAlert,
   exportAllData, purgeChatLogs,
-  getSchemes, saveScheme, deleteScheme
+  getSchemes, saveScheme, deleteScheme,
+  getFarmerProfile, upsertFarmerProfile, clearFarmerProfile, buildFarmerContext
 };
 

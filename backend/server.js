@@ -18,6 +18,7 @@ const aiRoutes      = require('./routes/ai');
 const weatherRoutes = require('./routes/weather');
 const adminRoutes   = require('./routes/admin');
 const schemesRoutes = require('./routes/schemes');
+const farmerProfileRoutes = require('./routes/farmerProfile');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -103,6 +104,7 @@ app.use('/api/ai',      aiRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/admin',   adminRoutes);
 app.use('/api/schemes', schemesRoutes);
+app.use('/api/farmer-profile', farmerProfileRoutes);
 
 // 404
 app.use((req, res) => {

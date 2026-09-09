@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { getDir, getFont, getAlign } from '../utils/textDir';
 import { createSpeechEngine, correctUrduAgriPhonetics, playAudioCue } from '../utils/speech';
 import { searchOffline, saveAIAnswer, queueQuestion, getOfflineQueue, removeFromQueue } from '../services/offlineDB';
+import { extractFarmerFacts } from '../services/api';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import AudioPlayer from '../components/ui/AudioPlayer';
 
@@ -927,6 +928,11 @@ export default function ChatPage() {
 
       // Save to offline cache for future offline use
       if (fullReply) saveAIAnswer(msg, fullReply).catch(() => {});
+
+      // میرا فارم: passive extraction (non-blocking, fire-and-forget)
+      if (fullReply && user?.id) {
+        extractFarmerFacts(msg, fullReply).catch(() => {});
+      }
 
     } catch (err) {
       if (!isMountedRef.current || abortRef.current?.signal?.reason === 'unmount') {

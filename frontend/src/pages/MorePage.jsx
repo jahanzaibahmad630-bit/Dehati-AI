@@ -17,9 +17,11 @@ import FertilizerRecommender from '../components/tools/FertilizerRecommender';
 import SoilProfile from '../components/tools/SoilProfile';
 import Profile from '../components/tools/Profile';
 import CropBudgetCalc from '../components/tools/CropBudgetCalc';
+import MyFarm from '../components/tools/MyFarm';
 
 // Tools that open as bottom sheets
 const SHEET_TOOLS = [
+  { id: 'myfarm',    icon: '🌾', name: 'میرا فارم',     component: MyFarm,            badge: '🆕 نیا' },
   { id: 'market',     icon: '📈', name: 'مارکیٹ قیمتیں', component: MarketPrices,         badge: 'قیمتیں' },
   { id: 'budget',     icon: '📊', name: 'فصل موازنہ',     component: CropBudgetCalc,        badge: '🆕 نیا' },
   { id: 'animal',     icon: '🐄', name: 'جانور صحت',      component: AnimalHealthAdvisor  },

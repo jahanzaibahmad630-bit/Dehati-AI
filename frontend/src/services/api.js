@@ -225,3 +225,37 @@ export async function scanSoilReport(imageBase64, mimeType = 'image/jpeg') {
   });
   return handleResponse(res);
 }
+
+// ─── Farmer Profile (میرا فارم / My Farm) ────────────────────────────────────
+export async function getFarmerProfile() {
+  const res = await fetch(`${API_URL}/api/farmer-profile`, {
+    headers: authHeaders()
+  });
+  return handleResponse(res);
+}
+
+export async function saveFarmerProfile(data) {
+  const res = await fetch(`${API_URL}/api/farmer-profile`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify(data)
+  });
+  return handleResponse(res);
+}
+
+export async function clearFarmerProfile() {
+  const res = await fetch(`${API_URL}/api/farmer-profile`, {
+    method: 'DELETE',
+    headers: authHeaders()
+  });
+  return handleResponse(res);
+}
+
+export async function extractFarmerFacts(userMessage, aiResponse) {
+  const res = await fetch(`${API_URL}/api/farmer-profile/extract`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userMessage, aiResponse })
+  });
+  return handleResponse(res);
+}

@@ -470,6 +470,15 @@ router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
       return res.json({ answer: offTopicMessage(language), offTopic: true });
     }
 
+    // ——— Farmer profile context injection (میرا فارم) ———
+    let askFarmerCtx = '';
+    if (req.user?.id) {
+      try {
+        const fp = await db.getFarmerProfile(req.user.id);
+        askFarmerCtx = db.buildFarmerContext(fp);
+      } catch {}
+    }
+
     // M4 fix: Cache lookup — reuse previous answers for identical questions
     const cached = await aiCache.get(q, language);
     if (cached) {
@@ -486,7 +495,8 @@ router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
       return res.json({ answer: cached, fromCache: true });
     }
 
-    const text = await geminiAsk(qWithSoil, buildChatSystem(language), 700);
+    const askSystemPrompt = buildChatSystem(language) + askFarmerCtx;
+    const text = await geminiAsk(qWithSoil, askSystemPrompt, 700);
 
     // M4 fix: Save to cache for future requests
     if (text) aiCache.set(q, language, text);
@@ -987,6 +997,15 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
       return res.end();
     }
 
+    // ——— Farmer profile context injection (میرا فارم) ———
+    let farmerProfileCtx = '';
+    if (req.user?.id) {
+      try {
+        const fp = await db.getFarmerProfile(req.user.id);
+        farmerProfileCtx = db.buildFarmerContext(fp);
+      } catch {} // Silent — never delay stream for profile fetch
+    }
+
     // ——— Cache lookup before sending headers ———
     const userMessages = messages.filter(m => m.role === 'user');
     let cachedHit = null;
@@ -1047,7 +1066,7 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
       ? `\n\n🗂️ گفتگو میں ذکر شدہ کسان کی معلومات:\n${contextClues.map(c => `- ${c}`).join('\n')}\n(ان معلومات کو یاد رکھیں اور جواب میں استعمال کریں)`
       : '';
 
-    const chatSystemText = buildChatSystem(language) + contextBlock;
+    const chatSystemText = buildChatSystem(language) + contextBlock + farmerProfileCtx;
 
     // ─── Stream with Gemini (primary) or Claude (failover) ──────────────────────
     let fullReply = '';
@@ -1171,6 +1190,62 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
         answer:    fullReply,
         language
       }).catch(() => {});
+    }
+
+    // میرا فارم: passive extraction (non-blocking, fire-and-forget)
+    // Only extract if user is authenticated and sent a message
+    if (req.user?.id && lastMsg.role === 'user' && fullReply) {
+      (async () => {
+        try {
+          const text = lastMsg.content;
+          const CROP_NAMES = ['گندم','کپاس','چاول','مکئی','گنا','کماد','آلو','سرسوں','چنا','مونگ','بھینس','گائے','بکری','مرغی','دودھ','لیٹر','ایکڑ'];
+          // Quick check: only call extraction if message likely contains farm facts
+          if (CROP_NAMES.some(kw => text.includes(kw))) {
+            const token = require('../middleware/auth').signToken(req.user);
+            // Internal call to extract endpoint — lightweight regex, no AI cost
+            const http = require('http');
+            // Use direct function call instead of HTTP to avoid overhead
+            const fp = await db.getFarmerProfile(req.user.id);
+            const existing = fp || { crops: [], livestock: [], spray_log: [], soil: {}, notes: '' };
+            
+            // Inline mini-extraction (same logic as farmerProfile.js /extract)
+            const extracted = { crops: [], livestock: [] };
+            let hasData = false;
+            
+            // Crop+acres patterns
+            const m1 = text.match(/(\d+(?:\.\d+)?)\s*(?:ایکڑ|acre)\s+([\u0600-\u06FF]+)/i);
+            if (m1) { extracted.crops.push({ name: m1[2], acres: parseFloat(m1[1]) }); hasData = true; }
+            const m2 = text.match(/([\u0600-\u06FF]+)\s+(\d+(?:\.\d+)?)\s*(?:ایکڑ|acre)/i);
+            if (m2 && !hasData) { extracted.crops.push({ name: m2[1], acres: parseFloat(m2[2]) }); hasData = true; }
+            
+            // Livestock count
+            const lvMatch = text.match(/(\d+)\s*(بھینس|گائے|بکری|مرغی|بیل)/i);
+            if (lvMatch) { extracted.livestock.push({ type: lvMatch[2], count: parseInt(lvMatch[1]) }); hasData = true; }
+            
+            if (hasData) {
+              const merged = { ...existing };
+              merged.crops = [...(existing.crops || [])];
+              merged.livestock = [...(existing.livestock || [])];
+              for (const c of extracted.crops) {
+                const idx = merged.crops.findIndex(x => x.name === c.name);
+                if (idx >= 0) merged.crops[idx] = { ...merged.crops[idx], ...c };
+                else merged.crops.push(c);
+              }
+              for (const l of extracted.livestock) {
+                const idx = merged.livestock.findIndex(x => x.type === l.type);
+                if (idx >= 0) merged.livestock[idx] = { ...merged.livestock[idx], ...l };
+                else merged.livestock.push(l);
+              }
+              merged.crops = merged.crops.slice(0, 20);
+              merged.livestock = merged.livestock.slice(0, 15);
+              await db.upsertFarmerProfile(req.user.id, merged);
+              console.log('[میرا فارم] Auto-extracted:', JSON.stringify(extracted));
+            }
+          }
+        } catch (e) {
+          // Silent — never log errors for background extraction
+        }
+      })();
     }
 
   } catch (err) {
