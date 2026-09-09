@@ -17,6 +17,12 @@ export default function MarkdownRenderer({ text, className = '', dir = 'rtl', la
     .replace(/^([#]{1,6})\s*\*\*(.*?)\*\*\s*([#]{1,6})?$/gm, '$1 $2')
     // Fix ## Heading ##
     .replace(/^([#]{1,6})\s*(.*?)\s*([#]{1,6})$/gm, '$1 $2')
+    // Fix [Heading] brackets into ## Heading
+    .replace(/^\[([^\n\]]+)\]$/gm, '## $1')
+    // Fix unclosed [Heading at line start into ## Heading
+    .replace(/^\[([ا-ے\w\s]+)$/gm, '## $1')
+    // Fix stray leading bracket before word
+    .replace(/^\[([ا-ے\w])/gm, '$1')
     // Fix trailing bullets from RTL AI generation (e.g. "text -")
     .replace(/^([^-•*\d\n].*?)\s*[-•*]$/gm, '- $1');
 

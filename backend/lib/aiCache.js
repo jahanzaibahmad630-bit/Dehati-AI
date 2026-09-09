@@ -60,6 +60,17 @@ function l1Set(key, value) {
   l1.set(key, { value, expiresAt: Date.now() + TTL_MS });
 }
 
+function isTruncatedAnswer(ans) {
+  if (!ans || typeof ans !== 'string') return true;
+  const trimmed = ans.trim();
+  if (trimmed.length < 35) return true;
+  // Ends abruptly in common Urdu/Punjabi connectives without punctuation
+  if (/(\s+(?:کے|یا|اور|تے|دی|دا|جو|کہ|پر|توں|وچ)\s*)$/i.test(trimmed)) return true;
+  // Has unclosed bracket heading
+  if (/^\[[^\n\]]+$/m.test(trimmed)) return true;
+  return false;
+}
+
 // ── Public: get ──────────────────────────────────────────────────────────────
 /**
  * Get a cached answer. Checks L1 first, then L2 (DB).
@@ -74,15 +85,27 @@ async function get(question, language = 'ur') {
 
   // L1: memory
   const mem = l1Get(key);
-  if (mem) { l1Hits++; return mem; }
+  if (mem) {
+    if (isTruncatedAnswer(mem)) {
+      l1.delete(key);
+    } else {
+      l1Hits++;
+      return mem;
+    }
+  }
 
   // L2: PostgreSQL
   try {
     const dbAnswer = await db.getCacheFromDB(key);
     if (dbAnswer) {
-      l1Set(key, dbAnswer); // warm L1
-      l2Hits++;
-      return dbAnswer;
+      if (isTruncatedAnswer(dbAnswer)) {
+        // Drop bad cache entry
+        db.flushCacheDB(false).catch(() => {});
+      } else {
+        l1Set(key, dbAnswer); // warm L1
+        l2Hits++;
+        return dbAnswer;
+      }
     }
   } catch {
     // DB unavailable — fall through to Claude
@@ -100,7 +123,7 @@ async function get(question, language = 'ur') {
  * @param {string} answer
  */
 function set(question, language = 'ur', answer) {
-  if (DISABLED || !answer) return;
+  if (DISABLED || !answer || isTruncatedAnswer(answer)) return;
 
   const key = normalizeKey(question, language);
 

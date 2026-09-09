@@ -127,6 +127,7 @@ router.delete('/account', authenticateToken, async (req, res) => {
     if (req.user.is_guest) {
       return res.status(400).json({ error: 'مہمان اکاؤنٹ حذف نہیں ہو سکتا' });
     }
+    await db.clearFarmerProfile(req.user.id);
     await db.deleteUser(req.user.id);
     res.json({ success: true, message: 'اکاؤنٹ کامیابی سے ختم ہو گیا' });
   } catch (err) {
