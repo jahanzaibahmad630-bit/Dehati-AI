@@ -309,8 +309,8 @@ function buildFarmingSystem() {
 - اعداد اور مقدار واضح لکھیں (مثلا: 1 بوری DAP فی ایکڑ)
 
 فارمیٹنگ کے اصول:
-- عنوان کے لیے شروع میں ## لگائیں (عنوان کے آخر میں ## نہ لگائیں)
-- بلٹ پوائنٹ کے لیے شروع میں - لگائیں (جملے کے آخر میں - نہ لگائیں)
+- عنوانات کے لیے صرف مارک ڈاؤن ## استعمال کریں
+- نکات کے لیے صرف - کا نشان استعمال کریں
 - اہم نام اور مقدار کو **bold** کریں`;
 }
 
@@ -328,8 +328,8 @@ CRITICAL: You ONLY answer agriculture, farming, crops, livestock, soil, weather 
 
 Style: Helpful, professional, clear English for Pakistani farmers.
 Formatting rules:
-- Use ## for headers (do NOT put ## at the end of a header)
-- Use - for bullet points (do NOT put - at the end of a line)
+- Use ## for headers
+- Use - for bullet points
 - Use **bold** for key names and dosages
 Helpline: 0800-15000 (free)`;
   }
@@ -367,8 +367,8 @@ Helpline: 0800-15000 (free)`;
 انداز: بالکل WhatsApp پر کسی قریبی دوست کی طرح — سادہ، دوستانہ، مختصر (3-5 جملے)
 - جواب آسان، عام فہم اردو میں دیں
 - 1-2 مختصر بلٹ پوائنٹس (-) یا پیراگراف کا استعمال کریں
-- عنوان کے لیے شروع میں ## اور اہم الفاظ کو **bold** کریں
-- عنوان یا جملے کے آخر میں ## یا - نہ لگائیں
+- عنوان کے لیے مارک ڈاؤن ## اور اہم الفاظ کو **bold** کریں
+- اہم نکات کے لیے - کا نشان استعمال کریں
 - زراعت ہیلپ لائن: 0800-15000 (مفت)`;
 }
 
@@ -399,9 +399,18 @@ async function claudeAsk(prompt, systemPrompt, maxTokens = 700, temperature = 0.
   }
   const textBlock = response.content?.find(b => b.type === 'text');
   let text = textBlock?.text ?? response.content?.[0]?.text ?? '';
-  text = text.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '').trim();
-  text = text.replace(/^[ \t]*Heading starts with[^\n]*\n+/i, '').trim();
-  return text;
+  return sanitizeAIOutput(text);
+}
+
+function sanitizeAIOutput(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  return raw
+    .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+    .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+    .replace(/^[ \t]*(\)|\()?at start\?[^\n]*\n*/gi, '')
+    .replace(/^[ \t]*Heading starts with[^\n]*\n+/gi, '')
+    .replace(/\n+`?No\s*$/gi, '')
+    .trim();
 }
 
 // ─── Gemini Ask Helper (primary text engine — all non-vision endpoints) ────────
@@ -422,7 +431,7 @@ async function geminiAsk(prompt, systemPrompt, maxTokens = 700) {
         temperature: 0.6
       }
     });
-    const text = response.text || '';
+    const text = sanitizeAIOutput(response.text || '');
     db.logAIUsage({
       endpoint: 'gemini_ask',
       provider: 'gemini',

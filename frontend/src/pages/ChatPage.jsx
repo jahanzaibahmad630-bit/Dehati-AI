@@ -863,20 +863,20 @@ export default function ChatPage() {
       let gotFirstChunk = false;
 
       // ── Rolling watchdog timeout ─────────────────────────────────────────
-      // If initial connection or mid-stream stalls for >12s, abort cleanly
+      // If mid-stream stalls for >25s, abort cleanly
       let streamTimer = null;
       const resetStreamTimer = () => {
         clearTimeout(streamTimer);
         streamTimer = setTimeout(() => {
           try { controller.abort(); } catch {}
-        }, 12000);
+        }, 25000);
       };
 
       const noDataTimer = setTimeout(() => {
         if (!gotFirstChunk) {
           try { controller.abort(); } catch {}
         }
-      }, 10000);
+      }, 35000);
 
       try {
         resetStreamTimer();
@@ -955,7 +955,7 @@ export default function ChatPage() {
         try {
           const lastUserMsg = history.filter(m => m.role === 'user').slice(-1)[0]?.content || msg;
           const fallbackController = new AbortController();
-          const fallbackTimeout = setTimeout(() => fallbackController.abort(), 30000);
+          const fallbackTimeout = setTimeout(() => fallbackController.abort(), 45000);
           let res2;
           try {
             res2 = await fetch(`${API_URL}/api/ai/ask`, {

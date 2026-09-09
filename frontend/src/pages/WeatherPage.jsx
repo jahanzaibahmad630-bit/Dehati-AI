@@ -232,6 +232,15 @@ function getWeatherAdvisory(weather) {
   return null;
 }
 
+function cleanWeatherAdvice(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  return raw
+    .replace(/^[ \t]*(\)|\()?at start\?[^\n]*\n*/gi, '')
+    .replace(/^[ \t]*Heading starts with[^\n]*\n+/gi, '')
+    .replace(/\n+`?No\s*$/gi, '')
+    .trim();
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function WeatherPage() {
   const { user } = useAuth();
@@ -256,7 +265,7 @@ export default function WeatherPage() {
         if (raw) {
           const snap = JSON.parse(raw);
           setWeather(snap.weather);
-          setAdvice(snap.advice);
+          setAdvice(cleanWeatherAdvice(snap.advice));
           setSelectedCity(snap.city || lastCity || '');
           setIsFromSnapshot(true);
         }
@@ -279,7 +288,7 @@ export default function WeatherPage() {
     try {
       const prompt = `موسم: ${weatherData.condition}, درجہ حرارت: ${weatherData.temp}°C, نمی: ${weatherData.humidity}%, ہوا: ${weatherData.windSpeed} km/h\n\nآج کے موسم کے مطابق پنجاب کے کسانوں کے لیے 2-3 عملی مشورے دیں (آبپاشی، سپرے، دھوپ سے بچاؤ وغیرہ)`;
       const data = await askAI(prompt);
-      adviceText = data?.answer || null;
+      adviceText = cleanWeatherAdvice(data?.answer || null);
       setAdvice(adviceText);
     } catch {
       adviceText = 'AI مشورہ فی الحال دستیاب نہیں — موسمی کالم کے مطابق احتیاط کریں۔';
