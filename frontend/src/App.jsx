@@ -109,8 +109,18 @@ export default function App() {
   // This ensures mobile users always get the latest version immediately
   useRegisterSW({
     onNeedRefresh() {
-      // New SW is waiting — reload right away (skipWaiting handles the rest)
-      window.location.reload();
+      // Defer reload until page is hidden so ongoing voice/camera sessions are not interrupted
+      if (document.visibilityState === 'hidden') {
+        window.location.reload();
+      } else {
+        const onHidden = () => {
+          if (document.visibilityState === 'hidden') {
+            document.removeEventListener('visibilitychange', onHidden);
+            window.location.reload();
+          }
+        };
+        document.addEventListener('visibilitychange', onHidden);
+      }
     },
     onOfflineReady() {
       console.log('DehatiAI ready for offline use');

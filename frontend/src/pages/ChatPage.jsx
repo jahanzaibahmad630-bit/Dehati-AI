@@ -566,6 +566,7 @@ export default function ChatPage() {
 
   // Bug fix: ref to always call latest sendMessage from voice/auto-send handlers
   const sendMessageRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   const isBusy = isStreaming;
 
@@ -592,9 +593,11 @@ export default function ChatPage() {
 
   // Cleanup on unmount — abort (not stop) to avoid Android buffer-flush hang
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       try { speechEngineRef.current?.reset(); } catch {}
-      try { abortRef.current?.abort(); } catch {}
+      try { abortRef.current?.abort('unmount'); } catch {}
     };
   }, []);
 
@@ -926,6 +929,10 @@ export default function ChatPage() {
       if (fullReply) saveAIAnswer(msg, fullReply).catch(() => {});
 
     } catch (err) {
+      if (!isMountedRef.current || abortRef.current?.signal?.reason === 'unmount') {
+        return;
+      }
+
       if (err.name === 'AbortError' && abortRef.current?.signal?.reason !== 'user_stop') {
         err._isTimeout = true;
       }
@@ -981,7 +988,9 @@ export default function ChatPage() {
         }
       }
     } finally {
-      setIsStreaming(false);
+      if (isMountedRef.current) {
+        setIsStreaming(false);
+      }
     }
   }, [input, isBusy, isListening, isOffline, language]);
 

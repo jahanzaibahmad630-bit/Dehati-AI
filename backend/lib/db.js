@@ -16,10 +16,14 @@ let pool = null;
 if (process.env.DATABASE_URL) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 30000,
+    max: 20,
+    statement_timeout: 10000
   });
   pool.on('error', (err) => console.error('PG pool error:', err.message));
-  console.log('✅ PostgreSQL pool created from DATABASE_URL');
+  console.log('✅ PostgreSQL pool created from DATABASE_URL with timeout limits');
 }
 
 // ─── Supabase helper ──────────────────────────────────────────────────────────
@@ -581,6 +585,24 @@ async function ensureAuditTables() {
         expires_at       TIMESTAMPTZ,
         created_at       TIMESTAMPTZ DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS government_schemes (
+        id             TEXT PRIMARY KEY,
+        title_ur       TEXT NOT NULL,
+        title_en       TEXT,
+        icon           TEXT DEFAULT '📋',
+        category       TEXT,
+        subsidy_amount TEXT,
+        loan_limit     TEXT,
+        deadline       TEXT,
+        sms_code       TEXT,
+        portal_url     TEXT,
+        eligibility_ur TEXT,
+        description_ur TEXT,
+        benefits       JSONB,
+        active         BOOLEAN DEFAULT TRUE,
+        updated_at     TIMESTAMPTZ DEFAULT NOW()
+      );
     `);
     console.log('✅ Audit/AI-usage/Emergency tables ready');
   } catch (err) {
@@ -795,6 +817,79 @@ async function purgeChatLogs(days = 90) {
   } catch (err) { console.warn('purgeChatLogs error:', err.message); return 0; }
 }
 
+// ─── Government Schemes DB Storage ──────────────────────────────────────────
+let memSchemes = [];
+
+async function getSchemes() {
+  if (!pool) return memSchemes;
+  try {
+    const { rows } = await pool.query(`SELECT * FROM government_schemes ORDER BY updated_at DESC`);
+    return rows.length > 0 ? rows : memSchemes;
+  } catch (err) {
+    return memSchemes;
+  }
+}
+
+async function saveScheme(scheme) {
+  if (!scheme || !scheme.title_ur) return null;
+  const id = scheme.id || `scheme-${Date.now()}`;
+  const record = {
+    ...scheme,
+    id,
+    active: scheme.active !== false,
+    benefits: scheme.benefits || [],
+    updated_at: new Date().toISOString()
+  };
+
+  const idx = memSchemes.findIndex(s => s.id === id);
+  if (idx >= 0) memSchemes[idx] = record;
+  else memSchemes.unshift(record);
+
+  if (!pool) return record;
+  try {
+    await pool.query(`
+      INSERT INTO government_schemes (id, title_ur, title_en, icon, category, subsidy_amount, loan_limit, deadline, sms_code, portal_url, eligibility_ur, description_ur, benefits, active, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+      ON CONFLICT (id) DO UPDATE SET
+        title_ur = EXCLUDED.title_ur,
+        title_en = EXCLUDED.title_en,
+        icon = EXCLUDED.icon,
+        category = EXCLUDED.category,
+        subsidy_amount = EXCLUDED.subsidy_amount,
+        loan_limit = EXCLUDED.loan_limit,
+        deadline = EXCLUDED.deadline,
+        sms_code = EXCLUDED.sms_code,
+        portal_url = EXCLUDED.portal_url,
+        eligibility_ur = EXCLUDED.eligibility_ur,
+        description_ur = EXCLUDED.description_ur,
+        benefits = EXCLUDED.benefits,
+        active = EXCLUDED.active,
+        updated_at = NOW()
+    `, [
+      record.id, record.title_ur, record.title_en || '', record.icon || '📋',
+      record.category || '', record.subsidy_amount || '', record.loan_limit || '',
+      record.deadline || '', record.sms_code || '', record.portal_url || '',
+      record.eligibility_ur || '', record.description_ur || '',
+      JSON.stringify(record.benefits || []), record.active
+    ]);
+    return record;
+  } catch (err) {
+    console.warn('saveScheme DB error:', err.message);
+    return record;
+  }
+}
+
+async function deleteScheme(id) {
+  memSchemes = memSchemes.filter(s => s.id !== id);
+  if (!pool) return true;
+  try {
+    await pool.query(`DELETE FROM government_schemes WHERE id = $1`, [id]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 module.exports = {
   pool, initDB, testConnection,
   findUserByPhone, createUser, getAllUsers,
@@ -806,6 +901,7 @@ module.exports = {
   logAuditAction, getAuditLogs,
   logAIUsage, getAIUsage, getAIUsageStats: getAIUsage,
   createEmergencyAlert, getEmergencyAlerts, updateEmergencyAlertStatus, deleteEmergencyAlert,
-  exportAllData, purgeChatLogs
+  exportAllData, purgeChatLogs,
+  getSchemes, saveScheme, deleteScheme
 };
 

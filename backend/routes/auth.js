@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt   = require('bcryptjs');
 const { randomUUID } = require('crypto');
 const { signToken, authenticateToken } = require('../middleware/auth');
+const { authLimiter } = require('../middleware/rateLimit');
 const db = require('../lib/db');
 
 const router      = express.Router();
@@ -33,7 +34,7 @@ function makeUserObj(data, passwordHash) {
 }
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     const { name, phone, district, landSize, password } = req.body;
 
@@ -47,6 +48,9 @@ router.post('/register', async (req, res) => {
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'پاسورڈ کم از کم 6 حروف کا ہونا چاہیے' });
+    }
+    if (password.length > 128) {
+      return res.status(400).json({ error: 'پاسورڈ زیادہ سے زیادہ 128 حروف کا ہونا چاہیے' });
     }
 
     // Check duplicate
@@ -76,12 +80,15 @@ router.post('/register', async (req, res) => {
 });
 
 // ─── POST /api/auth/login ──────────────────────────────────────────────────────
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
     const { phone, password } = req.body;
 
     if (!phone || !password) {
       return res.status(400).json({ error: 'فون نمبر اور پاسورڈ ضروری ہیں' });
+    }
+    if (password.length > 128) {
+      return res.status(401).json({ error: 'فون نمبر یا پاسورڈ غلط ہے' });
     }
 
     const cleanPhone = normalizePakPhone(phone);

@@ -11,6 +11,7 @@ const AGRONOMY_PATH = path.join(__dirname, 'agronomyDatabase.json');
 let diseaseClasses   = {};
 let agronomyDb       = {};
 let isModelAvailable = false;
+const activeLearningCache = new Map();
 
 try {
   if (fs.existsSync(CLASSES_PATH)) {
@@ -36,6 +37,7 @@ function getAgronomyRecord(keyOrName) {
   if (!clean) return null;
 
   if (agronomyDb[clean])                            return { key: clean, data: agronomyDb[clean] };
+  if (activeLearningCache.has(clean))               return { key: clean, data: activeLearningCache.get(clean) };
   const fwd = Object.keys(agronomyDb).find(k => k.includes(clean));
   if (fwd)                                          return { key: fwd,   data: agronomyDb[fwd]   };
   const rev = Object.keys(agronomyDb).find(k => clean.includes(k));
@@ -119,13 +121,13 @@ function saveToAgronomyDb(key, prescription) {
   const normalizedKey = normalizeKey(key);
   if (!normalizedKey) return;
 
-  if (agronomyDb[normalizedKey]) {
-    console.log(`[ActiveLearning] Skipped "${normalizedKey}" — already in local DB`);
+  if (agronomyDb[normalizedKey] || activeLearningCache.has(normalizedKey)) {
+    console.log(`[ActiveLearning] Skipped "${normalizedKey}" — already known`);
     return;
   }
 
   try {
-    agronomyDb[normalizedKey] = {
+    activeLearningCache.set(normalizedKey, {
       name_ur:                prescription.disease_ur,
       name_en:                prescription.disease_en || key,
       treatment_summary:      prescription.treatment  || '',
@@ -135,20 +137,8 @@ function saveToAgronomyDb(key, prescription) {
       prevention:             prescription.prevention || '',
       _source:                'ai_vision_generated',
       _saved_at:              new Date().toISOString()
-    };
-
-    fs.writeFile(
-      AGRONOMY_PATH,
-      JSON.stringify(agronomyDb, null, 2),
-      'utf8',
-      (writeErr) => {
-        if (writeErr) {
-          console.warn('[ActiveLearning] Write error:', writeErr.message);
-        } else {
-          console.log(`[ActiveLearning] ✅ Saved "${normalizedKey}" → agronomyDatabase.json`);
-        }
-      }
-    );
+    });
+    console.log(`[ActiveLearning] ✅ Cached in-memory diagnosis for "${normalizedKey}"`);
   } catch (err) {
     console.warn('[ActiveLearning] Error:', err.message);
   }

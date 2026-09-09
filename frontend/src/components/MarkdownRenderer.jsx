@@ -25,9 +25,18 @@ export default function MarkdownRenderer({ text, className = '', dir = 'rtl', la
   let key = 0;
   let i = 0;
 
+  const escapeHtml = (unsafe) => {
+    return String(unsafe)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
   const parseInline = (str) => {
     if (!str) return '';
-    let s = str;
+    let s = escapeHtml(str);
 
     // Bold + Italic: ***text***
     s = s.replace(/\*\*\*(.*?)\*\*\*/g, (_, t) => `<strong><em>${t}</em></strong>`);
@@ -37,7 +46,7 @@ export default function MarkdownRenderer({ text, className = '', dir = 'rtl', la
     s = s.replace(/(^|\s)\*(.*?)\*(\s|$)/g, (_, p1, t, p2) => `${p1}<em>${t}</em>${p2}`);
 
     // Linkify URLs
-    s = s.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #2e5a27; text-decoration: underline;">$1</a>');
+    s = s.replace(/(https?:\/\/[^\s&<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #2e5a27; text-decoration: underline;">$1</a>');
 
     // Linkify Helpline & Pakistani Phone numbers: e.g. 0800-15000, 0800 15000, 0300-1234567, 080015000
     s = s.replace(/\b(0800[-\s]?\d{5}|03\d{2}[-\s]?\d{7})\b/g, (match) => {

@@ -1046,6 +1046,7 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
         });
         const stream = await chat.sendMessageStream(lastUserMsg.content || '');
         for await (const chunk of stream) {
+          if (req.destroyed || res.writableEnded) break;
           const text = chunk.text || '';
           if (text) {
             fullReply += text;
@@ -1066,14 +1067,21 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
         }
       } catch (geminiErr) {
         console.warn('[Gemini Stream] Error — falling back to Claude:', geminiErr.message);
-        if (claude) {
+        if (claude && !req.destroyed && !res.writableEnded) {
           const fallbackStream = claude.messages.stream({
-    model: CLAUDE_MODEL, max_tokens: 500, temperature: 0.65,
-    system: [{ type: 'text', text: chatSystemText, cache_control: { type: 'ephemeral' } }],
-    messages: claudeMessages
+            model: CLAUDE_MODEL, max_tokens: 500, temperature: 0.65,
+            system: [{ type: 'text', text: chatSystemText, cache_control: { type: 'ephemeral' } }],
+            messages: claudeMessages
           });
           fallbackStream.on('text', (text) => {
+            if (req.destroyed || res.writableEnded) {
+              try { fallbackStream.abort(); } catch {}
+              return;
+            }
             if (text) { fullReply += text; res.write(`data: ${JSON.stringify({ text })}\n\n`); }
+          });
+          fallbackStream.on('error', (streamErr) => {
+            console.warn('[Claude Fallback Stream] Error:', streamErr.message);
           });
           finalMsg = await fallbackStream.finalMessage().catch(() => null);
         }

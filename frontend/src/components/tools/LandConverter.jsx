@@ -21,9 +21,10 @@ export default function LandConverter() {
 
   const marlaSqft = standard === 'rural' ? RURAL_MARLA_SQFT : URBAN_MARLA_SQFT;
   const kanalSqft = marlaSqft * 20;
-  const killaSqft = kanalSqft * 8;
-  const murabbaSqft = killaSqft * 25;
-  const jareebSqft = kanalSqft * 4;
+  const sarsahiSqft = marlaSqft / 9;
+  const killaSqft = KILLA_SQFT;
+  const murabbaSqft = MURABBA_SQFT;
+  const jareebSqft = JAREEB_SQFT;
 
   const UNITS = {
     'مربع (Murabba)':     murabbaSqft,
@@ -31,7 +32,7 @@ export default function LandConverter() {
     'جریب (Jareeb)':       jareebSqft,
     'کنال (Kanal)':        kanalSqft,
     'مرلہ (Marla)':        marlaSqft,
-    'سرسائی (Sarsahi)':    SARSAHI_SQFT,
+    'سرسائی (Sarsahi)':    sarsahiSqft,
     'سکوئر فٹ (Sq Ft)':    1,
     'سکوئر گز (Sq Yards)': 9,
     'سکوئر میٹر (Sq M)':   10.7639,
@@ -167,9 +168,9 @@ export default function LandConverter() {
                 { name: 'مربع (Murabba = 25 قلعے)', val: results['مربع (Murabba)'], sub: '200 کنال' },
                 { name: 'قلعہ / ایکڑ (Killa = 8 کنال)', val: results['ایکڑ (قلعہ)'], sub: '160 مرلے (36×40 کرم)' },
                 { name: 'جریب (Jareeb = 4 کنال)', val: results['جریب (Jareeb)'], sub: 'آدھا ایکڑ (80 مرلے)' },
-                { name: 'کنال (Kanal = 20 مرلے)', val: results['کنال (Kanal)'], sub: '5,445 مربع فٹ' },
+                { name: 'کنال (Kanal = 20 مرلے)', val: results['کنال (Kanal)'], sub: `${kanalSqft.toLocaleString('en-PK')} مربع فٹ` },
                 { name: 'مرلہ (Marla = 9 سرسائی)', val: results['مرلہ (Marla)'], sub: `${marlaSqft} مربع فٹ` },
-                { name: 'سرسائی (Sarsahi = 1 مربع کرم)', val: results['سرسائی (Sarsahi)'], sub: '30.25 مربع فٹ (5.5×5.5 فٹ)' },
+                { name: 'سرسائی (Sarsahi = 1 مربع کرم)', val: results['سرسائی (Sarsahi)'], sub: `${sarsahiSqft} مربع فٹ` },
               ].map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: idx === 5 ? 'none' : '1px solid #f1f5f9' }}>
                   <div>

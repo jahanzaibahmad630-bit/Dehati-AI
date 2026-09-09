@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { normalizeUrduForSpeech, selectUrduVoice, getSRLang } from '../../utils/speech';
 
 
@@ -40,6 +40,16 @@ export default function AudioPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const hasSupport = !!window.speechSynthesis;
+
+  useEffect(() => {
+    return () => {
+      try {
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
+      } catch {}
+    };
+  }, []);
 
   /**
    * handlePlay — MUST be triggered from onClick/onTouchStart to comply with

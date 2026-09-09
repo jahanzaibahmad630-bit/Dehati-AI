@@ -644,12 +644,18 @@ export const FAQ_DATA = [
 // IndexedDB Helper Layer
 // ─────────────────────────────────────────────────────────────────────────────
 let _db = null;
+let _dbPromise = null;
 
 function openDB() {
   if (_db) return Promise.resolve(_db);
+  if (_dbPromise) return _dbPromise;
 
-  return new Promise((resolve, reject) => {
-    if (!window.indexedDB) { reject(new Error('IndexedDB not supported')); return; }
+  _dbPromise = new Promise((resolve, reject) => {
+    if (!window.indexedDB) {
+      _dbPromise = null;
+      reject(new Error('IndexedDB not supported'));
+      return;
+    }
 
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -671,14 +677,23 @@ function openDB() {
 
     req.onsuccess = async (e) => {
       _db = e.target.result;
-      _db.onclose = () => { _db = null; };
-      _db.onerror = () => { _db = null; };
+      _db.onclose = () => { _db = null; _dbPromise = null; };
+      _db.onerror = () => { _db = null; _dbPromise = null; };
+      try {
+        await seedFAQ(_db);
+      } catch (seedErr) {
+        console.warn('seedFAQ warning:', seedErr);
+      }
       resolve(_db);
-      await seedFAQ(_db);
     };
 
-    req.onerror = () => reject(req.error);
+    req.onerror = () => {
+      _dbPromise = null;
+      reject(req.error);
+    };
   });
+
+  return _dbPromise;
 }
 
 async function seedFAQ(db) {

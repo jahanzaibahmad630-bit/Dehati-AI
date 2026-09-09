@@ -23,6 +23,13 @@ async function handleResponse(res) {
     err.status = res.status;
     throw err;
   }
+  if (res.status === 401 || (res.status === 403 && (data.code === 'TOKEN_EXPIRED' || data.code === 'INVALID_TOKEN'))) {
+    try {
+      localStorage.removeItem('dehati_token');
+      localStorage.removeItem('dehati_user');
+      window.dispatchEvent(new CustomEvent('dehati:unauthorized'));
+    } catch {}
+  }
   if (!res.ok) {
     const err = new Error(data.error || 'درخواست ناکام');
     err.status = res.status;

@@ -38,6 +38,13 @@ export function AuthProvider({ children }) {
       }
     }
     setLoading(false);
+
+    const handleUnauthorized = () => {
+      setToken(null);
+      setUser(null);
+    };
+    window.addEventListener('dehati:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('dehati:unauthorized', handleUnauthorized);
   }, []);
 
   const saveSession = (token, user) => {

@@ -61,9 +61,31 @@ export default function LivestockFeedCalc() {
     const t = parseFloat(milkTempF);
     if (isNaN(lr) || isNaN(t)) return;
     const correctedLR = +(lr + (t - 60) / 3).toFixed(1);
-    const fatPct = +(correctedLR / 4 + 0.5).toFixed(1);
     const fraudDiff = +(correctedLR - lr).toFixed(1);
-    setLactResult({ observedLR: lr, correctedLR, fatPct, fraudDiff, milkTempF: t });
+    const specificGravity = +(1 + correctedLR / 1000).toFixed(3);
+
+    // Standard pure milk CLR baseline (UVAS standard: 30 for Buffalo, 28 for Cow)
+    const stdCLR = animalType === 'cow' ? 28 : 30;
+    const waterAdulterationPct = correctedLR < stdCLR
+      ? Math.min(100, Math.max(0, +(((stdCLR - correctedLR) / stdCLR) * 100).toFixed(1)))
+      : 0;
+
+    // Richmond Formula Solids-Not-Fat (SNF) base: CLR/4 + 0.5
+    const snfPct = +(correctedLR / 4 + 0.5).toFixed(1);
+
+    // Realistic fat estimation based on dairy species baseline
+    const estimatedFatPct = +(Math.max(2.5, (correctedLR >= 28 ? (animalType === 'cow' ? 3.8 + (correctedLR - 28) * 0.15 : 6.2 + (correctedLR - 30) * 0.2) : 3.2))).toFixed(1);
+
+    setLactResult({
+      observedLR: lr,
+      correctedLR,
+      fraudDiff,
+      milkTempF: t,
+      specificGravity,
+      waterAdulterationPct,
+      snfPct,
+      estimatedFatPct
+    });
   };
 
   // Calculate Daily Ration with UVAS Scientific Precision
@@ -765,49 +787,80 @@ export default function LivestockFeedCalc() {
             <div className="animate-fade-in-up">
               {/* Corrected CLR banner */}
               <div style={{ background: 'linear-gradient(135deg, #6d28d9, #7c3aed)', borderRadius: 14, padding: '1rem', textAlign: 'center', marginBottom: 10, color: 'white' }}>
-                <div style={{ fontSize: '.8rem', opacity: .9 }}>درست لیکٹو میٹر ریڈنگ (Corrected CLR)</div>
-                <div style={{ fontSize: '2.8rem', fontWeight: 900, fontFamily: 'Inter', marginTop: 2 }} dir="ltr">
+                <div style={{ fontSize: '.8rem', opacity: .9 }}>درست لیکٹو میٹر ریڈنگ (Corrected CLR @ 60°F)</div>
+                <div style={{ fontSize: '2.6rem', fontWeight: 900, fontFamily: 'Inter', marginTop: 2 }} dir="ltr">
                   {lactResult.correctedLR}
                 </div>
                 <div style={{ fontSize: '.75rem', color: '#ddd6fe', marginTop: 2 }}>
-                  مشاہدہ شدہ: {lactResult.observedLR} → درست: {lactResult.correctedLR} (فرق: +{lactResult.fraudDiff})
+                  مشاہدہ شدہ: {lactResult.observedLR} → درست: {lactResult.correctedLR} (درجہ حرارت فرق: +{lactResult.fraudDiff})
                 </div>
               </div>
 
-              {/* Fraud alert if significant difference */}
-              {lactResult.fraudDiff >= 2 && (
+              {/* Water Adulteration Warning */}
+              {lactResult.waterAdulterationPct > 0 && (
                 <div style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
-                  <div style={{ fontWeight: 800, color: '#b91c1c', fontSize: '.82rem', marginBottom: 4 }}>
-                    ⚠️ ممکنہ دھوکہ دہی — ڈوڈھی کو فوری بتائیں!
+                  <div style={{ fontWeight: 800, color: '#b91c1c', fontSize: '.84rem', marginBottom: 4 }}>
+                    🚨 ممکنہ پانی ملاوٹ — تقریباً {lactResult.waterAdulterationPct}% ملاوٹ کا شبہ!
                   </div>
-                  <div style={{ fontSize: '.7rem', color: '#991b1b', lineHeight: 1.6 }}>
-                    آپ کا دودھ {lactResult.milkTempF}°F گرم تھا۔ درجہ حرارت کی وجہ سے CLR {lactResult.fraudDiff} درجے کم دکھ رہا تھا۔ اگر ڈوڈھی نے کریکشن کے بغیر قیمت دی تو آپ کو نقصان ہوا۔
-                    <br /><strong>مطالبہ کریں: ٹھنڈا دودھ یا درست CLR {lactResult.correctedLR} کے حساب سے قیمت۔</strong>
+                  <div style={{ fontSize: '.72rem', color: '#991b1b', lineHeight: 1.6 }}>
+                    خالص دودھ کا CLR کم از کم 28 تا 30 ہونا چاہیے۔ کم CLR پانی ملاوٹ یا کم فیٹ کی نشاندہی کرتا ہے۔
                   </div>
                 </div>
               )}
 
-              {/* Fat % and quality */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-                <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 10, padding: '0.75rem', textAlign: 'center' }}>
-                  <div style={{ fontSize: '.68rem', color: '#166534', fontWeight: 700 }}>تخمینہ فیٹ فیصد</div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#15803d', fontFamily: 'Inter' }} dir="ltr">
-                    {lactResult.fatPct}%
+              {/* Fraud alert if temperature penalty */}
+              {lactResult.fraudDiff >= 2 && (
+                <div style={{ background: '#fffbeb', border: '2px solid #f59e0b', borderRadius: 12, padding: '10px 14px', marginBottom: 10 }}>
+                  <div style={{ fontWeight: 800, color: '#b45309', fontSize: '.82rem', marginBottom: 4 }}>
+                    ⚠️ گرم دودھ کا اثر — ڈوڈھی کو آگاہ کریں!
                   </div>
-                  <div style={{ fontSize: '.62rem', color: '#16a34a' }}>بھینس معیار: 6%+</div>
+                  <div style={{ fontSize: '.7rem', color: '#92400e', lineHeight: 1.6 }}>
+                    آپ کا دودھ {lactResult.milkTempF}°F گرم تھا۔ درجہ حرارت کی وجہ سے CLR {lactResult.fraudDiff} درجے کم دکھ رہا تھا۔
+                    <br /><strong>مطالبہ کریں: ٹھنڈا دودھ یا درست درجہ حرارت کریکشن کے ساتھ پیمائش۔</strong>
+                  </div>
                 </div>
-                <div style={{ background: '#faf5ff', border: '1.5px solid #c4b5fd', borderRadius: 10, padding: '0.75rem', textAlign: 'center' }}>
-                  <div style={{ fontSize: '.68rem', color: '#6d28d9', fontWeight: 700 }}>کریکشن فیکٹر</div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#7c3aed', fontFamily: 'Inter' }} dir="ltr">
-                    +{lactResult.fraudDiff}
+              )}
+
+              {/* 4-Metric Scientific Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                <div style={{ background: lactResult.waterAdulterationPct > 0 ? '#fef2f2' : '#f0fdf4', border: `1.5px solid ${lactResult.waterAdulterationPct > 0 ? '#fca5a5' : '#86efac'}`, borderRadius: 10, padding: '0.75rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '.68rem', color: lactResult.waterAdulterationPct > 0 ? '#991b1b' : '#166534', fontWeight: 700 }}>پانی ملاوٹ شبہ</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: lactResult.waterAdulterationPct > 0 ? '#dc2626' : '#15803d', fontFamily: 'Inter' }} dir="ltr">
+                    {lactResult.waterAdulterationPct}%
                   </div>
-                  <div style={{ fontSize: '.62rem', color: '#6d28d9' }}>CLR اضافہ</div>
+                  <div style={{ fontSize: '.62rem', color: lactResult.waterAdulterationPct > 0 ? '#b91c1c' : '#16a34a' }}>
+                    {lactResult.waterAdulterationPct === 0 ? 'خالص (ملاوٹ سے پاک)' : 'غیر معیاری دودھ'}
+                  </div>
+                </div>
+
+                <div style={{ background: '#faf5ff', border: '1.5px solid #c4b5fd', borderRadius: 10, padding: '0.75rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '.68rem', color: '#6d28d9', fontWeight: 700 }}>مخصوص وزن (Sp. Gr.)</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#7c3aed', fontFamily: 'Inter' }} dir="ltr">
+                    {lactResult.specificGravity}
+                  </div>
+                  <div style={{ fontSize: '.62rem', color: '#6d28d9' }}>معیار: 1.028–1.032</div>
+                </div>
+
+                <div style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: 10, padding: '0.75rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '.68rem', color: '#1e40af', fontWeight: 700 }}>ٹھوس اجزاء (SNF)</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#1d4ed8', fontFamily: 'Inter' }} dir="ltr">
+                    {lactResult.snfPct}%
+                  </div>
+                  <div style={{ fontSize: '.62rem', color: '#2563eb' }}>بنیاد: Richmond فارمولا</div>
+                </div>
+
+                <div style={{ background: '#fefce8', border: '1.5px solid #fde047', borderRadius: 10, padding: '0.75rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '.68rem', color: '#854d0e', fontWeight: 700 }}>تخمینہ فیٹ (Fat)</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#a16207', fontFamily: 'Inter' }} dir="ltr">
+                    ~{lactResult.estimatedFatPct}%
+                  </div>
+                  <div style={{ fontSize: '.62rem', color: '#854d0e' }}>بھینس: 6%+ | گائے: 3.5%+</div>
                 </div>
               </div>
 
               {/* Instructions */}
               <div style={{ background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 10, padding: '8px 12px', fontSize: '.7rem', color: '#78350f', lineHeight: 1.5 }}>
-                💡 <strong>صحیح طریقہ:</strong> دوہنے کے فوری بعد دودھ کا نمونہ ٹھنڈا پانی میں رکھیں اور 60°F (15°C) پر ٹھنڈا کر کے پڑھیں۔ یا یہ کیلکولیٹر استعمال کریں۔ L&DD پنجاب ہیلپ لائن: 0800-17000
+                💡 <strong>UVAS ڈیری ہدایت:</strong> دوہنے کے فوری بعد دودھ کا نمونہ 60°F (15.5°C) پر ٹھنڈا کر کے لیکٹومیٹر ڈالیں۔ یا یہ درجہ حرارت کریکشن ٹول استعمال کریں۔ ہیلپ لائن: 0800-17000
               </div>
             </div>
           )}
@@ -818,11 +871,11 @@ export default function LivestockFeedCalc() {
               📊 حوالہ جاتی CLR جدول (UVAS لاہور / Zeal Lactometer)
             </div>
             {[
-              { lr: '28–30', fat: '7.5–8%', quality: '⭐⭐⭐ اعلیٰ', color: '#f0fdf4' },
-              { lr: '26–28', fat: '7–7.5%', quality: '⭐⭐ اچھا', color: 'white' },
-              { lr: '24–26', fat: '6.5–7%', quality: '⭐ قابل قبول', color: '#f0fdf4' },
-              { lr: '22–24', fat: '6–6.5%', quality: '⚠️ کمزور', color: 'white' },
-              { lr: '18 سے کم', fat: '5% سے کم', quality: '⛔ ملاوٹ / پانی', color: '#fef2f2' },
+              { lr: '30–32', fat: 'بھینس خالص', quality: '⭐⭐⭐ اعلیٰ (ملاوٹ 0%)', color: '#f0fdf4' },
+              { lr: '28–30', fat: 'گائے خالص', quality: '⭐⭐ معیاری (ملاوٹ 0%)', color: 'white' },
+              { lr: '24–27', fat: 'پتلا دودھ', quality: '⭐ قابل قبول (ملاوٹ 10-15%)', color: '#f0fdf4' },
+              { lr: '20–24', fat: 'کمزور معیار', quality: '⚠️ ملاوٹ کا شبہ (20-30%)', color: '#fffbeb' },
+              { lr: '20 سے کم', fat: 'شدید پتلا', quality: '⛔ ملاوٹ شدہ / پانی (35%+)', color: '#fef2f2' },
             ].map((row, i) => (
               <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', padding: '6px 12px', background: row.color, borderBottom: '1px solid #f1f5f9', fontSize: '.7rem' }}>
                 <div style={{ fontWeight: 800, fontFamily: 'Inter' }} dir="ltr">CLR: {row.lr}</div>

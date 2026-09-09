@@ -1,6 +1,12 @@
 const jwt = require('jsonwebtoken');
 
 // JWT_SECRET is NEVER exported — kept module-private
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
+  console.error('FATAL: JWT_SECRET must be set and at least 32 characters long in production mode!');
+  process.exit(1);
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'dehati-ai-dev-secret-CHANGE-IN-PRODUCTION-use-32-chars';
 
 function authenticateToken(req, res, next) {

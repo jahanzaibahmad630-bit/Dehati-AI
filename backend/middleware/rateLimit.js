@@ -43,4 +43,13 @@ const adminLoginLimiter = rateLimit({
   skipSuccessfulRequests: true // only count failed attempts
 });
 
-module.exports = { apiLimiter, aiLimiter, adminLoginLimiter, diseaseLimiter };
+// User auth endpoints (login & register): 20 attempts per 15 minutes per IP
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'بہت زیادہ لاگ ان کی کوششیں — 15 منٹ بعد دوبارہ کوشش کریں', code: 'AUTH_RATE_LIMIT' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+module.exports = { apiLimiter, aiLimiter, adminLoginLimiter, diseaseLimiter, authLimiter };

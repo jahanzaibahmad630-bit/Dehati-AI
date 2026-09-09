@@ -97,9 +97,9 @@ const PESTS = {
     etl: 'جھنڈے کے پتے (Flag leaf) پر پیلی پٹیاں یا 5% رقبہ متاثر',
     waterPerAcre: 100, bestTime: 'صبح 8 تا 11 بجے (شبنم سوکھنے کے بعد)',
     products: [
-      { name: 'Tebuconazole 25% EC', brand: 'Folicur (Bayer) / Kanzo / Ali Akbar', dose: 450, unit: 'ملی لیٹر', phi: 25, note: 'پہلی علامت پر فوری سپرے — زنگ کا پھیلاؤ رک جائے گا' },
-      { name: 'Propiconazole 25% EC', brand: 'Tilt (Syngenta) / Radar (Ali Akbar)', dose: 450, unit: 'ملی لیٹر', phi: 25, note: 'پھپھوندی کے سپورز کو تلف کرتا ہے' },
-      { name: 'Azoxystrobin + Tebuconazole SC', brand: 'Amistar Top (Syngenta Pakistan)', dose: 275, unit: 'ملی لیٹر', phi: 21, note: 'حفاظتی اور علاجی دونوں خصوصیات' },
+      { name: 'Tebuconazole 25% EC', brand: 'Folicur (Bayer) / Kanzo / Ali Akbar', dose: 200, unit: 'ملی لیٹر', phi: 25, note: 'AARI مصدقہ: 200 ملی لیٹر فی ایکڑ 100 لیٹر پانی میں' },
+      { name: 'Propiconazole 25% EC', brand: 'Tilt (Syngenta) / Radar (Ali Akbar)', dose: 200, unit: 'ملی لیٹر', phi: 25, note: 'AARI مصدقہ: 200 ملی لیٹر فی ایکڑ — زنگ کے سپورز تلف' },
+      { name: 'Azoxystrobin + Tebuconazole SC', brand: 'Amistar Top (Syngenta Pakistan)', dose: 200, unit: 'ملی لیٹر', phi: 21, note: 'حفاظتی اور علاجی دونوں خصوصیات (200 ملی لیٹر)' },
     ]
   },
   'گندم کا سست تیلا (Wheat Aphid)': {
@@ -117,8 +117,8 @@ const PESTS = {
     etl: 'پتوں پر آنکھ نما داغ یا گوب کی حالت پر گردن کا جھلساؤ خطرہ',
     waterPerAcre: 100, bestTime: 'صبح 6 تا 9 بجے',
     products: [
-      { name: 'Tricyclazole 75% WP', brand: 'Beam (Syngenta) / Ali Akbar Group', dose: 225, unit: 'گرام', phi: 21, note: 'گوب کے وقت احتیاطی سپرے سے گردن توڑ کا خطرہ ختم' },
-      { name: 'Azoxystrobin 25% SC', brand: 'Amistar (Syngenta Pakistan) / 4B', dose: 225, unit: 'ملی لیٹر', phi: 14, note: 'جھلساؤ اور بھورے داغ دونوں میں مفید' },
+      { name: 'Tricyclazole 75% WP', brand: 'Beam (Syngenta) / Ali Akbar Group', dose: 120, unit: 'گرام', phi: 21, note: 'RRI کالا شاہ کاکو مصدقہ: 120 گرام فی ایکڑ گوب کے وقت' },
+      { name: 'Azoxystrobin 25% SC', brand: 'Amistar (Syngenta Pakistan) / 4B', dose: 200, unit: 'ملی لیٹر', phi: 14, note: '200 ملی لیٹر فی ایکڑ — جھلساؤ اور بھورے داغ دونوں میں مفید' },
     ]
   },
   'پتہ لپیٹ سنڈی (Leaf Folder)': {
@@ -126,8 +126,8 @@ const PESTS = {
     etl: '>10% لپٹے ہوئے پتے یا 5-10 سنڈیاں فی مربع میٹر',
     waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
     products: [
-      { name: 'Chlorantraniliprole 18.5% SC', brand: 'Coragen (FMC United) / Kanzo', dose: 175, unit: 'ملی لیٹر', phi: 7, note: 'پتے کے اندر موجود سنڈی کو مارتا ہے' },
-      { name: 'Emamectin Benzoate 1.9% EC', brand: 'Proclaim (Syngenta Pakistan) / FMC', dose: 225, unit: 'ملی لیٹر', phi: 14, note: 'چاول پر لیبل شدہ پی ایچ آئی 14 دن ہے' },
+      { name: 'Chlorantraniliprole 18.5% SC', brand: 'Coragen (FMC United) / Kanzo', dose: 50, unit: 'ملی لیٹر', phi: 7, note: 'FMC/AARI مصدقہ: صرف 50 ملی لیٹر فی ایکڑ' },
+      { name: 'Emamectin Benzoate 1.9% EC', brand: 'Proclaim (Syngenta Pakistan) / FMC', dose: 200, unit: 'ملی لیٹر', phi: 14, note: '200 ملی لیٹر فی ایکڑ — چاول پر PHI 14 دن ہے' },
     ]
   },
   'تنے کی سنڈی (Stem Borer)': {
@@ -136,7 +136,7 @@ const PESTS = {
     waterPerAcre: 100, bestTime: 'صبح 7 تا 10 بجے',
     products: [
       { name: 'Cartap Hydrochloride 50% SP', brand: 'Padan / Thiodan Generics', dose: 450, unit: 'گرام', phi: 14, note: '450 گرام فی ایکڑ پانی میں ملا کر سپرے' },
-      { name: 'Chlorantraniliprole 18.5% SC', brand: 'Coragen (FMC United)', dose: 175, unit: 'ملی لیٹر', phi: 7, note: 'شگوفے نکلتے وقت پہلی خوراک' },
+      { name: 'Chlorantraniliprole 18.5% SC', brand: 'Coragen (FMC United)', dose: 50, unit: 'ملی لیٹر', phi: 7, note: 'FMC مصدقہ: صرف 50 ملی لیٹر فی ایکڑ' },
     ]
   },
   'آلو/ٹماٹر پچھیتا جھلساؤ (Late Blight)': {

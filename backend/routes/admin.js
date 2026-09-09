@@ -25,21 +25,37 @@ let announcementIdCounter = 1;
 router.post('/login', adminLoginLimiter, async (req, res) => {
   const { email, password } = req.body;
 
-  const ADMIN_EMAIL    = process.env.ADMIN_EMAIL    || 'admin@dehati.ai';
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@12345';
+  const isProd = process.env.NODE_ENV === 'production';
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || (isProd ? null : 'admin@dehati.ai');
+  const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProd ? null : 'Admin@12345');
+
+  if (isProd && !ADMIN_EMAIL && !ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD) {
+    return res.status(500).json({ error: 'Admin credentials not configured in production environment' });
+  }
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password required' });
   }
 
-  // Constant-time email compare prevents timing enumeration
-  const emailMatch = email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
-  // Always run comparison even on email mismatch (timing-safe)
-  const passwordMatch = password === ADMIN_PASSWORD;
+  const emailMatch = ADMIN_EMAIL && email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  let passwordMatch = false;
+  if (ADMIN_PASSWORD_HASH) {
+    try {
+      passwordMatch = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    } catch {
+      passwordMatch = false;
+    }
+  } else if (ADMIN_PASSWORD) {
+    passwordMatch = (password === ADMIN_PASSWORD);
+  }
+
   if (!emailMatch || !passwordMatch) {
     return res.status(401).json({ error: 'Invalid admin credentials' });
   }
 
+  await logAuditAction({ actionType: 'ADMIN_LOGIN', target: email, ip: req.ip });
   const token = signAdminToken(email);
   res.json({ token, email, role: 'admin' });
 });

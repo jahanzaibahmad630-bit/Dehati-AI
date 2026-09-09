@@ -78,12 +78,6 @@ app.get('/api/health', (req, res) => {
     version:   '1.0.0',
     timestamp: new Date().toISOString(),
     uptimeSec: Math.floor(process.uptime()),
-    env: {
-      claude:    !!process.env.CLAUDE_API_KEY,
-      postgres:  !!process.env.DATABASE_URL,
-      supabase:  !!process.env.SUPABASE_URL,
-      jwt:       !!process.env.JWT_SECRET
-    },
     memory: {
       heapUsedMB:  +(mem.heapUsed  / 1048576).toFixed(1),
       heapTotalMB: +(mem.heapTotal / 1048576).toFixed(1),
