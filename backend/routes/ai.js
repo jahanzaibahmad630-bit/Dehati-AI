@@ -475,9 +475,10 @@ router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
     if (cached) {
       // Still log cached hits so admin can see what farmers are asking
       db.saveChatLog({
-        userId:    req.user?.id    || null,
-        userName:  req.user?.name  || null,
-        userPhone: req.user?.phone || null,
+        userId:    req.user?.id       || null,
+        userName:  req.user?.name     || null,
+        userPhone: req.user?.phone    || null,
+        district:  req.user?.district || req.body?.district || null,
         question:  q,
         answer:    cached,
         language
@@ -493,9 +494,10 @@ router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
     // Save to chat_logs so it appears in admin Questions tab
     if (text) {
       db.saveChatLog({
-        userId:    req.user?.id    || null,
-        userName:  req.user?.name  || null,
-        userPhone: req.user?.phone || null,
+        userId:    req.user?.id       || null,
+        userName:  req.user?.name     || null,
+        userPhone: req.user?.phone    || null,
+        district:  req.user?.district || req.body?.district || null,
         question:  q,
         answer:    text,
         language
@@ -598,10 +600,20 @@ router.post('/disease', diseaseLimiter, optionalAuth, async (req, res) => {
         treatment:               tier1.treatment || 'مناسب پھپھوندی کش یا دافع حشرات دوائی کا سپرے کریں۔',
         prevention:              tier1.prevention || 'کھیت صاف رکھیں، متوازن کھاد دیں اور پانی کی نکاسی کا انتظام رکھیں۔',
         withholding_period_days: tier1.withholding_period_days || 14,
-        organic_alternative:     tier1.organic_alternative || 'دیسی علاج: نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر احتیاطی سپرے کریں۔',
         medicines:               tier1.medicines || [],
         disclaimer:              'استعمال سے پہلے مقامی زرعی افسر سے تصدیق کروائیں۔'
       });
+      // Non-blocking log to Questions tab
+      db.saveChatLog({
+        userId:    req.user?.id       || null,
+        userName:  req.user?.name     || null,
+        userPhone: req.user?.phone    || null,
+        district:  req.user?.district || req.body?.district || null,
+        question:  `[بیماری تشخیص] ${cropName || 'فصل'}: ${tier1.disease_ur || 'بیماری'}`,
+        answer:    tier1.treatment || tier1.disease_ur,
+        language:  'ur'
+      }).catch(() => {});
+      return;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -711,10 +723,20 @@ Respond strictly in valid JSON:
             treatment:               parsed.treatment            || 'مناسب پھپھوندی کش دوائی کا سپرے کریں۔',
             prevention:              parsed.prevention           || 'کھیت صاف رکھیں اور متوازن کھاد دیں۔',
             withholding_period_days: parsed.withholding_period_days || 14,
-            organic_alternative:     parsed.organic_alternative  || 'دیسی علاج: نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر احتیاطی سپرے کریں۔',
             medicines:               parsed.medicines             || [],
             disclaimer:              'استعمال سے پہلے مقامی زرعی افسر سے تصدیق کروائیں۔'
           });
+          // Non-blocking log to Questions tab
+          db.saveChatLog({
+            userId:    req.user?.id       || null,
+            userName:  req.user?.name     || null,
+            userPhone: req.user?.phone    || null,
+            district:  req.user?.district || req.body?.district || null,
+            question:  `[بیماری تشخیص AI] ${cropName || 'فصل'}: ${parsed.disease_ur}`,
+            answer:    parsed.treatment || parsed.disease_ur,
+            language:  'ur'
+          }).catch(() => {});
+          return;
         }
       } catch (aiErr) {
         console.warn('[Tier-2] Claude Vision error — falling to Tier-3 offline:', aiErr.message);
@@ -908,9 +930,10 @@ router.post('/fertilizer', aiLimiter, authenticateToken, async (req, res) => {
     // Log to Questions tab: prefix with tool name so admin knows which page
     if (text) {
       db.saveChatLog({
-        userId:    req.user?.id    || null,
-        userName:  req.user?.name  || null,
-        userPhone: req.user?.phone || null,
+        userId:    req.user?.id       || null,
+        userName:  req.user?.name     || null,
+        userPhone: req.user?.phone    || null,
+        district:  req.user?.district || req.body?.district || null,
         question:  `[کھاد] فصل: ${crop || 'نامعلوم'} | مٹی: ${soilType || 'عام'} | عمر: ${cropAge || 'نامعلوم'}`,
         answer:    text,
         language:  'ur'
@@ -1140,9 +1163,10 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
         aiCache.set(lastMsg.content, language, fullReply);
       }
       db.saveChatLog({
-        userId:    req.user?.id    || null,
-        userName:  req.user?.name  || null,
-        userPhone: req.user?.phone || null,
+        userId:    req.user?.id       || null,
+        userName:  req.user?.name     || null,
+        userPhone: req.user?.phone    || null,
+        district:  req.user?.district || req.body?.district || null,
         question:  lastMsg.content,
         answer:    fullReply,
         language
@@ -1213,9 +1237,10 @@ router.post('/animal', aiLimiter, optionalAuth, async (req, res) => {
     // Log to Questions tab: prefix with tool name
     if (text) {
       db.saveChatLog({
-        userId:    req.user?.id    || null,
-        userName:  req.user?.name  || null,
-        userPhone: req.user?.phone || null,
+        userId:    req.user?.id       || null,
+        userName:  req.user?.name     || null,
+        userPhone: req.user?.phone    || null,
+        district:  req.user?.district || req.body?.district || null,
         question:  `[جانور] ${animalType || 'نامعلوم'}: ${(symptoms || question || '').slice(0, 200)}`,
         answer:    text,
         language:  'ur'
@@ -1374,9 +1399,10 @@ ${weightNote}
 
     // Log to admin chat-log
     db.saveChatLog({
-      userId:    req.user?.id    || null,
-      userName:  req.user?.name  || null,
-      userPhone: req.user?.phone || null,
+      userId:    req.user?.id       || null,
+      userName:  req.user?.name     || null,
+      userPhone: req.user?.phone    || null,
+      district:  req.user?.district || req.body?.district || null,
       question:  `[بصری تشخیص] ${animalType} — ${bodyRegion}`,
       answer:    JSON.stringify(scanResult),
       language:  'ur'

@@ -1920,7 +1920,7 @@ function ChatLogsTab({ dark }) {
         <input
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Search questions or user names..."
+          placeholder="Search questions, user names, or districts..."
           style={{
             flex: 1, minWidth: 200, padding: '.6rem 1rem', borderRadius: 8,
             border: `1.5px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`,
@@ -1967,6 +1967,33 @@ function ChatLogsTab({ dark }) {
                   {langBadge(log.language)}
                   {log.user_name && (
                     <span style={{ fontWeight: 600, fontSize: '.82rem', color: dark ? '#F1F5F9' : '#111827' }}>👨‍🌾 {log.user_name}</span>
+                  )}
+                  {log.district ? (
+                    <span style={{
+                      background: dark ? 'rgba(59,130,246,0.18)' : '#eff6ff',
+                      color: dark ? '#93c5fd' : '#1d4ed8',
+                      border: `1px solid ${dark ? 'rgba(59,130,246,0.35)' : '#bfdbfe'}`,
+                      borderRadius: 6,
+                      padding: '2px 8px',
+                      fontSize: '.72rem',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}>
+                      📍 {log.district.replaceAll('_', ' ')}
+                    </span>
+                  ) : (
+                    <span style={{
+                      background: dark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                      color: dark ? '#64748B' : '#9ca3af',
+                      borderRadius: 6,
+                      padding: '2px 6px',
+                      fontSize: '.7rem',
+                      fontStyle: 'italic'
+                    }}>
+                      📍 نامعلوم
+                    </span>
                   )}
                   {log.user_phone && (
                     <span style={{ fontSize: '.78rem', color: dark ? '#94A3B8' : '#6b7280' }}>{log.user_phone}</span>

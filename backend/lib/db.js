@@ -62,13 +62,16 @@ async function initDB() {
         user_id     TEXT,
         user_name   TEXT,
         user_phone  TEXT,
+        district    TEXT,
         question    TEXT NOT NULL,
         answer      TEXT,
         language    TEXT DEFAULT 'ur',
         created_at  TIMESTAMPTZ DEFAULT NOW()
       );
+      ALTER TABLE chat_logs ADD COLUMN IF NOT EXISTS district TEXT;
       CREATE INDEX IF NOT EXISTS chat_logs_created_idx ON chat_logs(created_at DESC);
       CREATE INDEX IF NOT EXISTS chat_logs_user_idx    ON chat_logs(user_id);
+      CREATE INDEX IF NOT EXISTS chat_logs_district_idx ON chat_logs(district);
 
       CREATE TABLE IF NOT EXISTS ai_cache (
         cache_key   TEXT PRIMARY KEY,
@@ -385,48 +388,89 @@ async function deletePriceDB(cropKey) {
 /**
  * Save a chat question + answer to chat_logs table.
  */
-async function saveChatLog({ userId, userName, userPhone, question, answer, language }) {
+async function saveChatLog({ userId, userName, userPhone, district, question, answer, language }) {
   // Always save to memory so admin can see questions even without DB
-  addMemChatLog({ userId, userName, userPhone, question, answer, language });
+  addMemChatLog({ userId, userName, userPhone, district, question, answer, language });
   if (!pool) return;
   try {
     await pool.query(
-      `INSERT INTO chat_logs (user_id, user_name, user_phone, question, answer, language)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+      `INSERT INTO chat_logs (user_id, user_name, user_phone, district, question, answer, language)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [userId || null, userName || null, userPhone || null,
-       question, answer || null, language || 'ur']
+       district || null, question, answer || null, language || 'ur']
     );
   } catch (err) {
-    // Never crash the main flow if logging fails
-    console.warn('saveChatLog error:', err.message);
+    // If district column does not exist yet on legacy DB, fallback to 6 params
+    try {
+      await pool.query(
+        `INSERT INTO chat_logs (user_id, user_name, user_phone, question, answer, language)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [userId || null, userName || null, userPhone || null,
+         question, answer || null, language || 'ur']
+      );
+    } catch (fallbackErr) {
+      console.warn('saveChatLog error:', fallbackErr.message);
+    }
   }
 }
 
 /**
  * Get paginated chat logs for admin panel.
+ * Joins with users table to provide district for both new and historical logs.
  */
 async function getChatLogs({ page = 1, limit = 20, search = '' } = {}) {
   if (!pool) return getMemChatLogs({ page, limit, search });
   const offset = (page - 1) * limit;
-  const where       = search ? `WHERE question ILIKE $3 OR user_name ILIKE $3` : '';
-  const params      = search ? [limit, offset, `%${search}%`] : [limit, offset];
-  const countWhere  = search ? `WHERE question ILIKE $1 OR user_name ILIKE $1` : '';
+
+  const where = search
+    ? `WHERE cl.question ILIKE $3 OR cl.user_name ILIKE $3 OR cl.user_phone ILIKE $3 OR COALESCE(cl.district, u.district) ILIKE $3`
+    : '';
+  const params = search ? [limit, offset, `%${search}%`] : [limit, offset];
+  const countWhere = search
+    ? `WHERE cl.question ILIKE $1 OR cl.user_name ILIKE $1 OR cl.user_phone ILIKE $1 OR COALESCE(cl.district, u.district) ILIKE $1`
+    : '';
   const countParams = search ? [`%${search}%`] : [];
 
-  const [{ rows }, { rows: countRows }] = await Promise.all([
-    pool.query(
-      `SELECT id, user_id, user_name, user_phone, question, language, created_at
-       FROM chat_logs ${where}
-       ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-      params
-    ),
-    pool.query(
-      `SELECT COUNT(*) as c FROM chat_logs ${countWhere}`,
-      countParams
-    )
-  ]);
+  try {
+    const [{ rows }, { rows: countRows }] = await Promise.all([
+      pool.query(
+        `SELECT cl.id, cl.user_id, cl.user_name, cl.user_phone,
+                COALESCE(cl.district, u.district) AS district,
+                cl.question, cl.language, cl.created_at
+         FROM chat_logs cl
+         LEFT JOIN users u ON (cl.user_id = u.id OR (cl.user_phone IS NOT NULL AND cl.user_phone = u.phone))
+         ${where}
+         ORDER BY cl.created_at DESC LIMIT $1 OFFSET $2`,
+        params
+      ),
+      pool.query(
+        `SELECT COUNT(*) as c
+         FROM chat_logs cl
+         LEFT JOIN users u ON (cl.user_id = u.id OR (cl.user_phone IS NOT NULL AND cl.user_phone = u.phone))
+         ${countWhere}`,
+        countParams
+      )
+    ]);
 
-  return { logs: rows, total: parseInt(countRows[0]?.c || 0, 10) };
+    return { logs: rows, total: parseInt(countRows[0]?.c || 0, 10) };
+  } catch (err) {
+    console.warn('getChatLogs join query error, falling back to direct table:', err.message);
+    const fallbackWhere = search ? `WHERE question ILIKE $3 OR user_name ILIKE $3` : '';
+    const fallbackCountWhere = search ? `WHERE question ILIKE $1 OR user_name ILIKE $1` : '';
+    const [{ rows }, { rows: countRows }] = await Promise.all([
+      pool.query(
+        `SELECT id, user_id, user_name, user_phone, question, language, created_at
+         FROM chat_logs ${fallbackWhere}
+         ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+        params
+      ),
+      pool.query(
+        `SELECT COUNT(*) as c FROM chat_logs ${fallbackCountWhere}`,
+        countParams
+      )
+    ]);
+    return { logs: rows, total: parseInt(countRows[0]?.c || 0, 10) };
+  }
 }
 
 /**
@@ -802,7 +846,7 @@ async function exportAllData() {
     const [usersRes, pricesRes, logsRes, alertsRes] = await Promise.all([
       pool.query(`SELECT id,name,phone,district,land_size,created_at,is_guest FROM users ORDER BY created_at DESC`),
       pool.query(`SELECT * FROM mandi_prices ORDER BY updated_at DESC`),
-      pool.query(`SELECT id,user_name,user_phone,question,language,created_at FROM chat_logs ORDER BY created_at DESC LIMIT 5000`),
+      pool.query(`SELECT cl.id, cl.user_name, cl.user_phone, COALESCE(cl.district, u.district) AS district, cl.question, cl.language, cl.created_at FROM chat_logs cl LEFT JOIN users u ON (cl.user_id = u.id OR (cl.user_phone IS NOT NULL AND cl.user_phone = u.phone)) ORDER BY cl.created_at DESC LIMIT 5000`),
       pool.query(`SELECT * FROM emergency_alerts ORDER BY created_at DESC`)
     ]);
     return { users: usersRes.rows, prices: pricesRes.rows, chatLogs: logsRes.rows, emergencyAlerts: alertsRes.rows, exportedAt: new Date().toISOString() };

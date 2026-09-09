@@ -849,7 +849,7 @@ export default function ChatPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getToken()}`
         },
-        body: JSON.stringify({ messages: history, language }),
+        body: JSON.stringify({ messages: history, language, district: user?.district }),
         signal: controller.signal
       });
 
@@ -955,7 +955,7 @@ export default function ChatPage() {
             res2 = await fetch(`${API_URL}/api/ai/ask`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-              body: JSON.stringify({ question: lastUserMsg, language }),
+              body: JSON.stringify({ question: lastUserMsg, language, district: user?.district }),
               signal: fallbackController.signal
             });
           } finally {
@@ -1119,6 +1119,25 @@ export default function ChatPage() {
             </button>
           ))}
         </div>
+
+        {user?.district && (
+          <span style={{
+            background: 'rgba(251,192,45,0.18)',
+            color: '#fbc02d',
+            border: '1px solid rgba(251,192,45,0.35)',
+            borderRadius: 16,
+            padding: '2px 8px',
+            fontSize: '.7rem',
+            fontWeight: 800,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 3,
+            whiteSpace: 'nowrap',
+            fontFamily: '"Noto Nastaliq Urdu", serif'
+          }}>
+            📍 {user.district.replaceAll('_', ' ')}
+          </span>
+        )}
 
         <button
           onClick={confirmClearChat}

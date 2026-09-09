@@ -41,12 +41,17 @@ function getRecentRegistrations(limit = 20) {
   return recentRegistrations.slice(0, limit);
 }
 
-function addMemChatLog({ userId, userName, userPhone, question, answer, language }) {
+function addMemChatLog({ userId, userName, userPhone, district, question, answer, language }) {
+  let userDist = district;
+  if (!userDist && userPhone && memUsers.has(userPhone)) {
+    userDist = memUsers.get(userPhone)?.district;
+  }
   memChatLogs.unshift({
     id: Date.now(),
     user_id: userId || null,
     user_name: userName || null,
     user_phone: userPhone || null,
+    district: userDist || null,
     question,
     answer: answer || null,
     language: language || 'ur',
@@ -61,12 +66,20 @@ function getMemChatLogs({ page = 1, limit = 30, search = '' } = {}) {
     const s = search.toLowerCase();
     results = memChatLogs.filter(l =>
       (l.question && l.question.toLowerCase().includes(s)) ||
-      (l.user_name && l.user_name.toLowerCase().includes(s))
+      (l.user_name && l.user_name.toLowerCase().includes(s)) ||
+      (l.district && l.district.toLowerCase().includes(s)) ||
+      (l.user_phone && l.user_phone.toLowerCase().includes(s))
     );
   }
   const total = results.length;
   const offset = (page - 1) * limit;
-  return { logs: results.slice(offset, offset + limit), total };
+  const enriched = results.slice(offset, offset + limit).map(l => {
+    if (!l.district && l.user_phone && memUsers.has(l.user_phone)) {
+      return { ...l, district: memUsers.get(l.user_phone)?.district };
+    }
+    return l;
+  });
+  return { logs: enriched, total };
 }
 
 module.exports = {
