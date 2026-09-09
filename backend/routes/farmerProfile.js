@@ -18,9 +18,9 @@ router.get('/', authenticateToken, async (req, res) => {
 // ─── PUT /api/farmer-profile — Create or update farm profile ──────────────────
 router.put('/', authenticateToken, async (req, res) => {
   try {
-    const { crops, livestock, spray_log, soil, notes } = req.body;
+    const { crops, livestock, spray_log, soil, notes, tehsil, water_source, warabandi_day, irrigation_method } = req.body;
     const profile = await db.upsertFarmerProfile(req.user.id, {
-      crops, livestock, spray_log, soil, notes
+      crops, livestock, spray_log, soil, notes, tehsil, water_source, warabandi_day, irrigation_method
     });
     if (!profile) {
       return res.status(500).json({ error: 'پروفائل محفوظ نہیں ہو سکی' });
@@ -107,6 +107,33 @@ router.post('/extract', authenticateToken, async (req, res) => {
       hasData = true;
     }
 
+    // ── Extract water source ───────────────────────────────────────────────
+    let extractedWater = null;
+    if (text.includes('نہری پانی') || text.includes('نہر کا پانی') || text.includes('نہری')) {
+      extractedWater = 'نہری';
+      hasData = true;
+    } else if (text.includes('سولر ٹیوب ویل') || text.includes('سولر پینل') || text.includes('سولر بور')) {
+      extractedWater = 'سولر ٹیوب ویل';
+      hasData = true;
+    } else if (text.includes('ڈیزل ٹیوب ویل') || text.includes('پیٹر انجن') || text.includes('پیٹر')) {
+      extractedWater = 'ڈیزل / پیٹر';
+      hasData = true;
+    } else if (text.includes('بجلی والا ٹیوب ویل') || text.includes('بجلی کا ٹیوب ویل') || text.includes('بجلی کا موٹر')) {
+      extractedWater = 'بجلی ٹیوب ویل';
+      hasData = true;
+    } else if (text.includes('بارانی') || text.includes('صرف بارش')) {
+      extractedWater = 'بارانی';
+      hasData = true;
+    }
+
+    // ── Extract warabandi day ──────────────────────────────────────────────
+    let extractedWarabandi = null;
+    const waraMatch = text.match(/(پیر|منگل|بدھ|جمعرات|جمعہ|ہفتہ|اتوار)\s*(?:کو\s*وارابندی|کو\s*پانی|کی\s*واری|کو\s*واری|وارابندی)/i);
+    if (waraMatch) {
+      extractedWarabandi = waraMatch[1];
+      hasData = true;
+    }
+
     if (!hasData) {
       return res.json({ extracted: false });
     }
@@ -118,7 +145,11 @@ router.post('/extract', authenticateToken, async (req, res) => {
       livestock: [...(existing?.livestock || [])],
       spray_log: existing?.spray_log || [],
       soil: existing?.soil || {},
-      notes: existing?.notes || ''
+      notes: existing?.notes || '',
+      tehsil: existing?.tehsil || null,
+      water_source: extractedWater || existing?.water_source || null,
+      warabandi_day: extractedWarabandi || existing?.warabandi_day || null,
+      irrigation_method: existing?.irrigation_method || null
     };
 
     // Merge crops (update if same name, else append)

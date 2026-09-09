@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { getFarmerProfile, saveFarmerProfile, clearFarmerProfile } from '../../services/api';
+import { PUNJAB_TEHSILS, WATER_SOURCES, WARABANDI_DAYS, IRRIGATION_METHODS } from '../../data/punjabTehsils';
 
 const SECTION_STYLE = {
   background: 'white',
@@ -21,6 +23,22 @@ const CHIP_STYLE = {
   color: 'var(--green-800)',
   margin: '.25rem'
 };
+
+const SELECT_CHIP_STYLE = (selected) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '.45rem .85rem',
+  borderRadius: 'var(--radius-full)',
+  border: selected ? '1.5px solid var(--green-700)' : '1px solid var(--gray-200)',
+  background: selected ? 'linear-gradient(135deg, var(--green-700), var(--green-800))' : 'var(--gray-50)',
+  color: selected ? 'white' : 'var(--gray-800)',
+  fontSize: '.82rem',
+  fontWeight: selected ? '700' : '500',
+  cursor: 'pointer',
+  margin: '.25rem .2rem',
+  transition: 'all 0.15s ease',
+  minHeight: 38
+});
 
 const ADD_BTN = {
   background: 'none',
@@ -58,6 +76,10 @@ const REMOVE_BTN = {
 };
 
 export default function MyFarm() {
+  const { user } = useAuth();
+  const district = user?.district || 'ملتان';
+  const tehsils = PUNJAB_TEHSILS[district] || PUNJAB_TEHSILS['ملتان'] || [];
+
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,9 +100,15 @@ export default function MyFarm() {
     try {
       setLoading(true);
       const data = await getFarmerProfile();
-      setProfile(data.profile || { crops: [], livestock: [], spray_log: [], soil: {}, notes: '' });
+      setProfile(data.profile || {
+        crops: [], livestock: [], spray_log: [], soil: {}, notes: '',
+        tehsil: '', water_source: '', warabandi_day: '', irrigation_method: ''
+      });
     } catch (e) {
-      setProfile({ crops: [], livestock: [], spray_log: [], soil: {}, notes: '' });
+      setProfile({
+        crops: [], livestock: [], spray_log: [], soil: {}, notes: '',
+        tehsil: '', water_source: '', warabandi_day: '', irrigation_method: ''
+      });
     } finally {
       setLoading(false);
     }
@@ -102,13 +130,38 @@ export default function MyFarm() {
   const handleClear = async () => {
     try {
       await clearFarmerProfile();
-      setProfile({ crops: [], livestock: [], spray_log: [], soil: {}, notes: '' });
+      setProfile({
+        crops: [], livestock: [], spray_log: [], soil: {}, notes: '',
+        tehsil: '', water_source: '', warabandi_day: '', irrigation_method: ''
+      });
       setShowClear(false);
     } catch (e) {
       setError('صاف نہیں ہو سکا');
     }
   };
 
+  // Water & Irrigation actions
+  const selectWaterSource = (source) => {
+    const val = profile?.water_source === source ? null : source;
+    save({ ...profile, water_source: val });
+  };
+
+  const selectWarabandi = (day) => {
+    const val = profile?.warabandi_day === day ? null : day;
+    save({ ...profile, warabandi_day: val });
+  };
+
+  const selectIrrigationMethod = (method) => {
+    const val = profile?.irrigation_method === method ? null : method;
+    save({ ...profile, irrigation_method: val });
+  };
+
+  const selectTehsil = (tehsil) => {
+    const val = profile?.tehsil === tehsil ? null : tehsil;
+    save({ ...profile, tehsil: val });
+  };
+
+  // Crop actions
   const addCrop = () => {
     if (!newCrop.name?.trim()) return;
     const updated = {
@@ -129,6 +182,7 @@ export default function MyFarm() {
     save(updated);
   };
 
+  // Livestock actions
   const addLivestock = () => {
     if (!newLivestock.type?.trim()) return;
     const updated = {
@@ -150,6 +204,7 @@ export default function MyFarm() {
     save(updated);
   };
 
+  // Spray actions
   const addSpray = () => {
     if (!newSpray.chemical?.trim()) return;
     const updated = {
@@ -184,11 +239,13 @@ export default function MyFarm() {
   const hasLivestock = profile?.livestock?.length > 0;
   const hasSprays = profile?.spray_log?.length > 0;
   const hasSoil = profile?.soil && Object.keys(profile.soil).some(k => profile.soil[k]);
-  const hasAnyData = hasCrops || hasLivestock || hasSprays || hasSoil;
+  const hasWater = profile?.water_source || profile?.warabandi_day || profile?.irrigation_method;
+  const hasTehsil = !!profile?.tehsil;
+  const hasAnyData = hasCrops || hasLivestock || hasSprays || hasSoil || hasWater || hasTehsil;
 
   return (
     <div style={{ direction: 'rtl' }}>
-      {/* Header */}
+      {/* Header Banner */}
       <div style={{
         background: 'linear-gradient(135deg, var(--green-800) 0%, #1a472a 100%)',
         borderRadius: 'var(--radius-md)',
@@ -198,9 +255,9 @@ export default function MyFarm() {
         marginBottom: '1rem'
       }}>
         <div style={{ fontSize: '2rem' }}>🌾</div>
-        <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>میرا فارم</div>
-        <div style={{ opacity: 0.8, fontSize: '.78rem', marginTop: '.2rem' }}>
-          AI آپ کی فصلوں اور مویشیوں کی معلومات یاد رکھے گا
+        <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>میرا فارم (Smart Farm Profile)</div>
+        <div style={{ opacity: 0.85, fontSize: '.78rem', marginTop: '.2rem' }}>
+          AI آپ کے رقبے، پانی، فصلوں اور مویشیوں کا مکمل ریکارڈ یاد رکھے گا
         </div>
       </div>
 
@@ -216,12 +273,9 @@ export default function MyFarm() {
           color: 'var(--green-800)'
         }}>
           <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>💡</div>
-          <strong>ابھی تک کوئی معلومات نہیں</strong>
-          <p style={{ margin: '.5rem 0 0', opacity: 0.8, fontSize: '.82rem' }}>
-            اپنی فصلیں، مویشی اور مٹی کی تفصیلات یہاں شامل کریں۔
-            چیٹ میں AI آپ کو اس کے مطابق مشورہ دے گا۔
-            <br />
-            یا بس چیٹ کریں — AI خود بخود آپ کی معلومات سیکھ لے گا! 🤖
+          <strong>ابھی تک کوئی تفصیلات شامل نہیں</strong>
+          <p style={{ margin: '.5rem 0 0', opacity: 0.85, fontSize: '.82rem' }}>
+            تحصیل، پانی کا ذریعہ اور فصلیں منتخب کریں تاکہ AI آپ کو 100% مقامی اور درست مشورہ دے سکے۔
           </p>
         </div>
       )}
@@ -238,7 +292,106 @@ export default function MyFarm() {
         </div>
       )}
 
-      {/* ── Crops Section ─────────────────────────────────────── */}
+      {/* ── 1. Tehsil & Sub-District Section ──────────────────── */}
+      <div style={SECTION_STYLE}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.4rem' }}>
+          <div>
+            <strong style={{ fontSize: '.95rem' }}>📍 علاقہ و تحصیل</strong>
+            <span style={{ fontSize: '.75rem', color: 'var(--green-700)', marginRight: '.5rem', fontWeight: 600 }}>
+              (ضلع {district})
+            </span>
+          </div>
+          {profile?.tehsil && (
+            <span style={{ fontSize: '.75rem', background: 'var(--green-100)', color: 'var(--green-800)', padding: '.15rem .5rem', borderRadius: 'var(--radius-full)', fontWeight: 700 }}>
+              ✓ {profile.tehsil}
+            </span>
+          )}
+        </div>
+        <p style={{ fontSize: '.78rem', color: 'var(--gray-500)', margin: '0 0 .6rem' }}>
+          اپنی تحصیل منتخب کریں تاکہ مقامی منڈی اور پودوں کی پیسٹ وارننگ کے مطابق الرٹس ملیں:
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.2rem' }}>
+          {tehsils.map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => selectTehsil(t)}
+              style={SELECT_CHIP_STYLE(profile?.tehsil === t)}
+            >
+              {profile?.tehsil === t ? '✓ ' : ''}{t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 2. Water & Irrigation Section ─────────────────────── */}
+      <div style={SECTION_STYLE}>
+        <div style={{ marginBottom: '.4rem' }}>
+          <strong style={{ fontSize: '.95rem' }}>💧 پانی اور آبپاشی نظام</strong>
+        </div>
+        <p style={{ fontSize: '.78rem', color: 'var(--gray-500)', margin: '0 0 .6rem' }}>
+          پانی کی قسم اور وارابندی کے مطابق AI کھاد اور آبپاشی کا بہترین وقت بتائے گا:
+        </p>
+
+        {/* 2a. Water Source */}
+        <div style={{ marginBottom: '.75rem' }}>
+          <div style={{ fontSize: '.8rem', fontWeight: 700, color: 'var(--gray-700)', marginBottom: '.3rem' }}>
+            پانی کا بنیادی ذریعہ:
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.2rem' }}>
+            {WATER_SOURCES.map(ws => (
+              <button
+                key={ws.id}
+                type="button"
+                onClick={() => selectWaterSource(ws.id)}
+                style={SELECT_CHIP_STYLE(profile?.water_source === ws.id)}
+              >
+                {ws.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 2b. Warabandi Day (Show especially if canal or mix) */}
+        <div style={{ marginBottom: '.75rem' }}>
+          <div style={{ fontSize: '.8rem', fontWeight: 700, color: 'var(--gray-700)', marginBottom: '.3rem' }}>
+            نہری پانی کی باری (وارابندی):
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.2rem' }}>
+            {WARABANDI_DAYS.map(day => (
+              <button
+                key={day}
+                type="button"
+                onClick={() => selectWarabandi(day)}
+                style={SELECT_CHIP_STYLE(profile?.warabandi_day === day)}
+              >
+                {day}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 2c. Irrigation Method */}
+        <div>
+          <div style={{ fontSize: '.8rem', fontWeight: 700, color: 'var(--gray-700)', marginBottom: '.3rem' }}>
+            پانی لگانے کا طریقہ (Irrigation Method):
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.2rem' }}>
+            {IRRIGATION_METHODS.map(im => (
+              <button
+                key={im.id}
+                type="button"
+                onClick={() => selectIrrigationMethod(im.id)}
+                style={SELECT_CHIP_STYLE(profile?.irrigation_method === im.id)}
+              >
+                {im.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. Crops Section ──────────────────────────────────── */}
       <div style={SECTION_STYLE}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
           <strong style={{ fontSize: '.95rem' }}>🌾 فصلیں</strong>
@@ -263,7 +416,7 @@ export default function MyFarm() {
             <input placeholder="فصل کا نام (مثلاً گندم)" value={newCrop.name} onChange={e => setNewCrop(p => ({ ...p, name: e.target.value }))} style={INPUT_STYLE} />
             <div style={{ display: 'flex', gap: '.4rem' }}>
               <input placeholder="رقبہ (ایکڑ)" type="number" value={newCrop.acres} onChange={e => setNewCrop(p => ({ ...p, acres: e.target.value }))} style={{ ...INPUT_STYLE, flex: 1 }} />
-              <input placeholder="قسم" value={newCrop.variety} onChange={e => setNewCrop(p => ({ ...p, variety: e.target.value }))} style={{ ...INPUT_STYLE, flex: 1 }} />
+              <input placeholder="قسم (ورائٹی)" value={newCrop.variety} onChange={e => setNewCrop(p => ({ ...p, variety: e.target.value }))} style={{ ...INPUT_STYLE, flex: 1 }} />
             </div>
             <div style={{ display: 'flex', gap: '.5rem', marginTop: '.4rem' }}>
               <button onClick={addCrop} style={{ flex: 1, background: 'var(--green-700)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '.5rem', fontWeight: 'bold', cursor: 'pointer', minHeight: 44 }}>✓ شامل کریں</button>
@@ -275,7 +428,7 @@ export default function MyFarm() {
         )}
       </div>
 
-      {/* ── Livestock Section ──────────────────────────────────── */}
+      {/* ── 4. Livestock Section ───────────────────────────────── */}
       <div style={SECTION_STYLE}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
           <strong style={{ fontSize: '.95rem' }}>🐄 مویشی</strong>
@@ -313,7 +466,7 @@ export default function MyFarm() {
         )}
       </div>
 
-      {/* ── Spray Log Section ─────────────────────────────────── */}
+      {/* ── 5. Spray Log Section ──────────────────────────────── */}
       <div style={SECTION_STYLE}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
           <strong style={{ fontSize: '.95rem' }}>💊 سپرے لاگ</strong>
@@ -356,7 +509,7 @@ export default function MyFarm() {
         )}
       </div>
 
-      {/* ── Soil Section (read from localStorage soil profile) ──── */}
+      {/* ── 6. Soil Section (read from profile) ────────────────── */}
       <div style={SECTION_STYLE}>
         <div style={{ marginBottom: '.5rem' }}>
           <strong style={{ fontSize: '.95rem' }}>🔬 مٹی پروفائل</strong>
@@ -378,7 +531,7 @@ export default function MyFarm() {
         )}
       </div>
 
-      {/* ── Info badge ──────────────────────────────────────────── */}
+      {/* ── Privacy Info badge ──────────────────────────────────── */}
       <div style={{
         background: '#eff6ff',
         border: '1px solid #bfdbfe',
@@ -392,7 +545,7 @@ export default function MyFarm() {
         🔒 آپ کا ڈیٹا صرف آپ کے اکاؤنٹ میں محفوظ ہے۔ AI صرف انہی معلومات کا حوالہ دے گا جو آپ نے شامل کی ہیں۔
       </div>
 
-      {/* ── Clear All ──────────────────────────────────────────── */}
+      {/* ── Clear All Button ────────────────────────────────────── */}
       {hasAnyData && (
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
           {showClear ? (

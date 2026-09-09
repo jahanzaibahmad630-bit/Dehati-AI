@@ -92,8 +92,16 @@ async function initDB() {
         spray_log  JSONB DEFAULT '[]'::jsonb,
         soil       JSONB DEFAULT '{}'::jsonb,
         notes      TEXT DEFAULT '',
+        tehsil     TEXT,
+        water_source TEXT,
+        warabandi_day TEXT,
+        irrigation_method TEXT,
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
+      ALTER TABLE farmer_profiles ADD COLUMN IF NOT EXISTS tehsil TEXT;
+      ALTER TABLE farmer_profiles ADD COLUMN IF NOT EXISTS water_source TEXT;
+      ALTER TABLE farmer_profiles ADD COLUMN IF NOT EXISTS warabandi_day TEXT;
+      ALTER TABLE farmer_profiles ADD COLUMN IF NOT EXISTS irrigation_method TEXT;
     `);
     console.log('✅ PostgreSQL tables ready (users + mandi_prices + chat_logs + ai_cache + farmer_profiles)');
     await ensureAuditTables();
@@ -997,15 +1005,19 @@ async function upsertFarmerProfile(userId, data) {
   if (!pool) return null;
   try {
     const { rows } = await pool.query(
-      `INSERT INTO farmer_profiles (user_id, crops, livestock, spray_log, soil, notes, updated_at)
-       VALUES ($1, $2::jsonb, $3::jsonb, $4::jsonb, $5::jsonb, $6, NOW())
+      `INSERT INTO farmer_profiles (user_id, crops, livestock, spray_log, soil, notes, tehsil, water_source, warabandi_day, irrigation_method, updated_at)
+       VALUES ($1, $2::jsonb, $3::jsonb, $4::jsonb, $5::jsonb, $6, $7, $8, $9, $10, NOW())
        ON CONFLICT (user_id) DO UPDATE SET
-         crops      = COALESCE($2::jsonb, farmer_profiles.crops),
-         livestock  = COALESCE($3::jsonb, farmer_profiles.livestock),
-         spray_log  = COALESCE($4::jsonb, farmer_profiles.spray_log),
-         soil       = COALESCE($5::jsonb, farmer_profiles.soil),
-         notes      = COALESCE($6, farmer_profiles.notes),
-         updated_at = NOW()
+         crops              = COALESCE($2::jsonb, farmer_profiles.crops),
+         livestock          = COALESCE($3::jsonb, farmer_profiles.livestock),
+         spray_log          = COALESCE($4::jsonb, farmer_profiles.spray_log),
+         soil               = COALESCE($5::jsonb, farmer_profiles.soil),
+         notes              = COALESCE($6, farmer_profiles.notes),
+         tehsil             = COALESCE($7, farmer_profiles.tehsil),
+         water_source       = COALESCE($8, farmer_profiles.water_source),
+         warabandi_day      = COALESCE($9, farmer_profiles.warabandi_day),
+         irrigation_method  = COALESCE($10, farmer_profiles.irrigation_method),
+         updated_at         = NOW()
        RETURNING *`,
       [
         userId,
@@ -1013,7 +1025,11 @@ async function upsertFarmerProfile(userId, data) {
         JSON.stringify(data.livestock || []),
         JSON.stringify(data.spray_log || []),
         JSON.stringify(data.soil || {}),
-        data.notes || ''
+        data.notes || '',
+        data.tehsil || null,
+        data.water_source || null,
+        data.warabandi_day || null,
+        data.irrigation_method || null
       ]
     );
     return rows[0] || null;
@@ -1045,6 +1061,20 @@ async function clearFarmerProfile(userId) {
 function buildFarmerContext(profile) {
   if (!profile) return '';
   const parts = [];
+
+  // Tehsil / Sub-district
+  if (profile.tehsil) {
+    parts.push('تحصیل: ' + profile.tehsil);
+  }
+
+  // Water & Irrigation
+  const waterParts = [];
+  if (profile.water_source) waterParts.push('ذریعہ: ' + profile.water_source);
+  if (profile.warabandi_day && profile.warabandi_day !== 'وارابندی نہیں') waterParts.push('وارابندی: ' + profile.warabandi_day);
+  if (profile.irrigation_method) waterParts.push('طریقہ: ' + profile.irrigation_method);
+  if (waterParts.length > 0) {
+    parts.push('آبپاشی (' + waterParts.join(' | ') + ')');
+  }
 
   // Crops
   const crops = profile.crops;
