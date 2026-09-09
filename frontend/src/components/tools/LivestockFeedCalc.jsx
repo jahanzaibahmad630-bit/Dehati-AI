@@ -16,14 +16,23 @@ const WANDA_RECIPE = [
 
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
+// ─── UVAS / BRI Pattoki Available Fodder Nutrition Profiles ────────────────
+const FODDER_TYPES = [
+  { id: 'berseem', label: '🌿 برسیم / لوسرن (سبز ہائی پروٹین 18-20% CP)', offset: -0.5, green: 35, toori: 4, silage: 10, note: 'اعلیٰ پروٹین کی وجہ سے ونڈا 0.5 کلو کم لگتا ہے (پیسوں کی بچت)' },
+  { id: 'silage',  label: '🌽 مکئی سائیلج (اعلیٰ انرجی TDN 70%)',        offset: -0.3, green: 10, toori: 3, silage: 22, note: 'اعلیٰ انرجی کی وجہ سے توڑی کی ضرورت کم اور 0.3 کلو ونڈا بچاتا ہے' },
+  { id: 'sorghum', label: '🌾 جوار / باجرہ / روڈس (موسم گرما چارہ 8-10% CP)', offset: 0.0,  green: 30, toori: 6, silage: 18, note: 'روایتی گرمیوں کا متوازن چارہ — معیاری ونڈا ضرورت' },
+  { id: 'dry_only',label: '🍂 صرف گندم توڑی / کڑب (شدید پروٹین کمی 3-4% CP)', offset: 0.8,  green: 5,  toori: 9, silage: 0,  note: '⚠️ سبز چارے کی کمی! پروٹین خسارہ پورا کرنے کیلئے 0.8 کلو اضافی ونڈا درکار ہے' },
+];
+
 export default function LivestockFeedCalc() {
   const [activeTab, setActiveTab] = useState('ration'); // 'ration' | 'recipe' | 'lactometer'
 
   // Daily Ration State
-  const [animalType, setAnimalType] = useState('buffalo'); // 'buffalo' | 'cow' | 'calf' | 'dry' | 'goat' | 'horse' | 'poultry'
-  const [milkYield, setMilkYield]   = useState('10'); // Liters
-  const [animalWeight, setAnimalWeight] = useState('200'); // kg for calf/fattening
-  const [animalCount, setAnimalCount] = useState('5');
+  const [animalType, setAnimalType]     = useState('buffalo'); // 'buffalo' | 'cow' | 'calf' | 'dry' | 'goat' | 'horse' | 'poultry'
+  const [animalWeight, setAnimalWeight] = useState('550'); // kg live weight
+  const [milkYield, setMilkYield]       = useState('10');  // Liters
+  const [fodderType, setFodderType]     = useState('berseem'); // fodder profile
+  const [animalCount, setAnimalCount]   = useState('1');
   const [rationResult, setRationResult] = useState(null);
 
   // Wanda Recipe Batch State
@@ -31,8 +40,21 @@ export default function LivestockFeedCalc() {
 
   // Lactometer Correction State (UVAS / Zeal calibration at 60°F)
   const [observedLR, setObservedLR] = useState('');
-  const [milkTempF, setMilkTempF] = useState('');
+  const [milkTempF, setMilkTempF]   = useState('');
   const [lactResult, setLactResult] = useState(null);
+
+  // Switch animal defaults dynamically
+  const handleAnimalChange = (type) => {
+    setAnimalType(type);
+    setRationResult(null);
+    if (type === 'buffalo') { setAnimalWeight('550'); setMilkYield('10'); }
+    else if (type === 'cow') { setAnimalWeight('400'); setMilkYield('12'); }
+    else if (type === 'calf') { setAnimalWeight('200'); setMilkYield('0'); }
+    else if (type === 'dry') { setAnimalWeight('500'); setMilkYield('0'); }
+    else if (type === 'goat') { setAnimalWeight('45'); setMilkYield('2'); }
+    else if (type === 'horse') { setAnimalWeight('400'); setMilkYield('0'); }
+    else if (type === 'poultry') { setAnimalWeight('1.8'); setMilkYield('0'); setAnimalCount('50'); }
+  };
 
   const calculateLactometer = () => {
     const lr = parseFloat(observedLR);
@@ -44,11 +66,12 @@ export default function LivestockFeedCalc() {
     setLactResult({ observedLR: lr, correctedLR, fatPct, fraudDiff, milkTempF: t });
   };
 
-  // Calculate Daily Ration
+  // Calculate Daily Ration with UVAS Scientific Precision
   const calculateRation = () => {
-    const count = parseInt(animalCount) || 1;
-    const milk = parseFloat(milkYield) || 0;
-    const weight = parseFloat(animalWeight) || 200;
+    const count = Math.max(1, parseInt(animalCount) || 1);
+    const milk = Math.max(0, parseFloat(milkYield) || 0);
+    const weight = Math.max(10, parseFloat(animalWeight) || (animalType === 'buffalo' ? 550 : 400));
+    const fodder = FODDER_TYPES.find(f => f.id === fodderType) || FODDER_TYPES[0];
 
     if (animalType === 'poultry') {
       // 110g feed per bird daily (UVAS Poultry Standard)
@@ -70,99 +93,155 @@ export default function LivestockFeedCalc() {
     }
 
     if (animalType === 'calf') {
-      // Growing Calf / Fattening (وزن کے حساب سے): UVAS Fattening Standard
-      // Wanda: 1.5% of body weight, Green: 5.5% of body weight, Toori: 1.2% of body weight
-      const wandaPerAnimal = weight * 0.015;
-      const greenPerAnimal = weight * 0.055;
-      const tooriPerAnimal = weight * 0.012;
+      // Growing Calf / Fattening: UVAS Fattening Standard (1.5% wanda, 5.5% green, 1.2% toori)
+      const wandaPerAnimal = +(weight * 0.015).toFixed(2);
+      const greenPerAnimal = +(weight * 0.055).toFixed(1);
+      const tooriPerAnimal = +(weight * 0.012).toFixed(1);
 
       setRationResult({
         type: 'calf',
         count,
         weight,
         totalWanda: (wandaPerAnimal * count).toFixed(1),
-        greenFodder: (greenPerAnimal * count).toFixed(1),
-        silage: (greenPerAnimal * 0.6 * count).toFixed(1),
+        perAnimalWanda: wandaPerAnimal.toFixed(2),
+        maintWanda: wandaPerAnimal.toFixed(2),
+        prodWanda: '0',
+        fodderOffset: 0,
+        fodderNote: 'بچھڑے کا روزانہ ونڈا کل جسمانی وزن کا 1.5% مقرر ہے',
+        greenFodder: (greenPerAnimal * count).toFixed(0),
+        silage: ((greenPerAnimal * 0.6) * count).toFixed(0),
         dryFodder: (tooriPerAnimal * count).toFixed(1),
-        perAnimalWanda: wandaPerAnimal.toFixed(1)
+        morningWanda: ((wandaPerAnimal * count) / 2).toFixed(1),
+        eveningWanda: ((wandaPerAnimal * count) / 2).toFixed(1),
+        waterRequirement: Math.round(weight * 0.10 * count),
       });
       return;
     }
 
     if (animalType === 'horse') {
-      // Horse / Mule / Draught Equine (400kg working animal standard)
-      const wandaPerAnimal = 3.0; // crushed barley, oats, gram
-      const greenPerAnimal = 12.0; // lucerne/green grass
-      const tooriPerAnimal = 4.5; // wheat straw
+      const wandaPerAnimal = 3.0;
+      const greenPerAnimal = 12.0;
+      const tooriPerAnimal = 4.5;
 
       setRationResult({
         type: 'horse',
         count,
+        weight,
         totalWanda: (wandaPerAnimal * count).toFixed(1),
-        greenFodder: (greenPerAnimal * count).toFixed(1),
+        perAnimalWanda: wandaPerAnimal.toFixed(1),
+        maintWanda: wandaPerAnimal.toFixed(1),
+        prodWanda: '0',
+        fodderOffset: 0,
+        fodderNote: 'محنتی گھوڑے / خچر کیلئے معیاری اناج و ونڈا خوراک',
+        greenFodder: (greenPerAnimal * count).toFixed(0),
         silage: '—',
         dryFodder: (tooriPerAnimal * count).toFixed(1),
-        perAnimalWanda: wandaPerAnimal.toFixed(1)
+        morningWanda: ((wandaPerAnimal * count) / 2).toFixed(1),
+        eveningWanda: ((wandaPerAnimal * count) / 2).toFixed(1),
+        waterRequirement: Math.round(weight * 0.09 * count),
       });
       return;
     }
 
     if (animalType === 'goat') {
-      const wandaPerAnimal = 0.4 + (milk * 0.3);
-      const greenPerAnimal = 4.0;
+      const maintPerAnimal = +((weight / 45) * 0.4).toFixed(2);
+      const prodPerAnimal = +(milk * 0.30).toFixed(2);
+      const fodderOffset = fodder.id === 'dry_only' ? 0.2 : fodder.id === 'berseem' ? -0.1 : 0;
+      const perAnimalWanda = Math.max(0.3, +(maintPerAnimal + prodPerAnimal + fodderOffset).toFixed(2));
+      const totalWanda = +(perAnimalWanda * count).toFixed(1);
+
       setRationResult({
         type: 'goat',
         count,
-        totalWanda: (wandaPerAnimal * count).toFixed(1),
-        maintenanceWanda: (0.4 * count).toFixed(1),
-        productionWanda: (milk * 0.3 * count).toFixed(1),
-        greenFodder: (greenPerAnimal * count).toFixed(1),
-        silage: (2.0 * count).toFixed(1),
-        dryFodder: (1.0 * count).toFixed(1)
+        weight,
+        milk,
+        totalWanda,
+        perAnimalWanda,
+        maintWanda: (maintPerAnimal * count).toFixed(1),
+        prodWanda: (prodPerAnimal * count).toFixed(1),
+        maintPerAnimal,
+        prodPerAnimal,
+        fodderOffset,
+        fodderNote: fodder.note,
+        fodderLabel: fodder.label,
+        greenFodder: (4.0 * count).toFixed(0),
+        silage: (2.0 * count).toFixed(0),
+        dryFodder: (1.0 * count).toFixed(0),
+        morningWanda: (totalWanda / 2).toFixed(1),
+        eveningWanda: (totalWanda / 2).toFixed(1),
+        waterRequirement: Math.round((milk * 3 + weight * 0.08) * count),
       });
       return;
     }
 
     if (animalType === 'dry') {
-      // Dry pregnant
-      const wanda = 1.5 * count;
-      const green = 25 * count;
-      const dry = 6 * count;
+      const maintPerAnimal = +((weight / 500) * 1.5).toFixed(2);
+      const fodderOffset = fodder.offset;
+      const perAnimalWanda = Math.max(0.8, +(maintPerAnimal + fodderOffset).toFixed(2));
+      const totalWanda = +(perAnimalWanda * count).toFixed(1);
+
       setRationResult({
         type: 'dry',
         count,
-        totalWanda: wanda.toFixed(1),
-        maintenanceWanda: wanda.toFixed(1),
-        productionWanda: '0',
-        greenFodder: green.toFixed(0),
+        weight,
+        milk: 0,
+        totalWanda,
+        perAnimalWanda,
+        maintWanda: (maintPerAnimal * count).toFixed(1),
+        prodWanda: '0',
+        maintPerAnimal,
+        prodPerAnimal: 0,
+        fodderOffset,
+        fodderNote: fodder.note,
+        fodderLabel: fodder.label,
+        greenFodder: (25 * count).toFixed(0),
         silage: (15 * count).toFixed(0),
-        dryFodder: dry.toFixed(0)
+        dryFodder: (6 * count).toFixed(0),
+        morningWanda: (totalWanda / 2).toFixed(1),
+        eveningWanda: (totalWanda / 2).toFixed(1),
+        waterRequirement: Math.round(weight * 0.08 * count),
       });
       return;
     }
 
-    // Nili-Ravi Buffalo vs Sahiwal Cow (UVAS Standard)
+    // Dairy Buffalo (Nili-Ravi) vs Dairy Cow (Sahiwal / Crossbred)
     const isBuffalo = animalType === 'buffalo';
-    const maintWanda = (isBuffalo ? 1.8 : 1.2) * count;
-    // Production wanda: 480g/L for buffalo (higher fat), 380g/L for cow
+    const maintPerAnimal = +(isBuffalo ? (weight / 550) * 1.8 : (weight / 400) * 1.2).toFixed(2);
+    // Production wanda: 480g/L for buffalo (6-7% fat), 380g/L for cow (3.8-4.2% fat)
     const prodRate = isBuffalo ? 0.48 : 0.38;
-    const prodWanda = (milk * prodRate) * count;
-    const totalWanda = maintWanda + prodWanda;
+    const prodPerAnimal = +(milk * prodRate).toFixed(2);
+    const fodderOffset = fodder.offset;
 
-    const greenFodder = (isBuffalo ? 30 : 25) * count;
-    const silage = (isBuffalo ? 18 : 15) * count;
-    const dryFodder = (isBuffalo ? 6 : 5) * count;
+    // Net per-animal wanda combining maintenance, milk production, and fodder offset
+    const perAnimalWanda = Math.max(1.0, +(maintPerAnimal + prodPerAnimal + fodderOffset).toFixed(2));
+    const totalWanda = +(perAnimalWanda * count).toFixed(1);
+
+    const greenFodder = Math.round((fodder.green * (weight / (isBuffalo ? 550 : 400))) * count);
+    const dryFodder = Math.round((fodder.toori * (weight / (isBuffalo ? 550 : 400))) * count);
+    const silage = Math.round((fodder.silage * (weight / (isBuffalo ? 550 : 400))) * count);
+    const waterRequirement = Math.round((milk * 3.5 + weight * 0.08) * count);
 
     setRationResult({
       type: animalType,
       count,
       milk,
-      maintWanda: maintWanda.toFixed(1),
-      prodWanda: prodWanda.toFixed(1),
-      totalWanda: totalWanda.toFixed(1),
-      greenFodder: greenFodder.toFixed(0),
-      silage: silage.toFixed(0),
-      dryFodder: dryFodder.toFixed(0),
+      weight,
+      perAnimalWanda,
+      maintWanda: (maintPerAnimal * count).toFixed(1),
+      prodWanda: (prodPerAnimal * count).toFixed(1),
+      maintPerAnimal,
+      prodPerAnimal,
+      fodderOffset,
+      fodderLabel: fodder.label,
+      fodderNote: fodder.note,
+      totalWanda,
+      greenFodder,
+      silage,
+      dryFodder,
+      morningWanda: (totalWanda / 2).toFixed(1),
+      eveningWanda: (totalWanda / 2).toFixed(1),
+      waterRequirement,
+      dryMatterNeeded: (weight * 0.03).toFixed(1),
     });
   };
 
@@ -236,7 +315,7 @@ export default function LivestockFeedCalc() {
                 { id: 'poultry', label: 'دیسی مرغی', icon: '🐔' },
               ].map(a => (
                 <button key={a.id} id={`feed-type-${a.id}`}
-                  onClick={() => { setAnimalType(a.id); setRationResult(null); }}
+                  onClick={() => handleAnimalChange(a.id)}
                   style={{
                     padding: '0.6rem 0.2rem', borderRadius: 8,
                     border: `2px solid ${animalType === a.id ? '#b45309' : '#e5e7eb'}`,
@@ -252,6 +331,32 @@ export default function LivestockFeedCalc() {
             </div>
           </div>
 
+          {/* Animal Live Weight Input (except poultry) */}
+          {animalType !== 'poultry' && (
+            <div style={{ marginTop: 10 }}>
+              <label className="input-label" style={{ fontWeight: 700, marginBottom: 4, display: 'block' }}>
+                جانور کا لائیو وزن (کلو — فی جانور):
+              </label>
+              <input
+                type="number" className="input" placeholder="550"
+                value={animalWeight} min="20" max="900" step="10" dir="ltr"
+                onChange={e => { setAnimalWeight(e.target.value); setRationResult(null); }}
+                style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 8, border: '1.5px solid #d1d5db', fontSize: '1rem', fontWeight: 800, fontFamily: 'Inter' }}
+              />
+              <div style={{ fontSize: '.68rem', color: '#78350f', marginTop: 3 }}>
+                {animalType === 'buffalo'
+                  ? '💡 نیلی راوی بھینس اوسط وزن: 500 تا 650 کلو (UVAS ریسرچ)'
+                  : animalType === 'cow'
+                  ? '💡 ساہیوال گائے اوسط وزن: 350 تا 450 کلو (کراس فریزن 450 تا 600 کلو)'
+                  : animalType === 'calf'
+                  ? '💡 بچھڑا/کٹڑا وزن: 150 تا 300 کلو (Fattening گروتھ اسٹیج)'
+                  : animalType === 'goat'
+                  ? '💡 بکری اوسط وزن: 35 تا 55 کلو'
+                  : '💡 اوسط جسمانی وزن کے مطابق بنیادی زندگی کا ونڈا اور خشک مادہ (DM) طے ہوگا'}
+              </div>
+            </div>
+          )}
+
           {/* Milk Yield (for dairy buffalo/cow/goat) */}
           {(animalType === 'buffalo' || animalType === 'cow' || animalType === 'goat') && (
             <div style={{ marginTop: 10 }}>
@@ -266,28 +371,31 @@ export default function LivestockFeedCalc() {
               />
               <div style={{ fontSize: '.68rem', color: '#78350f', marginTop: 3 }}>
                 {animalType === 'buffalo'
-                  ? '💡 نیلی راوی بھینس: فی لیٹر دودھ 480 گرام ونڈا درکار ہوتا ہے (6-7% فیٹ)'
+                  ? '💡 نیلی راوی بھینس: فی لیٹر دودھ 480 گرام ونڈا درکار ہوتا ہے (6.5% تا 7% فیٹ معیار)'
                   : animalType === 'cow'
-                  ? '💡 ساہیوال گائے: فی لیٹر دودھ 380 گرام ونڈا درکار ہوتا ہے'
-                  : '💡 بکری: فی لیٹر دودھ 300 گرام ونڈا'}
+                  ? '💡 ساہیوال گائے: فی لیٹر دودھ 380 گرام ونڈا درکار ہوتا ہے (3.8% تا 4.2% فیٹ)'
+                  : '💡 بکری: فی لیٹر دودھ 300 گرام ونڈا درکار ہوتا ہے'}
               </div>
             </div>
           )}
 
-          {/* Calf Weight (for growing calf/fattening) */}
-          {animalType === 'calf' && (
+          {/* Fodder Selection (for ruminants) */}
+          {animalType !== 'poultry' && animalType !== 'horse' && (
             <div style={{ marginTop: 10 }}>
               <label className="input-label" style={{ fontWeight: 700, marginBottom: 4, display: 'block' }}>
-                بچھڑے / کٹڑے کا اوسط وزن (کلو — فی جانور):
+                فارم پر دستیاب چارے کی قسم منتخب کریں:
               </label>
-              <input
-                type="number" className="input" placeholder="200"
-                value={animalWeight} min="50" max="600" step="10" dir="ltr"
-                onChange={e => { setAnimalWeight(e.target.value); setRationResult(null); }}
-                style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 8, border: '1.5px solid #d1d5db', fontSize: '1rem', fontWeight: 800, fontFamily: 'Inter' }}
-              />
-              <div style={{ fontSize: '.68rem', color: '#78350f', marginTop: 3 }}>
-                💡 گوشت و نشوونما (Fattening): وزن کا 1.5% گروور ونڈا، 5.5% سبز چارہ، اور 1.2% گندم توڑی حساب ہوتا ہے
+              <select
+                value={fodderType}
+                onChange={e => { setFodderType(e.target.value); setRationResult(null); }}
+                style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 8, border: '1.5px solid #d1d5db', fontSize: '.84rem', fontWeight: 700, background: 'white', fontFamily: 'Inter, sans-serif' }}
+              >
+                {FODDER_TYPES.map(f => (
+                  <option key={f.id} value={f.id}>{f.label}</option>
+                ))}
+              </select>
+              <div style={{ fontSize: '.68rem', color: '#047857', marginTop: 3 }}>
+                💡 {FODDER_TYPES.find(f => f.id === fodderType)?.note}
               </div>
             </div>
           )}
@@ -298,7 +406,7 @@ export default function LivestockFeedCalc() {
               {animalType === 'poultry' ? 'مرغیوں / پرندوں کی تعداد:' : 'جانوروں کی تعداد:'}
             </label>
             <input
-              type="number" className="input" placeholder="5"
+              type="number" className="input" placeholder="1"
               value={animalCount} min="1" step="1" dir="ltr"
               onChange={e => { setAnimalCount(e.target.value); setRationResult(null); }}
               style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 8, border: '1.5px solid #d1d5db', fontSize: '1rem', fontWeight: 800, fontFamily: 'Inter' }}
@@ -317,7 +425,7 @@ export default function LivestockFeedCalc() {
           {rationResult && (
             <div className="animate-fade-in-up" style={{ marginTop: 14 }}>
               
-              {/* 🐔 DEDICATED POULTRY VIEW (NO COWS/HORSES FODDER!) */}
+              {/* 🐔 DEDICATED POULTRY VIEW */}
               {rationResult.isPoultry ? (
                 <div>
                   <div style={{ background: 'linear-gradient(135deg, #065f46, #047857)', borderRadius: 14, padding: '1rem', textAlign: 'center', marginBottom: 10, color: 'white' }}>
@@ -373,16 +481,75 @@ export default function LivestockFeedCalc() {
                     <div style={{ fontSize: '2.4rem', fontWeight: 900, fontFamily: 'Inter', marginTop: 2 }} dir="ltr">
                       {rationResult.totalWanda} کلو
                     </div>
-                    {rationResult.maintWanda && (
-                      <div style={{ fontSize: '.72rem', color: '#fde68a', marginTop: 2 }}>
-                        بنیادی زندگی (Maintenance): {rationResult.maintWanda} کلو | دودھ پیداوار (Production): {rationResult.prodWanda} کلو
+                    <div style={{ fontSize: '.76rem', color: '#fde68a', marginTop: 2, fontWeight: 700 }}>
+                      فی جانور روزانہ ونڈا: {rationResult.perAnimalWanda} کلو
+                    </div>
+                  </div>
+
+                  {/* 🔬 UVAS Scientific Formulation Breakdown */}
+                  {rationResult.maintPerAnimal !== undefined && (
+                    <div style={{ background: 'white', borderRadius: 12, border: '1.5px solid #fde68a', padding: '0.85rem', marginBottom: 10 }}>
+                      <div style={{ fontWeight: 800, fontSize: '.82rem', color: '#78350f', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span>🔬</span>
+                        <span>یہ مقدار کس بنیاد پر تجویز کی گئی ہے؟ (UVAS سائنسی تجزیہ)</span>
                       </div>
-                    )}
-                    {rationResult.perAnimalWanda && (
-                      <div style={{ fontSize: '.72rem', color: '#fde68a', marginTop: 2 }}>
-                        فی جانور ونڈا: <strong>{rationResult.perAnimalWanda} کلو</strong> روزانہ
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '.74rem', color: '#334155' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px dashed #e2e8f0' }}>
+                          <span>1. جسمانی بقا (Maintenance برائے {rationResult.weight} کلو وزن):</span>
+                          <strong style={{ fontFamily: 'Inter', color: '#b45309' }}>{rationResult.maintPerAnimal} کلو</strong>
+                        </div>
+                        {rationResult.milk > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px dashed #e2e8f0' }}>
+                            <span>2. دودھ پیداوار (Production برائے {rationResult.milk} لیٹر):</span>
+                            <strong style={{ fontFamily: 'Inter', color: '#15803d' }}>+{rationResult.prodPerAnimal} کلو</strong>
+                          </div>
+                        )}
+                        {rationResult.fodderOffset !== 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px dashed #e2e8f0' }}>
+                            <span>3. چارے کا اثر ({rationResult.fodderLabel?.split('(')[0]?.trim()}):</span>
+                            <strong style={{ fontFamily: 'Inter', color: rationResult.fodderOffset < 0 ? '#15803d' : '#dc2626' }}>
+                              {rationResult.fodderOffset > 0 ? `+${rationResult.fodderOffset}` : `${rationResult.fodderOffset}`} کلو
+                            </strong>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 4, fontWeight: 800, color: '#78350f', fontSize: '.82rem' }}>
+                          <span>= کل متوازن یومیہ خوراک (فی جانور):</span>
+                          <span style={{ fontFamily: 'Inter', color: '#92400e' }}>{rationResult.perAnimalWanda} کلو</span>
+                        </div>
                       </div>
-                    )}
+                      {rationResult.dryMatterNeeded && (
+                        <div style={{ marginTop: 6, fontSize: '.68rem', color: '#64748b' }}>
+                          📊 روزانہ خشک مادہ کی گنجائش (DM): <strong>{rationResult.dryMatterNeeded} کلو</strong> (وزن کا 3% معیار)
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Daily Schedule Split (Morning/Evening) & Water Intake */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 10 }}>
+                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '.6rem', textAlign: 'center' }}>
+                      <div style={{ fontSize: '.66rem', color: '#92400e', fontWeight: 700 }}>🌅 صبح کا راشن (50%)</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#b45309', fontFamily: 'Inter', marginTop: 2 }} dir="ltr">
+                        {rationResult.morningWanda} کلو
+                      </div>
+                      <div style={{ fontSize: '.6rem', color: '#a16207' }}>ہلکے نم چارے کے ساتھ</div>
+                    </div>
+
+                    <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 10, padding: '.6rem', textAlign: 'center' }}>
+                      <div style={{ fontSize: '.66rem', color: '#92400e', fontWeight: 700 }}>🌇 شام کا راشن (50%)</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#b45309', fontFamily: 'Inter', marginTop: 2 }} dir="ltr">
+                        {rationResult.eveningWanda} کلو
+                      </div>
+                      <div style={{ fontSize: '.6rem', color: '#a16207' }}>شام کے دوہنے پر</div>
+                    </div>
+
+                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '.6rem', textAlign: 'center' }}>
+                      <div style={{ fontSize: '.66rem', color: '#1e40af', fontWeight: 700 }}>💧 پانی کی ضرورت</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#1d4ed8', fontFamily: 'Inter', marginTop: 2 }} dir="ltr">
+                        {rationResult.waterRequirement} L
+                      </div>
+                      <div style={{ fontSize: '.6rem', color: '#3b82f6' }}>صاف ٹھنڈا پانی یومیہ</div>
+                    </div>
                   </div>
 
                   {/* Fodder Grid */}
@@ -429,12 +596,14 @@ export default function LivestockFeedCalc() {
                 ] : [
                   '🐄 *DehatiAI لائیوسٹاک راشن پلان — UVAS/BRI مصدقہ*',
                   `جانور: ${rationResult.type === 'buffalo' ? 'نیلی راوی بھینس' : rationResult.type === 'cow' ? 'ساہیوال/کراس گائے' : rationResult.type === 'calf' ? `بچھڑا (${rationResult.weight} کلو)` : rationResult.type === 'horse' ? 'گھوڑا / خچر' : rationResult.type === 'goat' ? 'بکری' : 'گابھن جانور'} (${rationResult.count} عدد)`,
+                  `وزن: ${rationResult.weight} کلو ${rationResult.milk > 0 ? `| دودھ: ${rationResult.milk} لیٹر` : ''}`,
                   '━━━━━━━━━━━━━━━━━',
-                  `روزانہ متوازن ونڈا: ${rationResult.totalWanda} کلو`,
-                  `سبز چارہ: ${rationResult.greenFodder} کلو`,
-                  `خشک چارہ (گندم توڑی): ${rationResult.dryFodder} کلو`,
+                  `کل روزانہ ونڈا: ${rationResult.totalWanda} کلو (فی جانور: ${rationResult.perAnimalWanda} کلو)`,
+                  `• صبح راشن: ${rationResult.morningWanda} کلو | شام راشن: ${rationResult.eveningWanda} کلو`,
+                  `سبز چارہ: ${rationResult.greenFodder} کلو | خشک چارہ (توڑی): ${rationResult.dryFodder} کلو`,
+                  `پانی کی ضرورت: ${rationResult.waterRequirement} لیٹر روزانہ`,
                   '━━━━━━━━━━━━━━━━━',
-                  '📚 ماخذ: UVAS لاہور + BRI پتوکی | 📞 0800-15000',
+                  '📚 ماخذ: UVAS لاہور + BRI پتوکی | 📞 لائیو سٹاک ہیلپ لائن: 0800-15000',
                 ];
                 window.open('https://wa.me/?text=' + encodeURIComponent(lines.join('\n')), '_blank');
               }}
