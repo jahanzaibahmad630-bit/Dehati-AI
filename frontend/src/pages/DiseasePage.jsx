@@ -139,6 +139,8 @@ export default function DiseasePage() {
   const [showCatalog, setShowCatalog] = useState(false);
 
   const fileRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
   const { isOffline } = useOffline();
 
   useEffect(() => {
@@ -432,7 +434,48 @@ export default function DiseasePage() {
           </div>
         )}
 
-        {/* Image upload area */}
+        {/* ── Official Punjab Agriculture Department Helpline & Disclaimer Banner ── */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,95,70,0.25))',
+          borderRadius: 14, padding: '10px 14px', border: '1.5px solid rgba(16,185,129,0.35)',
+          direction: 'rtl', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: '8px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '220px' }}>
+            <span style={{ fontSize: '1.5rem' }}>🏛️</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '.82rem', color: '#10b981', fontFamily: '"Noto Nastaliq Urdu", serif' }}>
+                محکمہ زراعت حکومت پنجاب — مفت کسان ہیلپ لائن
+              </div>
+              <div style={{ fontSize: '.7rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                صبح 8 تا رات 8 بجے مفت رہنمائی | زرعی ایمرجنسی و تصدیق
+              </div>
+            </div>
+          </div>
+          <a
+            href="tel:0800-17000"
+            style={{
+              background: '#10b981', color: 'white', padding: '6px 14px', borderRadius: 20,
+              textDecoration: 'none', fontWeight: 800, fontSize: '.78rem',
+              display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(16,185,129,0.4)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <span>📞</span>
+            <span>0800-17000</span>
+          </a>
+        </div>
+
+        {/* Legal & Agronomic Safety Disclaimer */}
+        <div style={{
+          background: 'rgba(245,158,11,0.08)', borderRadius: 10, padding: '8px 12px',
+          border: '1px solid rgba(245,158,11,0.25)', fontSize: '.72rem', color: '#fbbf24',
+          lineHeight: 1.5, direction: 'rtl'
+        }}>
+          ⚠️ <strong>قانونی و زرعی انتباہ:</strong> یہ AI اسکینر کسان کی ابتدائی تشخیص اور فیصلے میں معاونت (Decision Support) کیلئے ہے۔ کسی بھی زہر یا سپرے سے قبل اپنے مقامی زرعی آفیسر / فیلڈ اسسٹنٹ سے مقدار کی تصدیق لازمی کرائیں۔
+        </div>
+
+        {/* Image upload & Camera capture area */}
         <div
           className="card"
           style={{
@@ -440,7 +483,6 @@ export default function DiseasePage() {
             borderRadius: 'var(--radius-lg)', padding: '1.25rem', textAlign: 'center',
             overflow: 'hidden', position: 'relative', background: '#1E3A1E'
           }}
-          onClick={() => !imageUrl && fileRef.current?.click()}
           id="disease-upload-area"
         >
           {imageUrl ? (
@@ -448,34 +490,92 @@ export default function DiseasePage() {
               <img
                 src={imageUrl}
                 alt="فصل کی تصویر"
-                style={{ width: '100%', maxHeight: '260px', objectFit: 'cover', display: 'block' }}
+                style={{ width: '100%', maxHeight: '260px', objectFit: 'cover', display: 'block', borderRadius: 10 }}
               />
               <button
                 onClick={(e) => { e.stopPropagation(); handleRetake(); }}
                 style={{
                   position: 'absolute', top: 8, right: 8,
-                  background: 'rgba(0,0,0,0.7)', color: 'white',
-                  border: '1px solid #334155', borderRadius: 20, padding: '4px 12px',
+                  background: 'rgba(0,0,0,0.75)', color: 'white',
+                  border: '1px solid #334155', borderRadius: 20, padding: '5px 14px',
                   fontSize: '.75rem', fontWeight: 700, cursor: 'pointer'
                 }}
               >
-                🔄 دوبارہ لیں
+                🔄 دوسری تصویر لیں
               </button>
             </>
           ) : (
             <>
-              <div style={{ fontSize: '3rem', marginBottom: '.5rem' }}>📷</div>
-              <p style={{ fontWeight: 700, color: '#10b981', margin: 0 }}>پتے کی تصویر اپلوڈ کریں یا کیمرے سے لیں</p>
-              <p style={{ fontSize: '.78rem', color: '#94a3b8', marginTop: '.3rem' }}>
-                متاثرہ حصہ صاف اور روشن ہونا چاہیے
+              <div style={{ fontSize: '2.5rem', marginBottom: '.3rem' }}>🔬</div>
+              <p style={{ fontWeight: 800, color: '#10b981', margin: '0 0 .3rem', fontSize: '.95rem' }}>
+                متاثرہ پتے کی تصویر شامل کریں
               </p>
+              <p style={{ fontSize: '.76rem', color: '#94a3b8', margin: '0 0 1rem' }}>
+                کیمرے سے براہ راست تصویر لیں یا گیلری سے محفوظ شدہ تصویر منتخب کریں
+              </p>
+
+              {/* Dedicated Camera and Gallery Action Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', maxWidth: 360, margin: '0 auto' }}>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); cameraInputRef.current?.click(); }}
+                  style={{
+                    padding: '.8rem .5rem', borderRadius: 14, border: '2px solid #10b981',
+                    background: 'linear-gradient(135deg, #065f46, #047857)', color: 'white',
+                    fontWeight: 800, fontSize: '.85rem', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                    boxShadow: '0 4px 12px rgba(16,185,129,0.3)'
+                  }}
+                  id="disease-open-camera-btn"
+                >
+                  <span style={{ fontSize: '1.6rem' }}>📷</span>
+                  <span>کیمرہ کھولیں</span>
+                  <span style={{ fontSize: '.62rem', opacity: 0.8, fontFamily: 'Inter' }}>Live Camera</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); galleryInputRef.current?.click(); }}
+                  style={{
+                    padding: '.8rem .5rem', borderRadius: 14, border: '2px solid #475569',
+                    background: 'linear-gradient(135deg, #1e293b, #334155)', color: 'white',
+                    fontWeight: 800, fontSize: '.85rem', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                  }}
+                  id="disease-open-gallery-btn"
+                >
+                  <span style={{ fontSize: '1.6rem' }}>📁</span>
+                  <span>گیلری سے چنیں</span>
+                  <span style={{ fontSize: '.62rem', opacity: 0.8, fontFamily: 'Inter' }}>Photo Gallery</span>
+                </button>
+              </div>
             </>
           )}
+
+          {/* Hidden inputs: Direct Camera (capture=environment) & Gallery picker */}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+            id="disease-camera-input"
+          />
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+            id="disease-gallery-input"
+          />
           <input
             ref={fileRef}
             type="file"
             accept="image/*"
-                        onChange={handleFileChange}
+            onChange={handleFileChange}
             style={{ display: 'none' }}
             id="disease-file-input"
           />

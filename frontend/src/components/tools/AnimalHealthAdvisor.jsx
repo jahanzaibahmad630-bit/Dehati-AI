@@ -295,6 +295,60 @@ export default function AnimalHealthAdvisor() {
         </span>
       </div>
 
+      {/* ── Official Punjab Livestock Department Emergency Helpline & PVMC Disclaimer ── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0f172a, #1e293b)',
+        borderRadius: '14px', padding: '.75rem 1rem', border: '1.5px solid #38bdf8',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.6rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flex: 1, minWidth: '220px' }}>
+          <span style={{ fontSize: '1.5rem' }}>🏛️</span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '.85rem', color: '#38bdf8', fontFamily: '"Noto Nastaliq Urdu", serif' }}>
+              محکمہ لائیوسٹاک پنجاب — 24/7 مفت ویٹرنری ہیلپ لائن
+            </div>
+            <div style={{ fontSize: '.68rem', color: '#94a3b8' }}>
+              سرکاری ڈاکٹر سے مفت طبی مشورہ و ایمرجنسی کال | UVAS ایمرجنسی
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <a
+            href="tel:0800-15000"
+            style={{
+              background: '#0284c7', color: 'white', padding: '6px 12px', borderRadius: 20,
+              textDecoration: 'none', fontWeight: 800, fontSize: '.75rem',
+              display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 2px 8px rgba(2,132,199,0.4)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <span>📞</span>
+            <span>0800-15000</span>
+          </a>
+          <a
+            href="tel:1122"
+            style={{
+              background: '#dc2626', color: 'white', padding: '6px 10px', borderRadius: 20,
+              textDecoration: 'none', fontWeight: 800, fontSize: '.75rem',
+              display: 'flex', alignItems: 'center', gap: '4px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <span>🚨</span>
+            <span>1122</span>
+          </a>
+        </div>
+      </div>
+
+      {/* PVMC Legal Veterinary Disclaimer */}
+      <div style={{
+        background: '#fef2f2', borderRadius: 10, padding: '8px 12px',
+        border: '1px solid #fca5a5', fontSize: '.72rem', color: '#991b1b',
+        lineHeight: 1.5, direction: 'rtl'
+      }}>
+        ⚠️ <strong>قانونی و ویٹرنری انتباہ (PVMC ایکٹ):</strong> یہ AI سروس صرف ابتدائی گھریلو نگہداشت و فرسٹ ایڈ کیلئے ہے۔ یہ مستند ویٹرنری ڈاکٹر (DVM) کا متبادل نہیں ہے۔ تیز بخار، سانس رکنے (گل گھوٹو)، یا جان لیوا علامات میں فوری 0800-15000 پر سرکاری ڈاکٹر سے رابطہ کریں۔
+      </div>
+
       {/* ── Top Mode Switcher: Clinic vs Breeding vs Emergency vs Scan ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
         <button

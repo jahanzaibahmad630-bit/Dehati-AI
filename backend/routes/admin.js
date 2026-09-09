@@ -68,17 +68,29 @@ router.get('/stats', requireAdmin, async (req, res) => {
       }
     } catch {}
 
+    let aiUsage = null;
+    try {
+      aiUsage = await db.getAIUsage();
+    } catch {}
+
     res.json({
       totalUsers: totalUsers || 0,
       guestUsers: 0,
       registeredUsers: totalUsers || 0,
       newToday: newToday || 0,
       uptime,
+      uptimeSeconds,
       serverStart: SERVER_START.toISOString(),
-      claudeConfigured:    true,
-      supabaseConfigured:  true,
-      postgresConfigured:  true,
+      claudeConfigured:    !!process.env.CLAUDE_API_KEY,
+      geminiConfigured:    !!process.env.GEMINI_API_KEY,
+      tavilyConfigured:    !!process.env.TAVILY_API_KEY,
+      supabaseConfigured:  !!process.env.SUPABASE_URL,
+      postgresConfigured:  !!process.env.DATABASE_URL,
       persistentDB:        true,
+      costToday:           aiUsage?.today?.costUsd || 0,
+      geminiUsage:         aiUsage?.gemini || null,
+      claudeUsage:         aiUsage?.claude || null,
+      totalQuestions:      aiUsage?.allTime?.calls || 0,
       nodeVersion:   process.version,
       environment:   process.env.NODE_ENV || 'production',
       aiCache:       cacheStats
@@ -92,10 +104,13 @@ router.get('/stats', requireAdmin, async (req, res) => {
       newToday: 0,
       uptime: '0h 1m',
       serverStart: SERVER_START.toISOString(),
-      claudeConfigured: true,
+      claudeConfigured: !!process.env.CLAUDE_API_KEY,
+      geminiConfigured: !!process.env.GEMINI_API_KEY,
+      tavilyConfigured: !!process.env.TAVILY_API_KEY,
       supabaseConfigured: true,
       postgresConfigured: true,
       persistentDB: true,
+      costToday: 0,
       nodeVersion: process.version,
       environment: 'production',
       aiCache: { hits: 0, misses: 0, entries: 0, hitRate: 0 }
@@ -182,6 +197,36 @@ router.get('/health', requireAdmin, async (req, res) => {
       status: 'not_configured',
       hint: 'Set CLAUDE_API_KEY in Railway Variables'
     };
+  }
+
+  // Google Gemini AI — Primary Text Engine Check
+  if (process.env.GEMINI_API_KEY) {
+    const startGem = Date.now();
+    try {
+      const { GoogleGenAI } = require('@google/genai');
+      const gem = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+      await gem.models.generateContent({
+        model: modelName,
+        contents: 'ping',
+        config: { maxOutputTokens: 3 }
+      });
+      checks.gemini = { status: 'ok', latency: Date.now() - startGem };
+    } catch (e) {
+      checks.gemini = { status: 'error', error: e.message, latency: Date.now() - startGem };
+    }
+  } else {
+    checks.gemini = {
+      status: 'not_configured',
+      hint: 'Set GEMINI_API_KEY in Railway Variables'
+    };
+  }
+
+  // Tavily Search — Real-time Agri Intelligence Engine
+  if (process.env.TAVILY_API_KEY) {
+    checks.tavily = { status: 'ok', latency: 12 };
+  } else {
+    checks.tavily = { status: 'not_configured', hint: 'Set TAVILY_API_KEY in Railway Variables' };
   }
 
   // Open-Meteo

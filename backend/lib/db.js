@@ -558,6 +558,8 @@ async function ensureAuditTables() {
       CREATE TABLE IF NOT EXISTS ai_usage_stats (
         id           BIGSERIAL PRIMARY KEY,
         endpoint     TEXT NOT NULL,
+        provider     TEXT NOT NULL DEFAULT 'claude',
+        model        TEXT,
         tokens_in    INTEGER DEFAULT 0,
         tokens_out   INTEGER DEFAULT 0,
         cache_tokens INTEGER DEFAULT 0,
@@ -565,6 +567,8 @@ async function ensureAuditTables() {
         created_at   TIMESTAMPTZ DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS ai_usage_created_idx ON ai_usage_stats(created_at DESC);
+      ALTER TABLE ai_usage_stats ADD COLUMN IF NOT EXISTS provider TEXT DEFAULT 'claude';
+      ALTER TABLE ai_usage_stats ADD COLUMN IF NOT EXISTS model TEXT;
 
       CREATE TABLE IF NOT EXISTS emergency_alerts (
         id               BIGSERIAL PRIMARY KEY,
@@ -607,34 +611,130 @@ async function getAuditLogs({ page = 1, limit = 30 } = {}) {
   } catch (err) { return { logs: [], total: 0 }; }
 }
 
-async function logAIUsage({ endpoint, tokensIn = 0, tokensOut = 0, cacheTokens = 0 }) {
-  if (!pool) return;
-  // Claude Sonnet 4.x pricing (USD per million tokens)
-  const costIn    = (tokensIn    / 1_000_000) * 3.00;
-  const costOut   = (tokensOut   / 1_000_000) * 15.00;
-  const costCache = (cacheTokens / 1_000_000) * 0.30;
-  const costUsd   = parseFloat((costIn + costOut + costCache).toFixed(6));
-  try {
-    await pool.query(
-      `INSERT INTO ai_usage_stats (endpoint, tokens_in, tokens_out, cache_tokens, cost_usd)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [endpoint, tokensIn, tokensOut, cacheTokens, costUsd]
-    );
-  } catch (err) { console.warn('logAIUsage error:', err.message); }
+// ─── AI Usage In-Memory Ring Buffer (Fallback when Postgres is not provisioned) ──
+const memAIUsage = [];
+
+async function logAIUsage({ endpoint, provider = 'claude', model = null, tokensIn = 0, tokensOut = 0, cacheTokens = 0 }) {
+  const isGemini = provider === 'gemini' || (endpoint && endpoint.includes('gemini'));
+  const actualProvider = isGemini ? 'gemini' : 'claude';
+  const actualModel = model || (isGemini ? 'gemini-flash' : 'claude-sonnet-4-5');
+
+  let costUsd = 0;
+  if (isGemini) {
+    // Gemini 2.0 / 3.6 Flash pricing: $0.10 / M in, $0.40 / M out
+    const costIn  = (tokensIn  / 1_000_000) * 0.10;
+    const costOut = (tokensOut / 1_000_000) * 0.40;
+    costUsd = parseFloat((costIn + costOut).toFixed(6));
+  } else {
+    // Claude Sonnet 4.x pricing: $3.00 / M in, $15.00 / M out, $0.30 / M cache
+    const costIn    = (tokensIn    / 1_000_000) * 3.00;
+    const costOut   = (tokensOut   / 1_000_000) * 15.00;
+    const costCache = (cacheTokens / 1_000_000) * 0.30;
+    costUsd = parseFloat((costIn + costOut + costCache).toFixed(6));
+  }
+
+  // Always buffer in memory
+  const entry = {
+    id: Date.now() + Math.random(),
+    endpoint,
+    provider: actualProvider,
+    model: actualModel,
+    tokens_in: tokensIn,
+    tokens_out: tokensOut,
+    cache_tokens: cacheTokens,
+    cost_usd: costUsd,
+    created_at: new Date().toISOString()
+  };
+  memAIUsage.unshift(entry);
+  if (memAIUsage.length > 500) memAIUsage.pop();
+
+  // If Postgres pool available, persist to DB
+  if (pool) {
+    try {
+      await pool.query(
+        `INSERT INTO ai_usage_stats (endpoint, provider, model, tokens_in, tokens_out, cache_tokens, cost_usd)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [endpoint, actualProvider, actualModel, tokensIn, tokensOut, cacheTokens, costUsd]
+      );
+    } catch (err) {
+      console.warn('logAIUsage Postgres insert warning:', err.message);
+    }
+  }
 }
 
 async function getAIUsage() {
-  if (!pool) return { today: null, month: null, allTime: null, recent: [] };
-  try {
-    const [todayRes, monthRes, allTimeRes, recentRes] = await Promise.all([
-      pool.query(`SELECT COALESCE(SUM(tokens_in),0) as tin, COALESCE(SUM(tokens_out),0) as tout, COALESCE(SUM(cache_tokens),0) as tc, COALESCE(SUM(cost_usd),0) as cost, COUNT(*) as calls FROM ai_usage_stats WHERE created_at >= NOW() - INTERVAL '24 hours'`),
-      pool.query(`SELECT COALESCE(SUM(tokens_in),0) as tin, COALESCE(SUM(tokens_out),0) as tout, COALESCE(SUM(cache_tokens),0) as tc, COALESCE(SUM(cost_usd),0) as cost, COUNT(*) as calls FROM ai_usage_stats WHERE created_at >= NOW() - INTERVAL '30 days'`),
-      pool.query(`SELECT COALESCE(SUM(tokens_in),0) as tin, COALESCE(SUM(tokens_out),0) as tout, COALESCE(SUM(cache_tokens),0) as tc, COALESCE(SUM(cost_usd),0) as cost, COUNT(*) as calls FROM ai_usage_stats`),
-      pool.query(`SELECT endpoint, tokens_in, tokens_out, cache_tokens, cost_usd, created_at FROM ai_usage_stats ORDER BY created_at DESC LIMIT 20`)
-    ]);
-    const fmt = (r) => ({ tokensIn: parseInt(r.tin), tokensOut: parseInt(r.tout), cacheTokens: parseInt(r.tc), costUsd: parseFloat(parseFloat(r.cost).toFixed(4)), calls: parseInt(r.calls) });
-    return { today: fmt(todayRes.rows[0]), month: fmt(monthRes.rows[0]), allTime: fmt(allTimeRes.rows[0]), recent: recentRes.rows };
-  } catch (err) { console.warn('getAIUsage error:', err.message); return { today: null, month: null, allTime: null, recent: [] }; }
+  // Helper to aggregate memory usage
+  const aggregateMem = (sinceMs) => {
+    const items = sinceMs ? memAIUsage.filter(m => new Date(m.created_at).getTime() >= sinceMs) : memAIUsage;
+    let tin = 0, tout = 0, tc = 0, cost = 0;
+    items.forEach(i => {
+      tin += Number(i.tokens_in || 0);
+      tout += Number(i.tokens_out || 0);
+      tc += Number(i.cache_tokens || 0);
+      cost += Number(i.cost_usd || 0);
+    });
+    return { tokensIn: tin, tokensOut: tout, cacheTokens: tc, costUsd: parseFloat(cost.toFixed(4)), calls: items.length };
+  };
+
+  const getProviderMem = (prov) => {
+    const items = memAIUsage.filter(m => m.provider === prov);
+    let tin = 0, tout = 0, tc = 0, cost = 0;
+    items.forEach(i => {
+      tin += Number(i.tokens_in || 0);
+      tout += Number(i.tokens_out || 0);
+      tc += Number(i.cache_tokens || 0);
+      cost += Number(i.cost_usd || 0);
+    });
+    return { tokensIn: tin, tokensOut: tout, cacheTokens: tc, costUsd: parseFloat(cost.toFixed(4)), calls: items.length };
+  };
+
+  if (pool) {
+    try {
+      const now = Date.now();
+      const [todayRes, monthRes, allTimeRes, recentRes, providerRes] = await Promise.all([
+        pool.query(`SELECT COALESCE(SUM(tokens_in),0) as tin, COALESCE(SUM(tokens_out),0) as tout, COALESCE(SUM(cache_tokens),0) as tc, COALESCE(SUM(cost_usd),0) as cost, COUNT(*) as calls FROM ai_usage_stats WHERE created_at >= NOW() - INTERVAL '24 hours'`),
+        pool.query(`SELECT COALESCE(SUM(tokens_in),0) as tin, COALESCE(SUM(tokens_out),0) as tout, COALESCE(SUM(cache_tokens),0) as tc, COALESCE(SUM(cost_usd),0) as cost, COUNT(*) as calls FROM ai_usage_stats WHERE created_at >= NOW() - INTERVAL '30 days'`),
+        pool.query(`SELECT COALESCE(SUM(tokens_in),0) as tin, COALESCE(SUM(tokens_out),0) as tout, COALESCE(SUM(cache_tokens),0) as tc, COALESCE(SUM(cost_usd),0) as cost, COUNT(*) as calls FROM ai_usage_stats`),
+        pool.query(`SELECT endpoint, COALESCE(provider, 'claude') as provider, model, tokens_in, tokens_out, cache_tokens, cost_usd, created_at FROM ai_usage_stats ORDER BY created_at DESC LIMIT 30`),
+        pool.query(`SELECT COALESCE(provider, 'claude') as provider, COALESCE(SUM(tokens_in),0) as tin, COALESCE(SUM(tokens_out),0) as tout, COALESCE(SUM(cache_tokens),0) as tc, COALESCE(SUM(cost_usd),0) as cost, COUNT(*) as calls FROM ai_usage_stats GROUP BY provider`)
+      ]);
+
+      const fmt = (r) => ({
+        tokensIn: parseInt(r?.tin || 0),
+        tokensOut: parseInt(r?.tout || 0),
+        cacheTokens: parseInt(r?.tc || 0),
+        costUsd: parseFloat(parseFloat(r?.cost || 0).toFixed(4)),
+        calls: parseInt(r?.calls || 0)
+      });
+
+      const provMap = {};
+      (providerRes.rows || []).forEach(r => {
+        provMap[r.provider] = fmt(r);
+      });
+
+      return {
+        today: fmt(todayRes.rows[0]),
+        month: fmt(monthRes.rows[0]),
+        allTime: fmt(allTimeRes.rows[0]),
+        gemini: provMap['gemini'] || { tokensIn: 0, tokensOut: 0, cacheTokens: 0, costUsd: 0, calls: 0 },
+        claude: provMap['claude'] || { tokensIn: 0, tokensOut: 0, cacheTokens: 0, costUsd: 0, calls: 0 },
+        recent: recentRes.rows
+      };
+    } catch (err) {
+      console.warn('getAIUsage DB query failed, using memory fallback:', err.message);
+    }
+  }
+
+  // In-memory fallback (active if Postgres not set up or table empty)
+  const now = Date.now();
+  return {
+    today: aggregateMem(now - 24 * 3600 * 1000),
+    month: aggregateMem(now - 30 * 24 * 3600 * 1000),
+    allTime: aggregateMem(null),
+    gemini: getProviderMem('gemini'),
+    claude: getProviderMem('claude'),
+    recent: memAIUsage.slice(0, 30)
+  };
 }
 
 async function createEmergencyAlert({ title, body, severity = 'INFO', targetDistricts = [], expiresAt = null, createdBy = 'admin' }) {

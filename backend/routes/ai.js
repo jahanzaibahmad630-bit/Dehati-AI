@@ -425,6 +425,8 @@ async function geminiAsk(prompt, systemPrompt, maxTokens = 700) {
     const text = response.text || '';
     db.logAIUsage({
       endpoint: 'gemini_ask',
+      provider: 'gemini',
+      model: GEMINI_MODEL,
       tokensIn:  response.usageMetadata?.promptTokenCount || 0,
       tokensOut: response.usageMetadata?.candidatesTokenCount || 0,
       cacheTokens: 0
@@ -669,6 +671,17 @@ Respond strictly in valid JSON:
             ]
           }]
         });
+
+        if (response?.usage) {
+          db.logAIUsage({
+            endpoint: 'disease_vision',
+            provider: 'claude',
+            model: CLAUDE_MODEL_VIS,
+            tokensIn:    response.usage.input_tokens || 0,
+            tokensOut:   response.usage.output_tokens || 0,
+            cacheTokens: response.usage.cache_read_input_tokens || 0
+          }).catch(() => {});
+        }
 
         const rawText = response.content?.[0]?.text ?? '';
         let parsed    = null;
@@ -1039,6 +1052,18 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
             res.write(`data: ${JSON.stringify({ text })}\n\n`);
           }
         }
+        if (fullReply) {
+          const promptEst = Math.ceil(((chatSystemText?.length || 0) + (lastUserMsg?.content?.length || 0)) / 3.5);
+          const outEst = Math.ceil(fullReply.length / 3.5);
+          db.logAIUsage({
+            endpoint: 'chat_stream',
+            provider: 'gemini',
+            model: GEMINI_MODEL,
+            tokensIn: promptEst,
+            tokensOut: outEst,
+            cacheTokens: 0
+          }).catch(() => {});
+        }
       } catch (geminiErr) {
         console.warn('[Gemini Stream] Error — falling back to Claude:', geminiErr.message);
         if (claude) {
@@ -1050,7 +1075,7 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
           fallbackStream.on('text', (text) => {
             if (text) { fullReply += text; res.write(`data: ${JSON.stringify({ text })}\n\n`); }
           });
-          await fallbackStream.finalMessage().catch(() => {});
+          finalMsg = await fallbackStream.finalMessage().catch(() => null);
         }
       }
     } else if (claude) {
@@ -1083,11 +1108,12 @@ router.post('/chat/stream', aiLimiter, optionalAuth, async (req, res) => {
 
     finalMsg = await stream.finalMessage().catch(() => null);
     } // end else-if(claude)
-    // Non-blocking token tracking (fire and forget)
+    // Non-blocking token tracking for Claude (fire and forget)
     if (finalMsg?.usage) {
-      const db = require('../lib/db');
       db.logAIUsage({
-        endpoint: 'ask',
+        endpoint: 'chat_stream',
+        provider: 'claude',
+        model: CLAUDE_MODEL,
         tokensIn:    finalMsg.usage.input_tokens || 0,
         tokensOut:   finalMsg.usage.output_tokens || 0,
         cacheTokens: finalMsg.usage.cache_read_input_tokens || 0
@@ -1300,6 +1326,17 @@ ${weightNote}
     });
 
     const rawText = response.content?.[0]?.text || '';
+
+    if (response?.usage) {
+      db.logAIUsage({
+        endpoint: 'animal_vision',
+        provider: 'claude',
+        model: CLAUDE_MODEL_VIS,
+        tokensIn:    response.usage.input_tokens || 0,
+        tokensOut:   response.usage.output_tokens || 0,
+        cacheTokens: response.usage.cache_read_input_tokens || 0
+      }).catch(() => {});
+    }
 
     // ── Try to parse JSON from response ─────────────────────────────────────
     let scanResult = null;

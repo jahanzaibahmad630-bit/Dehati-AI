@@ -210,6 +210,7 @@ const PUNJAB_DISTRICTS = ['lahore','faisalabad','multan','rawalpindi','gujranwal
 function AIUsageTab({ dark }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [providerFilter, setProviderFilter] = useState('all'); // 'all' | 'gemini' | 'claude'
   
   const load = async () => {
     setLoading(true);
@@ -222,72 +223,261 @@ function AIUsageTab({ dark }) {
   };
   
   useEffect(() => { load(); }, []);
+
+  const cardBg = dark ? '#162410' : '#f8fafc';
+  const borderColor = dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
+  const textPrimary = dark ? '#F1F5F9' : '#111827';
+  const textSecondary = dark ? '#94A3B8' : '#64748B';
   
   const card = (label, val, sub, color) => (
-    <div style={{ background: dark ? '#162410' : '#f8fafc', borderRadius: 12, padding: '1rem', border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}` }}>
-      <div style={{ fontSize: '.75rem', color: dark ? '#94A3B8' : '#6b7280', fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: color || (dark ? '#F1F5F9' : '#111827'), lineHeight: 1.2 }}>{val ?? '—'}</div>
-      {sub && <div style={{ fontSize: '.72rem', color: dark ? '#64748B' : '#9ca3af', marginTop: 2 }}>{sub}</div>}
+    <div style={{ background: cardBg, borderRadius: 12, padding: '1rem', border: `1px solid ${borderColor}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
+      <div style={{ fontSize: '.75rem', color: textSecondary, fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: '1.4rem', fontWeight: 800, color: color || textPrimary, lineHeight: 1.2, marginTop: 4 }}>{val ?? '—'}</div>
+      {sub && <div style={{ fontSize: '.72rem', color: dark ? '#64748B' : '#9ca3af', marginTop: 3 }}>{sub}</div>}
     </div>
   );
   
-  const Section = ({ title, period }) => period ? (
-    <div>
-      <h3 style={{ fontWeight: 700, color: dark ? '#94A3B8' : '#374151', fontSize: '.875rem', marginBottom: '.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '.75rem', marginBottom: '1.5rem' }}>
-        {card('API Calls', period.calls, 'Total requests', '#10B981')}
-        {card('Input Tokens', period.tokensIn?.toLocaleString(), 'Farmer questions', '#3B82F6')}
-        {card('Output Tokens', period.tokensOut?.toLocaleString(), 'AI responses', '#8B5CF6')}
-        {card('Cache Tokens', period.cacheTokens?.toLocaleString(), 'Prompt cache reads', '#F59E0B')}
-        {card('Cost (USD)', `$${period.costUsd?.toFixed(4)}`, 'Estimated spend', '#EF4444')}
-      </div>
-    </div>
-  ) : null;
+  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: textSecondary }}>Loading AI usage data...</div>;
   
-  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: dark ? '#64748B' : '#9ca3af' }}>Loading AI usage data...</div>;
-  
-  if (!data?.today) return (
-    <div style={{ background: dark ? '#1E3A1E' : '#fffbeb', border: '1px solid #fbbf24', borderRadius: 12, padding: '1.5rem', color: '#92400e' }}>
-      <div style={{ fontWeight: 700 }}>⚠️ AI Usage tracking requires PostgreSQL</div>
-      <div style={{ fontSize: '.875rem', marginTop: '.5rem' }}>Add a Railway PostgreSQL plugin to enable token and cost tracking.</div>
-    </div>
-  );
+  const gemini = data?.gemini || { calls: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+  const claude = data?.claude || { calls: 0, tokensIn: 0, tokensOut: 0, cacheTokens: 0, costUsd: 0 };
+  const allTime = data?.allTime || { calls: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+  const totalCostUsd = (allTime.costUsd || (gemini.costUsd + claude.costUsd) || 0);
+  const totalCostPkr = (totalCostUsd * 280).toFixed(2);
+
+  const filteredRecent = (data?.recent || []).filter(r => {
+    if (providerFilter === 'gemini') return r.provider === 'gemini' || r.endpoint?.includes('gemini');
+    if (providerFilter === 'claude') return r.provider !== 'gemini' && !r.endpoint?.includes('gemini');
+    return true;
+  });
   
   return (
-    <div>
-      <div style={{ background: 'linear-gradient(135deg, #065F46, #10B981)', borderRadius: 16, padding: '1.25rem', color: 'white', marginBottom: '1.5rem' }}>
-        <div style={{ fontSize: '.75rem', opacity: .8, fontWeight: 600 }}>ALL TIME TOTAL SPEND</div>
-        <div style={{ fontSize: '2.5rem', fontWeight: 900, lineHeight: 1 }}>${data.allTime?.costUsd?.toFixed(4) ?? '0.0000'}</div>
-        <div style={{ fontSize: '.8rem', opacity: .75 }}>Based on Anthropic Claude Sonnet 4.x pricing ($3/$15 per M tokens)</div>
-      </div>
-      <Section title="Today (Last 24h)" period={data.today} />
-      <Section title="This Month (30 Days)" period={data.month} />
-      {data.recent?.length > 0 && (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+      {/* ── Total Spend & AI Engine Status Banner ── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #065F46 0%, #047857 50%, #0f766e 100%)',
+        borderRadius: 18, padding: '1.5rem', color: 'white',
+        boxShadow: '0 8px 24px rgba(6,95,70,0.25)', display: 'flex', justifyContent: 'space-between',
+        alignItems: 'center', flexWrap: 'wrap', gap: '1rem'
+      }}>
         <div>
-          <h3 style={{ fontWeight: 700, color: dark ? '#94A3B8' : '#374151', fontSize: '.875rem', marginBottom: '.75rem', textTransform: 'uppercase' }}>Recent API Calls</h3>
-          <div style={{ background: dark ? '#1E3A1E' : 'white', borderRadius: 12, overflow: 'hidden', border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}` }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div style={{ fontSize: '.78rem', opacity: .85, fontWeight: 700, letterSpacing: '0.05em' }}>
+            TOTAL AI INFRASTRUCTURE SPEND (ALL TIME)
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: 4 }}>
+            <span style={{ fontSize: '2.5rem', fontWeight: 900, lineHeight: 1 }}>
+              ${totalCostUsd.toFixed(4)}
+            </span>
+            <span style={{ fontSize: '1.1rem', opacity: .85, fontWeight: 700 }}>
+              ≈ ₨{Number(totalCostPkr).toLocaleString()} PKR
+            </span>
+          </div>
+          <div style={{ fontSize: '.8rem', opacity: .8, marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <span>🤖 <strong>Gemini Flash:</strong> Text, Chat & Fast Advice</span>
+            <span>👁️ <strong>Claude Sonnet:</strong> Multimodal Vision & Scans</span>
+          </div>
+        </div>
+
+        <button
+          onClick={load}
+          style={{
+            background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
+            color: 'white', padding: '8px 16px', borderRadius: 12, cursor: 'pointer',
+            fontSize: '.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6
+          }}
+        >
+          🔄 Refresh Stats
+        </button>
+      </div>
+
+      {/* ── Dual Engine Side-by-Side Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem' }}>
+
+        {/* 🤖 Google Gemini AI Engine Card */}
+        <div style={{
+          background: dark ? '#162410' : 'white', borderRadius: 16, padding: '1.25rem',
+          border: '2px solid #3b82f6', boxShadow: '0 4px 16px rgba(59,130,246,0.1)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '1.5rem' }}>🤖</span>
+                <span style={{ fontWeight: 800, fontSize: '1.05rem', color: textPrimary }}>Google Gemini AI</span>
+              </div>
+              <div style={{ fontSize: '.75rem', color: '#3b82f6', fontWeight: 700, marginTop: 2 }}>
+                Primary Text Engine (Ask, Chat, Fertilizer, Livestock)
+              </div>
+            </div>
+            <span style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: '.68rem', fontWeight: 800, padding: '3px 8px', borderRadius: 20 }}>
+              $0.10 / $0.40 per 1M
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+            {card('API Requests', gemini.calls?.toLocaleString() || 0, 'Total calls', '#3b82f6')}
+            {card('Total Cost', `$${gemini.costUsd?.toFixed(4) || '0.0000'}`, `≈ ₨${((gemini.costUsd || 0)*280).toFixed(2)}`, '#10b981')}
+            {card('Prompt Tokens (In)', gemini.tokensIn?.toLocaleString() || 0, 'Farmer input tokens', textPrimary)}
+            {card('Response Tokens (Out)', gemini.tokensOut?.toLocaleString() || 0, 'AI generated tokens', textPrimary)}
+          </div>
+        </div>
+
+        {/* 👁️ Anthropic Claude AI Engine Card */}
+        <div style={{
+          background: dark ? '#162410' : 'white', borderRadius: 16, padding: '1.25rem',
+          border: '2px solid #8b5cf6', boxShadow: '0 4px 16px rgba(139,92,246,0.1)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '1.5rem' }}>👁️</span>
+                <span style={{ fontWeight: 800, fontSize: '1.05rem', color: textPrimary }}>Anthropic Claude AI</span>
+              </div>
+              <div style={{ fontSize: '.75rem', color: '#8b5cf6', fontWeight: 700, marginTop: 2 }}>
+                Multimodal Vision Engine (Crop Disease & Animal Camera Scan)
+              </div>
+            </div>
+            <span style={{ background: '#ede9fe', color: '#6d28d9', fontSize: '.68rem', fontWeight: 800, padding: '3px 8px', borderRadius: 20 }}>
+              $3.00 / $15.00 per 1M
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+            {card('Vision Requests', claude.calls?.toLocaleString() || 0, 'Total vision calls', '#8b5cf6')}
+            {card('Total Cost', `$${claude.costUsd?.toFixed(4) || '0.0000'}`, `≈ ₨${((claude.costUsd || 0)*280).toFixed(2)}`, '#ef4444')}
+            {card('Input Tokens', claude.tokensIn?.toLocaleString() || 0, 'Includes base64 images', textPrimary)}
+            {card('Output Tokens', claude.tokensOut?.toLocaleString() || 0, 'Diagnostic responses', textPrimary)}
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── Period Summary ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+        {data?.today && (
+          <div style={{ background: dark ? '#162410' : 'white', borderRadius: 14, padding: '1.25rem', border: `1px solid ${borderColor}` }}>
+            <h4 style={{ margin: '0 0 .75rem', fontSize: '.85rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase' }}>
+              📅 Today (Last 24 Hours)
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
+              {card('Calls', data.today.calls, 'Today requests', '#10b981')}
+              {card('Spend', `$${data.today.costUsd?.toFixed(4)}`, `≈ ₨${((data.today.costUsd || 0)*280).toFixed(2)}`, '#ef4444')}
+              {card('Input Tokens', data.today.tokensIn?.toLocaleString(), 'Today input', textPrimary)}
+              {card('Output Tokens', data.today.tokensOut?.toLocaleString(), 'Today output', textPrimary)}
+            </div>
+          </div>
+        )}
+
+        {data?.month && (
+          <div style={{ background: dark ? '#162410' : 'white', borderRadius: 14, padding: '1.25rem', border: `1px solid ${borderColor}` }}>
+            <h4 style={{ margin: '0 0 .75rem', fontSize: '.85rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>
+              🗓️ This Month (30 Days)
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
+              {card('Calls', data.month.calls, 'Month requests', '#3b82f6')}
+              {card('Spend', `$${data.month.costUsd?.toFixed(4)}`, `≈ ₨${((data.month.costUsd || 0)*280).toFixed(2)}`, '#ef4444')}
+              {card('Input Tokens', data.month.tokensIn?.toLocaleString(), 'Month input', textPrimary)}
+              {card('Output Tokens', data.month.tokensOut?.toLocaleString(), 'Month output', textPrimary)}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Recent API Calls Table ── */}
+      <div style={{ background: dark ? '#162410' : 'white', borderRadius: 16, padding: '1.25rem', border: `1px solid ${borderColor}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <h3 style={{ margin: 0, fontWeight: 800, fontSize: '.95rem', color: textPrimary }}>
+              📋 Recent AI API Transactions
+            </h3>
+            <div style={{ fontSize: '.75rem', color: textSecondary, marginTop: 2 }}>
+              Detailed token counts and computed costs per endpoint
+            </div>
+          </div>
+
+          {/* Engine Filter Pills */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[
+              { id: 'all', label: 'All Engines' },
+              { id: 'gemini', label: '🤖 Gemini Only' },
+              { id: 'claude', label: '👁️ Claude Only' }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setProviderFilter(f.id)}
+                style={{
+                  padding: '5px 12px', borderRadius: 20, fontSize: '.75rem', fontWeight: 700,
+                  border: providerFilter === f.id ? '2px solid #10b981' : `1px solid ${borderColor}`,
+                  background: providerFilter === f.id ? (dark ? '#064e3b' : '#dcfce7') : 'transparent',
+                  color: providerFilter === f.id ? '#10b981' : textSecondary, cursor: 'pointer'
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filteredRecent.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: textSecondary }}>
+            No API calls recorded yet. Try asking a question or running a vision scan in the app.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.8rem' }}>
               <thead>
-                <tr style={{ background: dark ? '#162410' : '#f8fafc' }}>
-                  {['Endpoint','Tokens In','Tokens Out','Cache','Cost','Time'].map(h => <th key={h} style={{ padding: '.5rem .75rem', textAlign: 'left', fontSize: '.72rem', fontWeight: 700, color: dark ? '#64748B' : '#9ca3af', textTransform: 'uppercase' }}>{h}</th>)}
+                <tr style={{ background: dark ? '#0f172a' : '#f8fafc', borderBottom: `1px solid ${borderColor}` }}>
+                  {['Endpoint', 'Provider', 'Model', 'Tokens In', 'Tokens Out', 'Cache', 'Cost (USD)', 'Time'].map(h => (
+                    <th key={h} style={{ padding: '.6rem .75rem', textAlign: 'left', fontWeight: 700, color: textSecondary, textTransform: 'uppercase', fontSize: '.7rem' }}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {data.recent.map((r, i) => (
-                  <tr key={i} style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#f0f0f0'}` }}>
-                    <td style={{ padding: '.5rem .75rem', fontSize: '.8rem', color: dark ? '#F1F5F9' : '#111827', fontWeight: 600 }}>{r.endpoint}</td>
-                    <td style={{ padding: '.5rem .75rem', fontSize: '.8rem', color: dark ? '#94A3B8' : '#374151' }}>{Number(r.tokens_in).toLocaleString()}</td>
-                    <td style={{ padding: '.5rem .75rem', fontSize: '.8rem', color: dark ? '#94A3B8' : '#374151' }}>{Number(r.tokens_out).toLocaleString()}</td>
-                    <td style={{ padding: '.5rem .75rem', fontSize: '.8rem', color: '#F59E0B' }}>{Number(r.cache_tokens).toLocaleString()}</td>
-                    <td style={{ padding: '.5rem .75rem', fontSize: '.8rem', color: '#EF4444', fontWeight: 700 }}>${parseFloat(r.cost_usd).toFixed(6)}</td>
-                    <td style={{ padding: '.5rem .75rem', fontSize: '.72rem', color: dark ? '#64748B' : '#9ca3af' }}>{new Date(r.created_at).toLocaleString('en-PK', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                  </tr>
-                ))}
+                {filteredRecent.map((r, i) => {
+                  const isGem = r.provider === 'gemini' || r.endpoint?.includes('gemini');
+                  return (
+                    <tr key={i} style={{ borderBottom: `1px solid ${borderColor}`, background: i % 2 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : 'transparent' }}>
+                      <td style={{ padding: '.6rem .75rem', fontWeight: 700, color: textPrimary, fontFamily: 'monospace' }}>
+                        {r.endpoint}
+                      </td>
+                      <td style={{ padding: '.6rem .75rem' }}>
+                        <span style={{
+                          background: isGem ? '#dbeafe' : '#ede9fe',
+                          color: isGem ? '#1d4ed8' : '#6d28d9',
+                          padding: '2px 8px', borderRadius: 12, fontSize: '.68rem', fontWeight: 800
+                        }}>
+                          {isGem ? '🤖 Gemini' : '👁️ Claude'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '.6rem .75rem', color: textSecondary, fontSize: '.72rem', fontFamily: 'monospace' }}>
+                        {r.model || (isGem ? 'gemini-flash' : 'claude-sonnet')}
+                      </td>
+                      <td style={{ padding: '.6rem .75rem', color: textPrimary }}>
+                        {Number(r.tokens_in || 0).toLocaleString()}
+                      </td>
+                      <td style={{ padding: '.6rem .75rem', color: textPrimary }}>
+                        {Number(r.tokens_out || 0).toLocaleString()}
+                      </td>
+                      <td style={{ padding: '.6rem .75rem', color: '#f59e0b' }}>
+                        {Number(r.cache_tokens || 0).toLocaleString()}
+                      </td>
+                      <td style={{ padding: '.6rem .75rem', fontWeight: 800, color: isGem ? '#3b82f6' : '#8b5cf6' }}>
+                        ${parseFloat(r.cost_usd || 0).toFixed(6)}
+                      </td>
+                      <td style={{ padding: '.6rem .75rem', color: textSecondary, fontSize: '.7rem', whiteSpace: 'nowrap' }}>
+                        {new Date(r.created_at).toLocaleString('en-PK', { dateStyle: 'short', timeStyle: 'short' })}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
     </div>
   );
 }
@@ -725,7 +915,7 @@ export default function AdminPanel({ onLogout }) {
               <StatCard dark={dark} icon="🔗" label="Environment" value={stats?.nodeVersion || 'v20'} sub={stats?.environment || 'Production'} color="#64748B" />
               <StatCard dark={dark} icon="⏱️" label="System Uptime" value={formatUptime(uptimeSeconds)} sub="Continuous" color="#EC4899" />
               <StatCard dark={dark} icon="💾" label="Cache Hits" value={stats?.aiCache?.hits || 0} sub={`${stats?.aiCache?.misses ?? 0} misses`} color="#14B8A6" />
-              <StatCard dark={dark} icon="💰" label="AI Cost Today" value={`$${stats?.costToday?.toFixed(4) ?? '0.0000'}`} sub="Claude API spend" color="#EF4444" />
+              <StatCard dark={dark} icon="💰" label="AI Cost Today" value={`$${stats?.costToday?.toFixed(4) ?? '0.0000'}`} sub="Gemini + Claude spend" color="#EF4444" />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
@@ -733,12 +923,14 @@ export default function AdminPanel({ onLogout }) {
               {/* Services Monitoring Panel */}
               <div style={{ background: cardBg, borderRadius: 16, padding: '1.5rem', border: `1px solid ${borderColor}`, boxShadow: dark ? '0 4px 6px -1px rgba(0,0,0,0.2)' : '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                 <h3 style={{ fontWeight: 700, fontSize: '1rem', color: textPrimary, marginBottom: '1.25rem' }}>🔧 Services Monitor</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {[
-                    { name: 'Claude AI', icon: '🤖', ok: stats?.claudeConfigured },
-                    { name: 'PostgreSQL', icon: '🐘', ok: stats?.postgresConfigured },
-                    { name: 'Supabase', icon: '🗄️', ok: stats?.supabaseConfigured },
-                    { name: 'Persistent DB', icon: '💾', ok: stats?.persistentDB },
+                    { name: 'Google Gemini AI', icon: '🤖', ok: stats?.geminiConfigured },
+                    { name: 'Claude Vision AI', icon: '👁️', ok: stats?.claudeConfigured },
+                    { name: 'Tavily Search API', icon: '🌐', ok: stats?.tavilyConfigured },
+                    { name: 'PostgreSQL DB',    icon: '🐘', ok: stats?.postgresConfigured },
+                    { name: 'Supabase DB',      icon: '🗄️', ok: stats?.supabaseConfigured },
+                    { name: 'Persistent DB',    icon: '💾', ok: stats?.persistentDB },
                   ].map(s => (
                     <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: dark ? 'rgba(0,0,0,0.2)' : '#F8FAFC', borderRadius: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -814,7 +1006,7 @@ export default function AdminPanel({ onLogout }) {
 }
 
 // ── Users Tab ──────────────────────────────────────────────────────────────────
-function UsersTab() {
+function UsersTab({ dark }) {
   const [users, setUsers]       = useState([]);
   const [total, setTotal]       = useState(0);
   const [page, setPage]         = useState(1);
@@ -823,6 +1015,11 @@ function UsersTab() {
   const [deleting, setDeleting] = useState(null);
   const [msg, setMsg]           = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  const cardBg = dark ? '#162410' : 'white';
+  const borderColor = dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
+  const textPrimary = dark ? '#F1F5F9' : '#111827';
+  const textSecondary = dark ? '#94A3B8' : '#6b7280';
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -871,11 +1068,6 @@ function UsersTab() {
 
   const totalAcres = users.reduce((s, u) => s + (parseFloat(u.land_size) || 0), 0);
 
-  // District breakdown from current page
-  const districtMap = {};
-  users.forEach(u => { if (u.district) districtMap[u.district] = (districtMap[u.district] || 0) + 1; });
-  const topDistricts = Object.entries(districtMap).sort((a,b) => b[1]-a[1]).slice(0, 5);
-
   return (
     <div>
       {/* Quick stats bar */}
@@ -885,9 +1077,9 @@ function UsersTab() {
           { icon: '🌾', label: 'Acres (this page)', value: totalAcres.toFixed(0) + ' ac', color: '#3B82F6' },
           { icon: '📋', label: 'Showing', value: `${users.length} of ${total}`, color: '#8B5CF6' },
         ].map(s => (
-          <div key={s.label} style={{ background: 'white', borderRadius: 10, padding: '.875rem 1rem', border: `1px solid #f0f0f0`, borderLeft: `3px solid ${s.color}` }}>
-            <div style={{ fontSize: '.72rem', color: '#6b7280', fontWeight: 600 }}>{s.icon} {s.label}</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', marginTop: 2 }}>{s.value}</div>
+          <div key={s.label} style={{ background: cardBg, borderRadius: 10, padding: '.875rem 1rem', border: `1px solid ${borderColor}`, borderLeft: `3px solid ${s.color}` }}>
+            <div style={{ fontSize: '.72rem', color: textSecondary, fontWeight: 600 }}>{s.icon} {s.label}</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: textPrimary, marginTop: 2 }}>{s.value}</div>
           </div>
         ))}
       </div>
@@ -896,7 +1088,11 @@ function UsersTab() {
         <input
           placeholder="🔍 Search name or phone..."
           value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-          style={{ flex: 1, minWidth: 200, padding: '.6rem 1rem', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: '.875rem', fontFamily: 'Inter, sans-serif' }}
+          style={{
+            flex: 1, minWidth: 200, padding: '.6rem 1rem', borderRadius: 10,
+            border: `1.5px solid ${borderColor}`, fontSize: '.875rem', fontFamily: 'Inter, sans-serif',
+            background: dark ? '#0f172a' : 'white', color: textPrimary
+          }}
         />
         <button onClick={load} style={btnStyle('#0369a1')}>🔄 Refresh</button>
         <button onClick={exportCSV} style={btnStyle('#2e5a27')}>⬇ Export CSV</button>
@@ -905,41 +1101,39 @@ function UsersTab() {
       {msg && <div style={{ background: msg.startsWith('✅') ? '#f0fdf4' : '#fef2f2', color: msg.startsWith('✅') ? '#16a34a' : '#dc2626', padding: '.6rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '.875rem', fontWeight: 600 }}>{msg}</div>}
 
       {loading ? <Spinner /> : (
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto', background: cardBg, borderRadius: 14, border: `1px solid ${borderColor}` }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.875rem' }}>
             <thead>
-              <tr style={{ background: '#f9fafb' }}>
+              <tr style={{ background: dark ? '#0f172a' : '#f9fafb', borderBottom: `1px solid ${borderColor}` }}>
                 {['#', 'Name', 'Phone', 'District', 'Land', 'Joined', 'Action'].map(h => (
-                  <th key={h} style={{ padding: '.75rem 1rem', textAlign: 'left', fontWeight: 700, color: '#374151', borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '.75rem 1rem', textAlign: 'left', fontWeight: 700, color: textSecondary, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {users.map((u, i) => (
                 <tr key={u.id}
-                  style={{ background: i % 2 ? '#fafafa' : 'white', transition: 'background .15s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f0fdf4'}
-                  onMouseLeave={e => e.currentTarget.style.background = i % 2 ? '#fafafa' : 'white'}
+                  style={{ background: i % 2 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : 'transparent', borderBottom: `1px solid ${borderColor}` }}
                 >
-                  <td style={{ ...tdStyle, color: '#9ca3af', fontSize: '.75rem' }}>{(page-1)*15 + i + 1}</td>
-                  <td style={tdStyle}><strong>{u.name}</strong></td>
-                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '.8rem' }}>{u.phone}</td>
-                  <td style={tdStyle}>
+                  <td style={{ padding: '.75rem 1rem', color: textSecondary, fontSize: '.75rem' }}>{(page-1)*15 + i + 1}</td>
+                  <td style={{ padding: '.75rem 1rem', color: textPrimary }}><strong>{u.name}</strong></td>
+                  <td style={{ padding: '.75rem 1rem', fontFamily: 'monospace', fontSize: '.8rem', color: textSecondary }}>{u.phone}</td>
+                  <td style={{ padding: '.75rem 1rem' }}>
                     {u.district
                       ? <span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 6, padding: '2px 8px', fontSize: '.72rem', fontWeight: 600 }}>{u.district}</span>
-                      : <span style={{ color: '#d1d5db' }}>—</span>
+                      : <span style={{ color: textSecondary }}>—</span>
                     }
                   </td>
-                  <td style={tdStyle}>
+                  <td style={{ padding: '.75rem 1rem' }}>
                     {u.land_size
                       ? <span style={{ fontWeight: 700, color: '#15803d' }}>{u.land_size} ac</span>
-                      : <span style={{ color: '#d1d5db' }}>—</span>
+                      : <span style={{ color: textSecondary }}>—</span>
                     }
                   </td>
-                  <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: '#6b7280', fontSize: '.8rem' }}>
+                  <td style={{ padding: '.75rem 1rem', whiteSpace: 'nowrap', color: textSecondary, fontSize: '.8rem' }}>
                     {u.created_at ? new Date(u.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}
                   </td>
-                  <td style={tdStyle}>
+                  <td style={{ padding: '.75rem 1rem' }}>
                     <button
                       onClick={() => handleDelete(u.id, u.name)}
                       disabled={deleting === u.id}
@@ -951,7 +1145,7 @@ function UsersTab() {
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af' }}>No farmers found</td></tr>
+                <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: textSecondary }}>No farmers found</td></tr>
               )}
             </tbody>
           </table>
@@ -961,7 +1155,7 @@ function UsersTab() {
       {/* Pagination */}
       <div style={{ display: 'flex', gap: '.5rem', marginTop: '1rem', justifyContent: 'center' }}>
         <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1} style={btnStyle('#6b7280', page === 1)}>← Prev</button>
-        <span style={{ padding: '.5rem 1rem', fontSize: '.875rem', color: '#374151' }}>Page {page}</span>
+        <span style={{ padding: '.5rem 1rem', fontSize: '.875rem', color: textSecondary }}>Page {page}</span>
         <button onClick={() => setPage(p => p+1)} disabled={users.length < 15} style={btnStyle('#6b7280', users.length < 15)}>Next →</button>
       </div>
     </div>
@@ -969,13 +1163,18 @@ function UsersTab() {
 }
 
 // ── Prices Tab ───────────────────────────────────────────────────────────────
-function PricesTab() {
+function PricesTab({ dark }) {
   const [prices, setPrices]     = useState({});
   const [editing, setEditing]   = useState({});
   const [sourceNotes, setNotes] = useState({});
   const [saving, setSaving]     = useState('');
   const [msg, setMsg]           = useState('');
   const [realCount, setRealCount] = useState(0);
+
+  const cardBg = dark ? '#162410' : 'white';
+  const borderColor = dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
+  const textPrimary = dark ? '#F1F5F9' : '#111827';
+  const textSecondary = dark ? '#94A3B8' : '#6b7280';
 
   const load = () => {
     adminFetch('/prices').then(r => r.json()).then(d => {
@@ -1017,22 +1216,36 @@ function PricesTab() {
     setTimeout(() => { setMsg(''); load(); }, 2500);
   };
 
+  const priceInputStyle = {
+    width: '100%', padding: '.5rem .75rem', borderRadius: 8,
+    border: `1.5px solid ${borderColor}`, fontSize: '.875rem', fontFamily: 'Inter, sans-serif',
+    boxSizing: 'border-box', marginBottom: '.4rem',
+    background: dark ? '#0f172a' : 'white', color: textPrimary
+  };
+
+  const noteInputStyle = {
+    width: '100%', padding: '.4rem .75rem', borderRadius: 8,
+    border: `1.5px solid ${borderColor}`, fontSize: '.75rem', fontFamily: 'Inter, sans-serif',
+    boxSizing: 'border-box', color: textSecondary, marginBottom: '.5rem',
+    background: dark ? '#0f172a' : 'white'
+  };
+
   return (
     <div>
       <div style={{ marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
           <div>
-            <p style={{ color: '#6b7280', fontSize: '.875rem', margin: 0 }}>
+            <p style={{ color: textSecondary, fontSize: '.875rem', margin: 0 }}>
               Enter today’s real mandi prices. Stored in PostgreSQL — <strong>survives restarts</strong>.
             </p>
-            <p style={{ color: '#6b7280', fontSize: '.75rem', margin: '2px 0 0' }}>
+            <p style={{ color: textSecondary, fontSize: '.75rem', margin: '2px 0 0' }}>
               Prices without a real entry show as “Sample data” to farmers.
             </p>
           </div>
           <span style={{
-            background: realCount > 0 ? '#f0fdf4' : '#fffbeb',
-            color: realCount > 0 ? '#16a34a' : '#92400e',
-            border: `1px solid ${realCount > 0 ? '#bbf7d0' : '#fde68a'}`,
+            background: realCount > 0 ? (dark ? '#064e3b' : '#f0fdf4') : (dark ? '#78350f' : '#fffbeb'),
+            color: realCount > 0 ? '#10b981' : '#f59e0b',
+            border: `1px solid ${realCount > 0 ? '#10b981' : '#f59e0b'}`,
             borderRadius: 20, padding: '4px 12px', fontSize: '.8rem', fontWeight: 700
           }}>
             {realCount > 0 ? `✅ ${realCount} real` : '📊 all sample'}
@@ -1045,27 +1258,27 @@ function PricesTab() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '.75rem' }}>
         {Object.entries(prices).map(([crop, data]) => (
           <div key={crop} style={{
-            background: 'white', borderRadius: 12, padding: '1rem',
-            border: `2px solid ${data.isReal ? '#bbf7d0' : '#e5e7eb'}`,
+            background: cardBg, borderRadius: 12, padding: '1rem',
+            border: `2px solid ${data.isReal ? '#10b981' : borderColor}`,
             boxShadow: '0 1px 6px rgba(0,0,0,.05)'
           }}>
             {/* Crop name + status */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
-              <div style={{ fontWeight: 700, fontSize: '.9rem' }}>{crop}</div>
+              <div style={{ fontWeight: 700, fontSize: '.9rem', color: textPrimary }}>{crop}</div>
               <span style={{
                 fontSize: '.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-                background: data.isReal ? '#dcfce7' : '#fef9c3',
-                color: data.isReal ? '#15803d' : '#854d0e'
+                background: data.isReal ? (dark ? '#064e3b' : '#dcfce7') : (dark ? '#78350f' : '#fef9c3'),
+                color: data.isReal ? '#10b981' : '#f59e0b'
               }}>
                 {data.isReal ? '✅ Real (DB)' : '📊 Sample'}
               </span>
             </div>
 
             {/* Reference + current DB price */}
-            <div style={{ fontSize: '.72rem', color: '#6b7280', marginBottom: '.4rem', fontFamily: 'Inter' }}>
+            <div style={{ fontSize: '.72rem', color: textSecondary, marginBottom: '.4rem', fontFamily: 'Inter' }}>
               Reference: ₨{data.base?.toLocaleString()}
-              {data.isReal && <span style={{ color: '#16a34a', marginLeft: 8 }}>DB: ₨{data.dbPrice?.toLocaleString()}</span>}
-              {data.updatedAt && <span style={{ color: '#9ca3af', marginLeft: 6 }}>· {new Date(data.updatedAt).toLocaleDateString()}</span>}
+              {data.isReal && <span style={{ color: '#10b981', marginLeft: 8 }}>DB: ₨{data.dbPrice?.toLocaleString()}</span>}
+              {data.updatedAt && <span style={{ color: textSecondary, marginLeft: 6 }}>· {new Date(data.updatedAt).toLocaleDateString()}</span>}
             </div>
 
             {/* Price input */}
@@ -1074,7 +1287,7 @@ function PricesTab() {
               value={editing[crop] || ''}
               onChange={e => setEditing(prev => ({ ...prev, [crop]: e.target.value }))}
               placeholder="Enter today's real price (PKR)"
-              style={{ width: '100%', padding: '.5rem .75rem', borderRadius: 8, border: '2px solid #e5e7eb', fontSize: '.875rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', marginBottom: '.4rem' }}
+              style={priceInputStyle}
             />
 
             {/* Source note input */}
@@ -1083,7 +1296,7 @@ function PricesTab() {
               value={sourceNotes[crop] || ''}
               onChange={e => setNotes(prev => ({ ...prev, [crop]: e.target.value }))}
               placeholder="Source (e.g. Lahore mandi, TCP, self-verified)"
-              style={{ width: '100%', padding: '.4rem .75rem', borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: '.75rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', color: '#6b7280', marginBottom: '.5rem' }}
+              style={noteInputStyle}
             />
 
             {/* Actions */}
@@ -1091,7 +1304,7 @@ function PricesTab() {
               <button
                 onClick={() => save(crop)}
                 disabled={saving === crop}
-                style={btnStyle('#2e5a27', saving === crop)}
+                style={btnStyle('#10b981', saving === crop)}
               >
                 {saving === crop ? '...' : 'Save'}
               </button>
@@ -1112,7 +1325,7 @@ function PricesTab() {
 }
 
 // ── Announcements Tab ─────────────────────────────────────────────────────────
-function AnnouncementsTab() {
+function AnnouncementsTab({ dark }) {
   const [list, setList]         = useState([]);
   const [title, setTitle]       = useState('');
   const [message, setMessage]   = useState('');
@@ -1121,6 +1334,22 @@ function AnnouncementsTab() {
   const [link, setLink]         = useState('');
   const [saving, setSaving]     = useState(false);
   const [msg, setMsg]           = useState('');
+
+  const cardBg = dark ? '#162410' : 'white';
+  const borderColor = dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
+  const textPrimary = dark ? '#F1F5F9' : '#111827';
+  const textSecondary = dark ? '#94A3B8' : '#6b7280';
+
+  const localInputStyle = {
+    width: '100%', padding: '.6rem .875rem', borderRadius: 8,
+    border: `1.5px solid ${borderColor}`, fontSize: '.875rem', fontFamily: 'Inter, sans-serif',
+    boxSizing: 'border-box', outline: 'none',
+    background: dark ? '#0f172a' : 'white', color: textPrimary
+  };
+
+  const localLabelStyle = {
+    display: 'block', fontSize: '.78rem', fontWeight: 700, color: textSecondary, marginBottom: '.3rem'
+  };
 
   const load = async () => {
     try {
@@ -1181,56 +1410,56 @@ function AnnouncementsTab() {
       {msg && <div style={{ background: '#f0fdf4', color: '#16a34a', padding: '.6rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '.875rem', fontWeight: 600 }}>{msg}</div>}
 
       {/* Create form */}
-      <div style={{ background: 'white', borderRadius: 16, padding: '1.5rem', border: '1.5px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,.05)', marginBottom: '1.5rem' }}>
-        <h3 style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: '1rem' }}>📢 New Announcement</h3>
+      <div style={{ background: cardBg, borderRadius: 16, padding: '1.5rem', border: `1.5px solid ${borderColor}`, boxShadow: '0 2px 8px rgba(0,0,0,.05)', marginBottom: '1.5rem' }}>
+        <h3 style={{ fontWeight: 700, fontSize: '1rem', color: textPrimary, marginBottom: '1rem' }}>📢 New Announcement</h3>
         <form onSubmit={handleCreate}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', marginBottom: '.75rem' }}>
             <div>
-              <label style={labelStyle}>Title (Optional)</label>
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. DAP Price Update" style={inputStyle} />
+              <label style={localLabelStyle}>Title (Optional)</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. DAP Price Update" style={localInputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Type</label>
-              <select value={type} onChange={e => setType(e.target.value)} style={inputStyle}>
+              <label style={localLabelStyle}>Type</label>
+              <select value={type} onChange={e => setType(e.target.value)} style={localInputStyle}>
                 {TYPE_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
           </div>
 
           <div style={{ marginBottom: '.75rem' }}>
-            <label style={labelStyle}>Message (Urdu or English) *</label>
+            <label style={localLabelStyle}>Message (Urdu or English) *</label>
             <textarea
               value={message} onChange={e => setMessage(e.target.value)}
               placeholder="گندم کی قیمت آج ₨3,950 ہو گئی — منڈی میں بیچنے کا اچھا وقت ہے۔"
               required rows={3}
-              style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit', direction: 'rtl' }}
+              style={{ ...localInputStyle, resize: 'vertical', fontFamily: 'inherit', direction: 'rtl' }}
             />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', marginBottom: '1rem' }}>
             <div>
-              <label style={labelStyle}>Expires At (Optional)</label>
-              <input type="datetime-local" value={expiresAt} onChange={e => setExpires(e.target.value)} style={inputStyle} />
+              <label style={localLabelStyle}>Expires At (Optional)</label>
+              <input type="datetime-local" value={expiresAt} onChange={e => setExpires(e.target.value)} style={localInputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Link URL (Optional)</label>
-              <input value={link} onChange={e => setLink(e.target.value)} placeholder="https://..." style={inputStyle} />
+              <label style={localLabelStyle}>Link URL (Optional)</label>
+              <input value={link} onChange={e => setLink(e.target.value)} placeholder="https://..." style={localInputStyle} />
             </div>
           </div>
 
-          <button type="submit" disabled={saving || !message.trim()} style={btnStyle('#2e5a27', saving || !message.trim())}>
+          <button type="submit" disabled={saving || !message.trim()} style={btnStyle('#10b981', saving || !message.trim())}>
             {saving ? 'Publishing...' : '📢 Publish Announcement'}
           </button>
         </form>
       </div>
 
       {/* List */}
-      <h3 style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: '.75rem' }}>
+      <h3 style={{ fontWeight: 700, fontSize: '1rem', color: textPrimary, marginBottom: '.75rem' }}>
         All Announcements ({list.length})
       </h3>
 
       {list.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af', background: 'white', borderRadius: 16, border: '1px solid #f0f0f0' }}>
+        <div style={{ textAlign: 'center', padding: '3rem', color: textSecondary, background: cardBg, borderRadius: 16, border: `1px solid ${borderColor}` }}>
           📢 No announcements yet. Create one above.
         </div>
       )}
@@ -1238,8 +1467,8 @@ function AnnouncementsTab() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
         {list.map(ann => (
           <div key={ann.id} style={{
-            background: 'white', borderRadius: 14, padding: '1rem 1.1rem',
-            border: `1.5px solid ${ann.active ? '#86efac' : '#e5e7eb'}`,
+            background: cardBg, borderRadius: 14, padding: '1rem 1.1rem',
+            border: `1.5px solid ${ann.active ? '#10b981' : borderColor}`,
             boxShadow: '0 1px 6px rgba(0,0,0,.05)',
             opacity: ann.active ? 1 : .6
           }}>
@@ -1249,20 +1478,20 @@ function AnnouncementsTab() {
                   <span style={{ background: TYPE_BADGE[ann.type], color: TYPE_COLOR[ann.type], borderRadius: 20, padding: '.15rem .6rem', fontSize: '.72rem', fontWeight: 700 }}>
                     {ann.type.toUpperCase()}
                   </span>
-                  {ann.title && <span style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827' }}>{ann.title}</span>}
-                  <span style={{ background: ann.active ? '#dcfce7' : '#f3f4f6', color: ann.active ? '#16a34a' : '#9ca3af', borderRadius: 20, padding: '.1rem .5rem', fontSize: '.68rem', fontWeight: 700 }}>
+                  {ann.title && <span style={{ fontWeight: 700, fontSize: '.9rem', color: textPrimary }}>{ann.title}</span>}
+                  <span style={{ background: ann.active ? (dark ? '#064e3b' : '#dcfce7') : (dark ? '#1e293b' : '#f3f4f6'), color: ann.active ? '#10b981' : textSecondary, borderRadius: 20, padding: '.1rem .5rem', fontSize: '.68rem', fontWeight: 700 }}>
                     {ann.active ? '● Live' : '○ Hidden'}
                   </span>
                 </div>
-                <div style={{ fontSize: '.875rem', color: '#374151', direction: 'rtl', lineHeight: 1.5 }}>{ann.message}</div>
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '.4rem', fontSize: '.72rem', color: '#9ca3af', fontFamily: 'monospace', flexWrap: 'wrap' }}>
+                <div style={{ fontSize: '.875rem', color: textPrimary, direction: 'rtl', lineHeight: 1.5 }}>{ann.message}</div>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '.4rem', fontSize: '.72rem', color: textSecondary, fontFamily: 'monospace', flexWrap: 'wrap' }}>
                   <span>Created: {new Date(ann.createdAt).toLocaleString()}</span>
                   {ann.expiresAt && <span>Expires: {new Date(ann.expiresAt).toLocaleString()}</span>}
                   {ann.link && <span>Link: {ann.link}</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0 }}>
-                <button onClick={() => handleToggle(ann.id)} style={{ ...btnStyle(ann.active ? '#6b7280' : '#16a34a'), padding: '.35rem .7rem', fontSize: '.75rem' }}>
+                <button onClick={() => handleToggle(ann.id)} style={{ ...btnStyle(ann.active ? '#6b7280' : '#10b981'), padding: '.35rem .7rem', fontSize: '.75rem' }}>
                   {ann.active ? 'Hide' : 'Show'}
                 </button>
                 <button onClick={() => handleDelete(ann.id)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '.35rem .7rem', cursor: 'pointer', fontSize: '.75rem', fontWeight: 700 }}>
@@ -1281,12 +1510,28 @@ const labelStyle = { display: 'block', fontSize: '.78rem', fontWeight: 700, colo
 const inputStyle = { width: '100%', padding: '.6rem .875rem', borderRadius: 8, border: '2px solid #e5e7eb', fontSize: '.875rem', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', outline: 'none' };
 
 // -- Schemes Tab --
-function SchemesTab() {
+function SchemesTab({ dark }) {
   const [schemes, setSchemes] = useState([]);
   const [editing, setEditing] = useState(null);
   const [form, setForm]       = useState({});
   const [saving, setSaving]   = useState(false);
   const [msg, setMsg]         = useState('');
+
+  const cardBg = dark ? '#162410' : 'white';
+  const borderColor = dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
+  const textPrimary = dark ? '#F1F5F9' : '#111827';
+  const textSecondary = dark ? '#94A3B8' : '#6b7280';
+
+  const localInputStyle = {
+    width: '100%', padding: '.6rem .875rem', borderRadius: 8,
+    border: `1.5px solid ${borderColor}`, fontSize: '.875rem', fontFamily: 'Inter, sans-serif',
+    boxSizing: 'border-box', outline: 'none',
+    background: dark ? '#0f172a' : 'white', color: textPrimary
+  };
+
+  const localLabelStyle = {
+    display: 'block', fontSize: '.78rem', fontWeight: 700, color: textSecondary, marginBottom: '.3rem'
+  };
 
   const load = async () => {
     try {
@@ -1340,13 +1585,13 @@ function SchemesTab() {
 
   const Field = ({ field, label, placeholder, type = 'text', rtl = false }) => (
     <div style={{ marginBottom: '.6rem' }}>
-      <label style={labelStyle}>{label}</label>
+      <label style={localLabelStyle}>{label}</label>
       {type === 'textarea'
         ? <textarea value={form[field] || ''} onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
             placeholder={placeholder} rows={3}
-            style={{ ...inputStyle, resize: 'vertical', direction: rtl ? 'rtl' : 'ltr', fontFamily: 'inherit' }} />
+            style={{ ...localInputStyle, resize: 'vertical', direction: rtl ? 'rtl' : 'ltr', fontFamily: 'inherit' }} />
         : <input type={type} value={form[field] || ''} onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
-            placeholder={placeholder} style={inputStyle} />}
+            placeholder={placeholder} style={localInputStyle} />}
     </div>
   );
 
@@ -1354,17 +1599,17 @@ function SchemesTab() {
     <div>
       {msg && <div style={{ background: '#f0fdf4', color: '#16a34a', padding: '.6rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '.875rem', fontWeight: 600 }}>{msg}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <p style={{ color: '#6b7280', fontSize: '.875rem' }}>{schemes.length} schemes total — edit, hide, or add new</p>
-        <button onClick={openNew} style={btnStyle('#2e5a27')}>+ Add New Scheme</button>
+        <p style={{ color: textSecondary, fontSize: '.875rem' }}>{schemes.length} schemes total — edit, hide, or add new</p>
+        <button onClick={openNew} style={btnStyle('#10b981')}>+ Add New Scheme</button>
       </div>
 
       {editing && (
-        <div style={{ background: 'white', borderRadius: 16, padding: '1.5rem', border: '1.5px solid #86efac', marginBottom: '1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,.08)' }}>
+        <div style={{ background: cardBg, borderRadius: 16, padding: '1.5rem', border: '1.5px solid #10b981', marginBottom: '1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,.08)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontWeight: 700, color: '#111827', fontSize: '1rem' }}>
+            <h3 style={{ fontWeight: 700, color: textPrimary, fontSize: '1rem' }}>
               {editing === 'new' ? '+ New Scheme' : `Edit: ${editing.name}`}
             </h3>
-            <button onClick={closeForm} style={{ background: '#f3f4f6', border: 'none', borderRadius: 8, padding: '.4rem .75rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Cancel</button>
+            <button onClick={closeForm} style={{ background: dark ? '#1e293b' : '#f3f4f6', color: textPrimary, border: 'none', borderRadius: 8, padding: '.4rem .75rem', cursor: 'pointer', fontSize: '.8rem', fontWeight: 600 }}>Cancel</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
             <Field field="name" label="Scheme Name *" placeholder="CM Punjab Kisan Card" />
@@ -1385,7 +1630,7 @@ function SchemesTab() {
             <Field field="source" label="Source" placeholder="Punjab Government" />
             <Field field="lastVerified" label="Last Verified" type="date" />
           </div>
-          <button onClick={handleSave} disabled={saving || !form.name?.trim()} style={{ ...btnStyle('#2e5a27', saving || !form.name?.trim()), marginTop: '.5rem' }}>
+          <button onClick={handleSave} disabled={saving || !form.name?.trim()} style={{ ...btnStyle('#10b981', saving || !form.name?.trim()), marginTop: '.5rem' }}>
             {saving ? 'Saving...' : 'Save Scheme'}
           </button>
         </div>
@@ -1393,23 +1638,23 @@ function SchemesTab() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
         {schemes.map(s => (
-          <div key={s.id} style={{ background: 'white', borderRadius: 14, padding: '1rem 1.1rem',
-            border: `1.5px solid ${s.active !== false ? '#86efac' : '#e5e7eb'}`,
+          <div key={s.id} style={{ background: cardBg, borderRadius: 14, padding: '1rem 1.1rem',
+            border: `1.5px solid ${s.active !== false ? '#10b981' : borderColor}`,
             opacity: s.active !== false ? 1 : .6, boxShadow: '0 1px 6px rgba(0,0,0,.04)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
               <span style={{ fontSize: '1.8rem', flexShrink: 0 }}>{s.icon}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827' }}>{s.name}</span>
-                  <span style={{ background: s.active !== false ? '#dcfce7' : '#f3f4f6', color: s.active !== false ? '#16a34a' : '#9ca3af', borderRadius: 20, padding: '.1rem .5rem', fontSize: '.68rem', fontWeight: 700 }}>
+                  <span style={{ fontWeight: 700, fontSize: '.9rem', color: textPrimary }}>{s.name}</span>
+                  <span style={{ background: s.active !== false ? (dark ? '#064e3b' : '#dcfce7') : (dark ? '#1e293b' : '#f3f4f6'), color: s.active !== false ? '#10b981' : textSecondary, borderRadius: 20, padding: '.1rem .5rem', fontSize: '.68rem', fontWeight: 700 }}>
                     {s.active !== false ? 'Live' : 'Hidden'}
                   </span>
                 </div>
-                <div style={{ fontSize: '.78rem', color: '#6b7280', direction: 'rtl' }}>{s.tagline} — {s.amount}</div>
+                <div style={{ fontSize: '.78rem', color: textSecondary, direction: 'rtl' }}>{s.tagline} — {s.amount}</div>
               </div>
               <div style={{ display: 'flex', gap: '.4rem', flexShrink: 0 }}>
-                <button onClick={() => openEdit(s)} style={{ ...btnStyle('#2e5a27'), padding: '.3rem .65rem', fontSize: '.75rem' }}>Edit</button>
-                <button onClick={() => handleToggle(s.id)} style={{ ...btnStyle(s.active !== false ? '#6b7280' : '#16a34a'), padding: '.3rem .65rem', fontSize: '.75rem' }}>
+                <button onClick={() => openEdit(s)} style={{ ...btnStyle('#10b981'), padding: '.3rem .65rem', fontSize: '.75rem' }}>Edit</button>
+                <button onClick={() => handleToggle(s.id)} style={{ ...btnStyle(s.active !== false ? '#6b7280' : '#10b981'), padding: '.3rem .65rem', fontSize: '.75rem' }}>
                   {s.active !== false ? 'Hide' : 'Show'}
                 </button>
                 <button onClick={() => handleDelete(s.id, s.name)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '.3rem .65rem', cursor: 'pointer', fontSize: '.75rem', fontWeight: 700 }}>Del</button>
@@ -1422,7 +1667,7 @@ function SchemesTab() {
   );
 }
 
-function HealthTab() {
+function HealthTab({ dark }) {
 
   const [health, setHealth]   = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1456,17 +1701,25 @@ function HealthTab() {
 
   if (loading) return <Spinner />;
 
+  const cardBg = dark ? '#162410' : 'white';
+  const borderColor = dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
+  const textPrimary = dark ? '#F1F5F9' : '#111827';
+  const textSecondary = dark ? '#94A3B8' : '#6b7280';
+
   const services = [
-    { name: 'Backend (Railway)',  key: 'backend', icon: '⚡' },
-    { name: 'Claude AI',          key: 'claude',  icon: '🤖' },
-    { name: 'Open-Meteo Weather', key: 'openMeteo', icon: '🌤️' },
-    { name: 'Supabase Database',  key: 'supabase',  icon: '🗄️' },
+    { name: 'Backend (Railway)',   key: 'backend',   icon: '⚡' },
+    { name: 'Google Gemini AI',    key: 'gemini',    icon: '🤖' },
+    { name: 'Claude Vision AI',    key: 'claude',    icon: '👁️' },
+    { name: 'Tavily Search API',   key: 'tavily',    icon: '🌐' },
+    { name: 'Open-Meteo Weather',  key: 'openMeteo', icon: '🌤️' },
+    { name: 'PostgreSQL Database', key: 'postgres',  icon: '🐘' },
+    { name: 'Supabase Database',   key: 'supabase',  icon: '🗄️' },
   ];
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-        <p style={{ color: '#6b7280', fontSize: '.875rem' }}>Auto-refreshes every 30 seconds</p>
+        <p style={{ color: textSecondary, fontSize: '.875rem' }}>Auto-refreshes every 30 seconds</p>
         <div style={{ display: 'flex', gap: '.5rem' }}>
           <button onClick={runDbTest} disabled={dbTesting} style={btnStyle('#7c3aed')}>
             {dbTesting ? '⏳ Testing...' : '🗄️ Test DB Write'}
@@ -1477,11 +1730,11 @@ function HealthTab() {
 
       {/* DB Test Result */}
       {dbTest && (
-        <div style={{ background: 'white', border: '1.5px solid #e5e7eb', borderRadius: 16, padding: '1.25rem', marginBottom: '1.25rem' }}>
-          <div style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827', marginBottom: '.75rem' }}>🗄️ Database Write Test Results</div>
+        <div style={{ background: cardBg, border: `1.5px solid ${borderColor}`, borderRadius: 16, padding: '1.25rem', marginBottom: '1.25rem' }}>
+          <div style={{ fontWeight: 700, fontSize: '.9rem', color: textPrimary, marginBottom: '.75rem' }}>🗄️ Database Write Test Results</div>
           {['postgres', 'supabase'].map(key => (
-            <div key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '.75rem', padding: '.6rem 0', borderBottom: '1px solid #f3f4f6' }}>
-              <span style={{ minWidth: 90, fontWeight: 700, fontSize: '.8rem', color: '#374151', textTransform: 'capitalize' }}>{key}</span>
+            <div key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '.75rem', padding: '.6rem 0', borderBottom: `1px solid ${borderColor}` }}>
+              <span style={{ minWidth: 90, fontWeight: 700, fontSize: '.8rem', color: textSecondary, textTransform: 'capitalize' }}>{key}</span>
               {dbTest[key] ? (
                 dbTest[key].ok
                   ? <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '.8rem' }}>✅ Working — {dbTest[key].userCount} users in DB</span>
@@ -1496,13 +1749,13 @@ function HealthTab() {
         {services.map(s => {
           const data = health?.checks?.[s.key] || {};
           return (
-            <div key={s.key} style={{ background: 'white', borderRadius: 16, padding: '1.25rem', border: '1.5px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,.05)' }}>
+            <div key={s.key} style={{ background: cardBg, borderRadius: 16, padding: '1.25rem', border: `1.5px solid ${borderColor}`, boxShadow: '0 2px 8px rgba(0,0,0,.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <div style={{ fontSize: '1.5rem', marginBottom: '.3rem' }}>{s.icon}</div>
-                  <div style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827' }}>{s.name}</div>
+                  <div style={{ fontWeight: 700, fontSize: '.9rem', color: textPrimary }}>{s.name}</div>
                 </div>
-                <HealthBadge status={data.status} latency={data.latency} />
+                <HealthBadge dark={dark} status={data.status} latency={data.latency} />
               </div>
               {data.error && (
                 <div style={{ marginTop: '.5rem', fontSize: '.72rem', color: '#dc2626', fontFamily: 'monospace', wordBreak: 'break-all' }}>
@@ -1520,7 +1773,7 @@ function HealthTab() {
         })}
       </div>
       {health?.timestamp && (
-        <p style={{ textAlign: 'center', marginTop: '1.25rem', color: '#9ca3af', fontSize: '.75rem' }}>
+        <p style={{ textAlign: 'center', marginTop: '1.25rem', color: textSecondary, fontSize: '.75rem' }}>
           Last checked: {new Date(health.timestamp).toLocaleTimeString()}
         </p>
       )}
@@ -1529,9 +1782,10 @@ function HealthTab() {
 }
 
 // ── Recent Tab ─────────────────────────────────────────────────────────────────
-function RecentTab() {
-  const [recent, setRecent]     = useState([]);
-  const [loading, setLoading]   = useState(true);
+// ── Recent Tab ─────────────────────────────────────────────────────────────────
+function RecentTab({ dark }) {
+  const [recent, setRecent]           = useState([]);
+  const [loading, setLoading]         = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const load = async () => {
@@ -1566,31 +1820,31 @@ function RecentTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
       {/* Header with refresh button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
-        <span style={{ fontSize: '.78rem', color: '#9ca3af' }}>
+        <span style={{ fontSize: '.78rem', color: dark ? '#94A3B8' : '#9ca3af' }}>
           {lastUpdated ? `Updated: ${lastUpdated.toLocaleTimeString()} • auto-refreshes every 30s` : 'Loading...'}
         </span>
         <button onClick={load} style={btnStyle('#2e5a27')}>🔄 Refresh</button>
       </div>
 
       {recent.length === 0 && (
-        <div style={{ background: '#f9fafb', border: '1.5px dashed #d1d5db', borderRadius: 12, padding: '2rem', textAlign: 'center' }}>
+        <div style={{ background: dark ? '#1E293B' : '#f9fafb', border: `1.5px dashed ${dark ? 'rgba(255,255,255,0.15)' : '#d1d5db'}`, borderRadius: 12, padding: '2rem', textAlign: 'center' }}>
           <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>👤</div>
-          <div style={{ color: '#6b7280', fontWeight: 600, marginBottom: '.3rem' }}>No registrations yet</div>
-          <div style={{ color: '#9ca3af', fontSize: '.8rem' }}>Ask a farmer to register at <strong>dehati-ai.vercel.app</strong> — they will appear here instantly</div>
+          <div style={{ color: dark ? '#F1F5F9' : '#6b7280', fontWeight: 600, marginBottom: '.3rem' }}>No registrations yet</div>
+          <div style={{ color: dark ? '#94A3B8' : '#9ca3af', fontSize: '.8rem' }}>Ask a farmer to register at <strong>dehati-ai.vercel.app</strong> — they will appear here instantly</div>
         </div>
       )}
       {recent.map(u => (
-        <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '.875rem', background: 'white', borderRadius: 12, padding: '.875rem 1rem', border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,.04)' }}>
-          <div style={{ width: 42, height: 42, borderRadius: '50%', background: u.is_guest ? '#fef3c7' : '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
+        <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '.875rem', background: dark ? '#1E293B' : 'white', borderRadius: 12, padding: '.875rem 1rem', border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`, boxShadow: '0 1px 4px rgba(0,0,0,.04)' }}>
+          <div style={{ width: 42, height: 42, borderRadius: '50%', background: u.is_guest ? (dark ? 'rgba(245,158,11,0.2)' : '#fef3c7') : (dark ? 'rgba(16,185,129,0.2)' : '#dcfce7'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
             {u.is_guest ? '👤' : '👨‍🌾'}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827' }}>{u.name}</div>
-            <div style={{ fontSize: '.78rem', color: '#6b7280', fontFamily: 'monospace' }}>{u.phone} {u.district ? `• ${u.district}` : ''}</div>
+            <div style={{ fontWeight: 700, fontSize: '.9rem', color: dark ? '#F1F5F9' : '#111827' }}>{u.name}</div>
+            <div style={{ fontSize: '.78rem', color: dark ? '#94A3B8' : '#6b7280', fontFamily: 'monospace' }}>{u.phone} {u.district ? `• ${u.district}` : ''}</div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: '.72rem', color: '#9ca3af' }}>{u.created_at ? timeAgo(u.created_at) : ''}</div>
-            <span style={{ background: u.is_guest ? '#fef3c7' : '#dcfce7', color: u.is_guest ? '#d97706' : '#16a34a', padding: '.1rem .45rem', borderRadius: 20, fontSize: '.68rem', fontWeight: 700 }}>
+            <div style={{ fontSize: '.72rem', color: dark ? '#64748B' : '#9ca3af' }}>{u.created_at ? timeAgo(u.created_at) : ''}</div>
+            <span style={{ background: u.is_guest ? (dark ? 'rgba(245,158,11,0.2)' : '#fef3c7') : (dark ? 'rgba(16,185,129,0.2)' : '#dcfce7'), color: u.is_guest ? '#f59e0b' : '#10b981', padding: '.1rem .45rem', borderRadius: 20, fontSize: '.68rem', fontWeight: 700 }}>
               {u.is_guest ? 'Guest' : 'Registered'}
             </span>
           </div>
@@ -1625,7 +1879,7 @@ function btnStyle(color, disabled = false) {
 
 
 // ── Chat Logs Tab ────────────────────────────────────────────────────────────────────
-function ChatLogsTab() {
+function ChatLogsTab({ dark }) {
   const [logs, setLogs]       = useState([]);
   const [total, setTotal]     = useState(0);
   const [page, setPage]       = useState(1);
@@ -1667,44 +1921,64 @@ function ChatLogsTab() {
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search questions or user names..."
-          style={{ flex: 1, minWidth: 200, padding: '.6rem 1rem', borderRadius: 8, border: '1.5px solid #e5e7eb', fontFamily: 'Inter, sans-serif', fontSize: '.875rem' }}
+          style={{
+            flex: 1, minWidth: 200, padding: '.6rem 1rem', borderRadius: 8,
+            border: `1.5px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`,
+            background: dark ? '#0F172A' : 'white',
+            color: dark ? '#F1F5F9' : '#111827',
+            fontFamily: 'Inter, sans-serif', fontSize: '.875rem'
+          }}
         />
-        <span style={{ color: '#6b7280', fontSize: '.85rem', whiteSpace: 'nowrap' }}>
-          Total: <strong>{total}</strong> questions
+        <span style={{ color: dark ? '#94A3B8' : '#6b7280', fontSize: '.85rem', whiteSpace: 'nowrap' }}>
+          Total: <strong style={{ color: dark ? '#F1F5F9' : '#111827' }}>{total}</strong> questions
         </span>
-        <button onClick={load} style={{ padding: '.5rem 1rem', borderRadius: 8, border: '1px solid #e5e7eb', background: 'white', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+        <button onClick={load} style={{
+          padding: '.5rem 1rem', borderRadius: 8,
+          border: `1px solid ${dark ? 'rgba(255,255,255,0.12)' : '#e5e7eb'}`,
+          background: dark ? '#1E293B' : 'white',
+          color: dark ? '#F1F5F9' : '#374151',
+          cursor: 'pointer', fontFamily: 'Inter, sans-serif'
+        }}>
           🔄 Refresh
         </button>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af' }}>Loading...</div>
+        <div style={{ textAlign: 'center', padding: '3rem', color: dark ? '#64748B' : '#9ca3af' }}>Loading...</div>
       ) : logs.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af' }}>
+        <div style={{
+          textAlign: 'center', padding: '3rem', color: dark ? '#64748B' : '#9ca3af',
+          background: dark ? '#1E293B' : 'white', borderRadius: 12,
+          border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'}`
+        }}>
           <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>💬</div>
           <div>No questions yet. Questions will appear here as users chat.</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
           {logs.map(log => (
-            <div key={log.id} style={{ background: 'white', borderRadius: 12, padding: '1rem 1.25rem', boxShadow: '0 1px 6px rgba(0,0,0,.06)', border: '1px solid #f0f0f0' }}>
+            <div key={log.id} style={{
+              background: dark ? '#1E293B' : 'white', borderRadius: 12, padding: '1rem 1.25rem',
+              boxShadow: '0 1px 6px rgba(0,0,0,.06)',
+              border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#f0f0f0'}`
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   {langBadge(log.language)}
                   {log.user_name && (
-                    <span style={{ fontWeight: 600, fontSize: '.82rem', color: '#111827' }}>👨‍🌾 {log.user_name}</span>
+                    <span style={{ fontWeight: 600, fontSize: '.82rem', color: dark ? '#F1F5F9' : '#111827' }}>👨‍🌾 {log.user_name}</span>
                   )}
                   {log.user_phone && (
-                    <span style={{ fontSize: '.78rem', color: '#6b7280' }}>{log.user_phone}</span>
+                    <span style={{ fontSize: '.78rem', color: dark ? '#94A3B8' : '#6b7280' }}>{log.user_phone}</span>
                   )}
                 </div>
-                <span style={{ fontSize: '.72rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{formatDate(log.created_at)}</span>
+                <span style={{ fontSize: '.72rem', color: dark ? '#64748B' : '#9ca3af', whiteSpace: 'nowrap' }}>{formatDate(log.created_at)}</span>
               </div>
               <div style={{
-                fontSize: '.9rem', color: '#111827', lineHeight: 1.7,
+                fontSize: '.9rem', color: dark ? '#F1F5F9' : '#111827', lineHeight: 1.7,
                 fontFamily: log.language !== 'en' ? '"Noto Nastaliq Urdu", serif' : 'Inter, sans-serif',
                 direction: log.language !== 'en' ? 'rtl' : 'ltr',
-                background: '#f9fafb', borderRadius: 8, padding: '.6rem .875rem'
+                background: dark ? '#0F172A' : '#f9fafb', borderRadius: 8, padding: '.6rem .875rem'
               }}>
                 {log.question}
               </div>
@@ -1717,14 +1991,28 @@ function ChatLogsTab() {
       {totalPages > 1 && (
         <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', marginTop: '1.5rem', flexWrap: 'wrap' }}>
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-            style={{ padding: '.4rem .875rem', borderRadius: 8, border: '1px solid #e5e7eb', cursor: 'pointer', background: 'white', fontFamily: 'Inter, sans-serif' }}>
+            style={{
+              padding: '.4rem .875rem', borderRadius: 8,
+              border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`,
+              cursor: page === 1 ? 'not-allowed' : 'pointer',
+              background: dark ? '#1E293B' : 'white',
+              color: dark ? '#F1F5F9' : '#374151',
+              fontFamily: 'Inter, sans-serif'
+            }}>
             ← Prev
           </button>
-          <span style={{ padding: '.4rem .875rem', color: '#6b7280', fontSize: '.875rem' }}>
+          <span style={{ padding: '.4rem .875rem', color: dark ? '#94A3B8' : '#6b7280', fontSize: '.875rem' }}>
             {page} / {totalPages}
           </span>
           <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-            style={{ padding: '.4rem .875rem', borderRadius: 8, border: '1px solid #e5e7eb', cursor: 'pointer', background: 'white', fontFamily: 'Inter, sans-serif' }}>
+            style={{
+              padding: '.4rem .875rem', borderRadius: 8,
+              border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`,
+              cursor: page === totalPages ? 'not-allowed' : 'pointer',
+              background: dark ? '#1E293B' : 'white',
+              color: dark ? '#F1F5F9' : '#374151',
+              fontFamily: 'Inter, sans-serif'
+            }}>
             Next →
           </button>
         </div>
