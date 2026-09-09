@@ -72,6 +72,13 @@ const BADGES = {
     full: 'سیمن پروڈکشن یونٹ قادرآباد (SPU) و لائیوسٹاک ڈیپارٹمنٹ پنجاب — افزائش نسل و تخم کاری',
     url: 'https://www.livestockpunjab.gov.pk',
   },
+  plra: {
+    bg: '#f0fdf4', border: '#15803d', color: '#14532d',
+    icon: '📜',
+    label: 'PLRA بورڈ آف ریونیو پنجاب',
+    full: 'پنجاب لینڈ ریکارڈ اتھارٹی (PLRA) و بورڈ آف ریونیو — اراضی ریکارڈ و پٹوار معیارات',
+    url: 'https://www.punjab-zameen.gov.pk',
+  },
 };
 
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };

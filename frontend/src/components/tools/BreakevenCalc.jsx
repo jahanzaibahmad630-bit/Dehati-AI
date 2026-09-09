@@ -1,20 +1,22 @@
 import { useState } from 'react';
+import InstitutionalBadge from '../ui/InstitutionalBadge';
 
 const CROP_PRESETS = {
-  'گندم':   { cost: 85000,  yieldVal: 40,  msp: 3900,  unit: 'من', icon: '🌾', note: 'سرکاری امدادی قیمت ₨3,900/من' },
-  'کپاس':   { cost: 110000, yieldVal: 22,  msp: 7500,  unit: 'من', icon: '🌿', note: 'پھٹی کم از کم محفوظ ریٹ ₨7,500' },
-  'چاول':   { cost: 95000,  yieldVal: 45,  msp: 4200,  unit: 'من', icon: '🍚', note: 'سپر باسمتی منڈی ہدف ₨4,200+' },
-  'مکئی':   { cost: 90000,  yieldVal: 75,  msp: 1800,  unit: 'من', icon: '🌽', note: 'بہاریہ مکئی محفوظ ریٹ ₨1,800+' },
-  'آلو':    { cost: 160000, yieldVal: 260, msp: 850,   unit: 'من', icon: '🥔', note: 'کولڈ اسٹور اور بیج لاگت شامل' },
-  'کماد':   { cost: 180000, yieldVal: 850, msp: 425,   unit: 'من', icon: '🎋', note: 'سرکاری شوگر ملز ریٹ ₨425/من' },
+  'گندم':   { cost: 90000,  yieldVal: 42,  msp: 3900,  unit: 'من', icon: '🌾', note: 'سرکاری امدادی ہدف ₨3,900–4,200/من' },
+  'کپاس':   { cost: 130000, yieldVal: 22,  msp: 7800,  unit: 'من', icon: '🌿', note: 'پھٹی کم از کم محفوظ ریٹ ₨7,800/من' },
+  'چاول':   { cost: 105000, yieldVal: 45,  msp: 4400,  unit: 'من', icon: '🍚', note: 'سپر باسمتی منڈی ہدف ₨4,400+/من' },
+  'مکئی':   { cost: 92000,  yieldVal: 80,  msp: 1850,  unit: 'من', icon: '🌽', note: 'بہاریہ مکئی محفوظ ریٹ ₨1,850/من' },
+  'آلو':    { cost: 183000, yieldVal: 280, msp: 950,   unit: 'من', icon: '🥔', note: 'کولڈ اسٹور اور بیج لاگت شامل' },
+  'کماد':   { cost: 183000, yieldVal: 850, msp: 450,   unit: 'من', icon: '🎋', note: 'سرکاری شوگر ملز ریٹ ₨450/من' },
 };
 
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
 export default function BreakevenCalc() {
   const [selectedCrop, setSelectedCrop] = useState('گندم');
-  const [cost, setCost] = useState('85000');
-  const [yieldAmt, setYieldAmt] = useState('40');
+  const [cost, setCost] = useState('90000');
+  const [yieldAmt, setYieldAmt] = useState('42');
+  const [mandiPrice, setMandiPrice] = useState('3900');
   const [includeRent, setIncludeRent] = useState(false);
   const [rentCost, setRentCost] = useState('35000'); // 6-month seasonal rent
   const [result, setResult] = useState(null);
@@ -25,6 +27,7 @@ export default function BreakevenCalc() {
     if (p) {
       setCost(p.cost.toString());
       setYieldAmt(p.yieldVal.toString());
+      setMandiPrice(p.msp ? p.msp.toString() : '');
     }
     setResult(null);
   };
@@ -40,8 +43,9 @@ export default function BreakevenCalc() {
 
     const preset = CROP_PRESETS[selectedCrop];
     const msp = preset?.msp || null;
-    const profitAtMSP = msp ? (msp - bePerMaund) : null;
-    const totalProfitPerAcre = msp ? (profitAtMSP * y) : null;
+    const effectivePrice = parseFloat(mandiPrice) || msp || bePerMaund;
+    const profitPerMaund = effectivePrice - bePerMaund;
+    const totalProfitPerAcre = profitPerMaund * y;
 
     setResult({
       totalCostPerAcre,
@@ -50,7 +54,8 @@ export default function BreakevenCalc() {
       includeRent,
       rent,
       msp,
-      profitAtMSP,
+      effectivePrice,
+      profitPerMaund,
       totalProfitPerAcre,
       selectedCrop
     });
@@ -111,12 +116,37 @@ export default function BreakevenCalc() {
               متوقع پیداوار (من / ایکڑ):
             </label>
             <input
-              type="number" className="input" placeholder="40"
+              type="number" className="input" placeholder="42"
               value={yieldAmt} min="1" dir="ltr"
               onChange={e => { setYieldAmt(e.target.value); setResult(null); }}
               style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '1rem', fontWeight: 800, fontFamily: 'Inter' }}
             />
           </div>
+        </div>
+
+        {/* Mandi / Selling Rate */}
+        <div style={{ marginTop: 10 }}>
+          <label className="input-label" style={{ fontWeight: 700, marginBottom: 4, display: 'block' }}>
+            مقامی منڈی یا متوقع فروخت ریٹ (روپے / من):
+          </label>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input
+              type="number" className="input" placeholder="3900"
+              value={mandiPrice} min="0" dir="ltr"
+              onChange={e => { setMandiPrice(e.target.value); setResult(null); }}
+              style={{ flex: 1, padding: '0.6rem 0.8rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '1rem', fontWeight: 800, fontFamily: 'Inter' }}
+            />
+            {CROP_PRESETS[selectedCrop]?.msp && (
+              <button
+                type="button"
+                onClick={() => { setMandiPrice(CROP_PRESETS[selectedCrop].msp.toString()); setResult(null); }}
+                style={{ padding: '0.6rem 0.8rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', ...nas }}
+              >
+                🏛️ سرکاری ریٹ (₨{CROP_PRESETS[selectedCrop].msp})
+              </button>
+            )}
+          </div>
+          <div style={{ fontSize: '.65rem', color: '#64748b', marginTop: 2 }}>اپنی قریبی غلہ منڈی کی موجودہ بولی یا متوقع فروخت قیمت درج کریں</div>
         </div>
 
         {/* Land Rent Toggle */}
@@ -180,6 +210,26 @@ export default function BreakevenCalc() {
               </div>
             </div>
 
+            {/* Profit / Loss Outcome at entered Selling Price */}
+            <div style={{ background: result.profitPerMaund >= 0 ? '#f0fdf4' : '#fef2f2', border: `1.5px solid ${result.profitPerMaund >= 0 ? '#86efac' : '#fca5a5'}`, borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '.85rem', color: result.profitPerMaund >= 0 ? '#166534' : '#991b1b' }}>
+                    {result.profitPerMaund >= 0 ? '✅ متوقع خالص منافع' : '⚠️ متوقع مالی نقصان'}
+                  </div>
+                  <div style={{ fontSize: '.72rem', color: result.profitPerMaund >= 0 ? '#15803d' : '#7f1d1d' }}>
+                    فروخت ریٹ ₨{result.effectivePrice.toLocaleString()}/من کے حساب سے:
+                  </div>
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 900, color: result.profitPerMaund >= 0 ? '#15803d' : '#be123c', fontFamily: 'Inter' }} dir="ltr">
+                    {result.profitPerMaund >= 0 ? '+' : ''}₨{Math.round(result.totalProfitPerAcre).toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: '.68rem', color: '#64748b' }}>فی ایکڑ بچت</div>
+                </div>
+              </div>
+            </div>
+
             {/* Warning & Safe Bands */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
               <div style={{ background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: 10, padding: '10px', textAlign: 'center' }}>
@@ -204,9 +254,9 @@ export default function BreakevenCalc() {
                   🏛️ حکومتی ریٹ موازنہ (سرکاری ریٹ: ₨{result.msp.toLocaleString()}/من):
                 </div>
                 <div style={{ fontSize: '.78rem', color: '#1e3a8a', marginTop: 4, lineHeight: 1.5 }}>
-                  {result.profitAtMSP > 0 ? (
+                  {result.msp >= result.bePerMaund ? (
                     <span>
-                      اگر آپ حکومتی نرخ پر فروخت کریں تو آپ کو <strong>₨{result.profitAtMSP.toLocaleString()} فی من</strong> بچت ہوگی۔ یعنی کل <strong>₨{result.totalProfitPerAcre.toLocaleString()} فی ایکڑ خالص منافع</strong>۔
+                      اگر آپ حکومتی نرخ پر فروخت کریں تو آپ کو <strong>₨{(result.msp - result.bePerMaund).toLocaleString()} فی من</strong> بچت ہوگی۔ یعنی کل <strong>₨{((result.msp - result.bePerMaund) * result.yieldAmt).toLocaleString()} فی ایکڑ خالص منافع</strong>۔
                     </span>
                   ) : (
                     <span>
@@ -218,6 +268,18 @@ export default function BreakevenCalc() {
             )}
           </div>
         )}
+
+        {/* Written Legal / Agronomic Warning & Disclaimer */}
+        <div style={{ background: '#fffbeb', border: '1.5px solid #f59e0b', borderRadius: 12, padding: '10px 14px', marginTop: 14, marginBottom: 10, fontSize: '.72rem', color: '#78350f', lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 800, color: '#92400e', marginBottom: 4, fontSize: '.78rem' }}>
+            ⚠️ تحریری ڈس کلیمر (بریک ایون ریٹ وارننگ):
+          </div>
+          یہ بریک ایون حساب ایوب زرعی تحقیقاتی ادارہ (AARI) اور محکمہ زراعت پنجاب کے 2025–2026 اوسط پیداواری بجٹ پر مبنی ہے۔ اصل لاگت ڈیزل، کھاد اور ٹیوب ویل کے بلوں کے لحاظ سے مختلف ہو سکتی ہے۔ غلہ منڈی میں سودا طے کرنے سے پہلے اپنی اصل رسیدوں کے مطابق حساب ضرور چیک کریں۔
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+          <InstitutionalBadge type="aari" helpline="0800-17000" />
+        </div>
       </div>
     </div>
   );

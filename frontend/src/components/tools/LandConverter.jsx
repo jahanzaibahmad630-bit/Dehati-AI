@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import InstitutionalBadge from '../ui/InstitutionalBadge';
 
 // PLRA Standard (Rural Punjab: 1 Karam = 5.5 ft)
 const KARAM_FT = 5.5;
@@ -197,6 +198,15 @@ export default function LandConverter() {
           </div>
         </div>
       )}
+
+      {/* Institutional Provenance & Disclaimer */}
+      <div style={{ marginTop: 14 }}>
+        <InstitutionalBadge type="plra" helpline="0800-78685" />
+      </div>
+
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 12px', fontSize: '.68rem', color: '#64748b', lineHeight: 1.5, marginTop: 6 }}>
+        ⚖️ <strong>قانونی وضاحت:</strong> یہ پیمائش پنجاب لینڈ ریکارڈ اتھارٹی (PLRA) اور بورڈ آف ریونیو کے رائج زرعی فارمولے پر مبنی ہے۔ سرکاری فرد، انتقال اور حدود بندی کیلئے اپنے مقامی اراضی ریکارڈ سنٹر (ARC) سے تصدیق لازمی ہے۔
+      </div>
     </div>
   );
 }
