@@ -908,13 +908,29 @@ export default function AdminPanel({ onLogout }) {
             
             {/* KPI Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-              <StatCard dark={dark} ring ringPct={stats?.aiCache?.hitRate || 0} icon="⚡" label="Cache Hit Rate" value={`${stats?.aiCache?.hitRate || 0}%`} sub={`${stats?.aiCache?.entries ?? 0} entries`} color="#10B981" />
+              <StatCard 
+                dark={dark} 
+                ring 
+                ringPct={typeof stats?.aiCache?.hitRate === 'number' ? stats.aiCache.hitRate : (parseFloat(stats?.aiCache?.hitRate) || 0)} 
+                icon="⚡" 
+                label="Cache Hit Rate" 
+                value={`${typeof stats?.aiCache?.hitRate === 'number' ? stats.aiCache.hitRate : (parseFloat(stats?.aiCache?.hitRate) || 0)}%`} 
+                sub={`${stats?.aiCache?.entries ?? stats?.aiCache?.totalEntries ?? 0} entries`} 
+                color="#10B981" 
+              />
               <StatCard dark={dark} icon="📅" label="New Registrations Today" value={stats?.newToday} sub="Last 24h" color="#3B82F6" />
               <StatCard dark={dark} icon="👨‍🌾" label="Total Registered Farmers" value={stats?.registeredUsers ?? stats?.totalUsers} sub="All time" color="#8B5CF6" />
               <StatCard dark={dark} icon="📋" label="Total Questions Asked" value={stats?.totalQuestions ?? '—'} sub="All chat logs" color="#F59E0B" />
               <StatCard dark={dark} icon="🔗" label="Environment" value={stats?.nodeVersion || 'v20'} sub={stats?.environment || 'Production'} color="#64748B" />
               <StatCard dark={dark} icon="⏱️" label="System Uptime" value={formatUptime(uptimeSeconds)} sub="Continuous" color="#EC4899" />
-              <StatCard dark={dark} icon="💾" label="Cache Hits" value={stats?.aiCache?.hits || 0} sub={`${stats?.aiCache?.misses ?? 0} misses`} color="#14B8A6" />
+              <StatCard 
+                dark={dark} 
+                icon="💾" 
+                label="Cache Hits" 
+                value={stats?.aiCache?.hits ?? stats?.aiCache?.totalHits ?? 0} 
+                sub={`${stats?.aiCache?.misses ?? 0} misses`} 
+                color="#14B8A6" 
+              />
               <StatCard dark={dark} icon="💰" label="AI Cost Today" value={`$${stats?.costToday?.toFixed(4) ?? '0.0000'}`} sub="Gemini + Claude spend" color="#EF4444" />
             </div>
 

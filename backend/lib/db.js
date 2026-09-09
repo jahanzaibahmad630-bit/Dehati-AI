@@ -81,6 +81,8 @@ async function initDB() {
         created_at  TIMESTAMPTZ DEFAULT NOW(),
         expires_at  TIMESTAMPTZ NOT NULL
       );
+      ALTER TABLE ai_cache ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'ur';
+      ALTER TABLE ai_cache ADD COLUMN IF NOT EXISTS hits INTEGER DEFAULT 0;
       CREATE INDEX IF NOT EXISTS ai_cache_expires_idx ON ai_cache(expires_at);
     `);
     console.log('✅ PostgreSQL tables ready (users + mandi_prices + chat_logs + ai_cache)');
@@ -530,18 +532,39 @@ async function getCacheFromDB(cacheKey) {
 async function setCacheInDB(cacheKey, answer, language = 'ur', ttlSeconds = 604800) {
   if (!pool || !answer) return;
   try {
+    const sec = parseInt(ttlSeconds || '604800', 10);
     await pool.query(
       `INSERT INTO ai_cache (cache_key, answer, language, expires_at)
-       VALUES ($1, $2, $3, NOW() + ($4 * INTERVAL '1 second'))
+       VALUES ($1, $2, $3, NOW() + ($4 || ' seconds')::INTERVAL)
        ON CONFLICT (cache_key) DO UPDATE
          SET answer     = EXCLUDED.answer,
              language   = EXCLUDED.language,
              expires_at = EXCLUDED.expires_at,
              hits       = ai_cache.hits`,
-      [cacheKey, answer, language, ttlSeconds]
+      [cacheKey, answer, language, String(sec)]
     );
   } catch (err) {
     console.warn('setCacheInDB error:', err.message);
+  }
+}
+
+/**
+ * Fetch unexpired cache entries to warm in-memory cache on startup.
+ */
+async function getUnexpiredCacheEntries(limit = 100) {
+  if (!pool) return [];
+  try {
+    const { rows } = await pool.query(
+      `SELECT cache_key, answer, language, hits, expires_at
+       FROM ai_cache
+       WHERE expires_at > NOW()
+       ORDER BY hits DESC LIMIT $1`,
+      [limit]
+    );
+    return rows;
+  } catch (err) {
+    console.warn('getUnexpiredCacheEntries error:', err.message);
+    return [];
   }
 }
 
@@ -941,7 +964,7 @@ module.exports = {
   deleteUser, isUsingPersistentDB,
   setPriceDB, getPricesDB, deletePriceDB,
   saveChatLog, getChatLogs, getUserChatHistory,
-  getCacheFromDB, setCacheInDB, flushCacheDB, getCacheStats,
+  getCacheFromDB, setCacheInDB, flushCacheDB, getCacheStats, getUnexpiredCacheEntries,
   logAuditAction, getAuditLogs,
   logAIUsage, getAIUsage, getAIUsageStats: getAIUsage,
   createEmergencyAlert, getEmergencyAlerts, updateEmergencyAlertStatus, deleteEmergencyAlert,
