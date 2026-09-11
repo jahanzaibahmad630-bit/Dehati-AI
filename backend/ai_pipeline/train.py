@@ -18,24 +18,33 @@ from tqdm import tqdm
 
 from models.resnet_cbam import ResNet50_CBAM
 
+os.environ['TORCH_HOME'] = r'E:\torch_cache'
+
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ============================================================
 # CONFIGURATION
 # ============================================================
 DEFAULT_CONFIG = {
-    "data_dir": "./data/crop_disease",
-    "num_classes": 306,
-    "batch_size": 32,
-    "epochs": 30,
+    "data_dir": os.path.join(SCRIPT_DIR, "data", "crop_disease"),
+    "num_classes": 32,
+    "batch_size": 16,
+    "epochs": 15,
     "learning_rate": 1e-4,
     "weight_decay": 1e-4,
     "dropout": 0.4,
     "unfreeze_last_n": 2,
-    "num_workers": 2,
+    "num_workers": 0 if os.name == 'nt' else 2,
     "device": "cuda" if torch.cuda.is_available() else "cpu",
-    "save_path": "./checkpoints/best_model.pth",
-    "class_names_path": "./class_names.json",
-    "onnx_export_path": "../models/resnet50_cbam.onnx"
+    "save_path": os.path.join(SCRIPT_DIR, "checkpoints", "best_model.pth"),
+    "class_names_path": os.path.join(SCRIPT_DIR, "class_names.json"),
+    "onnx_export_path": os.path.join(SCRIPT_DIR, "..", "models", "resnet50_cbam.onnx")
 }
 
 
