@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useOffline } from '../hooks/useOffline';
+import { useAuth } from '../context/AuthContext';
 import { detectDisease, getDiseaseCatalog, compressImage } from '../services/api';
 import AnimalHealthAdvisor from '../components/tools/AnimalHealthAdvisor';
 import AudioPlayer from '../components/ui/AudioPlayer';
@@ -166,6 +167,7 @@ export default function DiseasePage() {
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const { isOffline } = useOffline();
+  const { user } = useAuth();
 
   useEffect(() => {
     return () => {
@@ -209,10 +211,18 @@ export default function DiseasePage() {
     setResult(null);
 
     try {
-      const compressed = await compressImage(image, 0.4);
+      const compressed = await compressImage(image, 0.8);
       setCompressing(false);
       const base64 = await fileToBase64(compressed);
-      const data = await detectDisease(base64, crop || null, compressed.type || 'image/jpeg');
+
+      const userDistrict = user?.district || (() => {
+        try {
+          const p = JSON.parse(localStorage.getItem('dehati_user') || '{}');
+          return p.district;
+        } catch { return ''; }
+      })();
+
+      const data = await detectDisease(base64, crop || null, compressed.type || 'image/jpeg', null, { district: userDistrict });
       setResult(data);
     } catch (err) {
       setCompressing(false);
@@ -232,10 +242,15 @@ export default function DiseasePage() {
       tier: 1,
       source: 'catalog_dictionary',
       source_label: '📖 ڈائریکٹری سے منتخب کردہ ریکارڈ',
-      model_attribution: item.model_name || 'ResNet50 PyTorch Model',
+      model_attribution: item.model_name || 'مقامی زرعی ڈیٹابیس',
       disease: `${item.name_ur || item.name_en} (${item.name_en})`,
       disease_ur: item.name_ur || item.name_en,
       disease_en: item.name_en,
+      severity: item.detail?.severity || 'درمیانہ',
+      emergency_action: item.detail?.emergency_action || '',
+      spray_conditions: item.detail?.spray_conditions || '',
+      fertilizer_adjustment: item.detail?.fertilizer_adjustment || '',
+      symptoms_analysis: item.detail?.symptoms_analysis || '',
       cause: item.detail?.cause || 'پھپھوندی / کیڑا (Pathogen)',
       treatment: item.detail?.treatment_summary || item.detail?.treatment || 'بیماری کی ابتدائی علامات پر مناسب پھپھوندی کش دوائی کا سپرے کریں۔',
       prevention: item.detail?.prevention || 'کھیت صاف رکھیں، متوازن کھاد دیں اور پانی کی نکاسی کا انتظام رکھیں۔',
@@ -270,7 +285,10 @@ export default function DiseasePage() {
 
   const shareWhatsApp = () => {
     if (!result) return;
-    const text = `🌾 DehatiAI فصل تجزیہ نتیجہ:\n\n🔬 بیماری: ${result.disease || result.disease_ur}\n⚡ وجہ: ${result.cause}\n💊 علاج: ${result.treatment}\n⚠️ پرہیزی دن: ${result.withholding_period_days || 14} دن\n🌿 دیسی علاج: ${result.organic_alternative || '—'}\n\n🤖 DehatiAI - dehati-ai.vercel.app`;
+    const medSummary = result.medicines && result.medicines.length > 0
+      ? result.medicines.map(m => `🧪 ${m.brand} (${m.active}): ${m.dosage}${m.tank_dosage_20l ? ` | 🎒 ڈرمکی: ${m.tank_dosage_20l}` : ''}`).join('\n')
+      : '';
+    const text = `🌾 DehatiAI فصل تشخیص و نسخہ:\n\n🔬 بیماری: ${result.disease_ur || result.disease}\n${result.severity ? `⚠️ شدت: ${result.severity}\n` : ''}${result.emergency_action ? `🚨 پہلا فوری قدم: ${result.emergency_action}\n` : ''}⚡ وجہ: ${result.cause}\n💊 علاج: ${result.treatment}\n\n${medSummary ? `تجویز کردہ ادویات:\n${medSummary}\n\n` : ''}${result.spray_conditions ? `🌤️ سپرے وقت و موسم: ${result.spray_conditions}\n` : ''}${result.fertilizer_adjustment ? `🌱 کھاد کی ہدایت: ${result.fertilizer_adjustment}\n` : ''}⚠️ پرہیزی دن: ${result.withholding_period_days || 14} دن\n🌿 دیسی علاج: ${result.organic_alternative || '—'}\n\n🤖 DehatiAI - dehati-ai.vercel.app`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -293,11 +311,15 @@ export default function DiseasePage() {
 
   const spokenText = result
     ? [
-        `بیماری: ${result.disease_ur || result.disease}۔`,
-        `علاج: ${result.treatment}۔`,
+        `بیماری کا نام: ${result.disease_ur || result.disease}۔`,
+        result.severity ? `شدت: ${result.severity}۔` : '',
+        result.emergency_action ? `پہلا فوری قدم: ${result.emergency_action}۔` : '',
+        `علاج کی تفصیل: ${result.treatment}۔`,
         result.medicines && result.medicines.length > 0
-          ? `تجویز کردہ ادویات: ${result.medicines.map(m => `${m.brand}، ${m.dosage}`).join('؛ ')}۔`
+          ? `تجویز کردہ زرعی ادویات: ${result.medicines.map(m => `${m.brand}، خوراک ${m.dosage}، اور ڈرمکی خوراک ${m.tank_dosage_20l || 'حسب ہدایت'}`).join('؛ ')}۔`
           : '',
+        result.spray_conditions ? `سپرے کا وقت: ${result.spray_conditions}۔` : '',
+        result.fertilizer_adjustment ? `کھاد کا انتظام: ${result.fertilizer_adjustment}۔` : '',
         `احتیاطی خبردار: اس سپرے کے ${result.withholding_period_days || 14} دن بعد تک فصل منڈی میں نہ بیچیں۔`,
         result.organic_alternative ? `دیسی علاج: ${result.organic_alternative}` : ''
       ].filter(Boolean).join(' ')
@@ -767,7 +789,65 @@ export default function DiseasePage() {
               <div style={{ fontSize: '.78rem', color: 'rgba(255,255,255,0.75)', direction: 'ltr', fontStyle: 'italic', fontWeight: 500 }}>
                 {result.disease_en || result.disease || '—'}
               </div>
+
+              {/* Severity Badge */}
+              {result.severity && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '.4rem',
+                  background: (result.severity.includes('شدید') || result.severity.includes('Critical')) ? 'rgba(239,68,68,0.25)' : 'rgba(245,158,11,0.25)',
+                  border: `1.5px solid ${(result.severity.includes('شدید') || result.severity.includes('Critical')) ? '#ef4444' : '#f59e0b'}`,
+                  color: (result.severity.includes('شدید') || result.severity.includes('Critical')) ? '#fca5a5' : '#fef08a',
+                  borderRadius: 20, padding: '4px 12px', fontSize: '.75rem', fontWeight: 800,
+                  marginTop: '.6rem', direction: 'rtl'
+                }}>
+                  <span>⚠️ شدتِ بیماری:</span>
+                  <span>{result.severity}</span>
+                </div>
+              )}
             </div>
+
+            {/* FULL AUDIO PRESCRIPTION PLAYER (Prominent Top Voice Button) */}
+            <AudioPlayer
+              text={spokenText}
+              langKey="ur"
+              label="🔊 مکمل نسخہ و علاج سنیں (Voice Advisory)"
+              style={{
+                width: '100%', padding: '.85rem', justifyContent: 'center',
+                borderRadius: 14, fontSize: '.95rem', fontWeight: 800,
+                background: 'linear-gradient(135deg, #15803d, #166534)',
+                color: 'white', border: '2px solid #4ade80',
+                boxShadow: '0 4px 14px rgba(22,101,52,0.3)', cursor: 'pointer'
+              }}
+            />
+
+            {/* EMERGENCY 24-HOUR ACTION CARD */}
+            {result.emergency_action && (
+              <div style={{
+                background: '#fff7ed', border: '2.5px solid #ea580c',
+                borderRadius: 14, padding: '1rem', direction: 'rtl',
+                boxShadow: '0 4px 14px rgba(234, 88, 12, 0.15)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', color: '#c2410c', fontWeight: 900, fontSize: '1rem' }}>
+                  <span style={{ fontSize: '1.3rem' }}>🚨</span>
+                  <span>پہلا فوری قدم (اگلے 24 گھنٹے میں کریں)</span>
+                </div>
+                <div style={{ color: '#9a3412', fontSize: '.92rem', fontWeight: 700, marginTop: '.4rem', lineHeight: 1.7 }}>
+                  {result.emergency_action}
+                </div>
+              </div>
+            )}
+
+            {/* SYMPTOMS ANALYSIS (from AI Vision) */}
+            {result.symptoms_analysis && (
+              <div style={{ background: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: 14, padding: '1rem', direction: 'rtl' }}>
+                <div style={{ fontWeight: 800, fontSize: '.9rem', color: '#334155', marginBottom: '.4rem' }}>
+                  🔬 تصویر میں نظر آنے والی علامات کا تفصیلی معائنہ
+                </div>
+                <div style={{ fontSize: '.88rem', color: '#475569', lineHeight: 1.7 }}>
+                  {result.symptoms_analysis}
+                </div>
+              </div>
+            )}
 
             {/* SAFETY WARNING BADGE — Withholding Period (PHI days) */}
             <div style={{
@@ -818,6 +898,30 @@ export default function DiseasePage() {
                 <strong>علاج: </strong>{result.treatment}
               </div>
             </div>
+
+            {/* SPRAY CONDITIONS & FERTILIZER ADJUSTMENT ADVISORY */}
+            {(result.spray_conditions || result.fertilizer_adjustment) && (
+              <div style={{
+                background: '#f0f9ff', border: '1.5px solid #0284c7',
+                borderRadius: 14, padding: '1rem', direction: 'rtl',
+                boxShadow: '0 2px 6px rgba(2,132,199,0.1)'
+              }}>
+                <div style={{ fontWeight: 800, fontSize: '.95rem', color: '#0369a1', marginBottom: '.5rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '1.2rem' }}>🌤️</span>
+                  <span>سپرے کے شرائط اور کھاد کا انتظام</span>
+                </div>
+                {result.spray_conditions && (
+                  <div style={{ fontSize: '.88rem', color: '#0c4a6e', lineHeight: 1.7, marginBottom: result.fertilizer_adjustment ? '.5rem' : 0 }}>
+                    <strong style={{ color: '#0369a1' }}>سپرے کا وقت و طریقہ: </strong>{result.spray_conditions}
+                  </div>
+                )}
+                {result.fertilizer_adjustment && (
+                  <div style={{ fontSize: '.88rem', color: '#0c4a6e', lineHeight: 1.7, background: '#e0f2fe', padding: '8px 12px', borderRadius: 8, borderRight: '3px solid #0284c7' }}>
+                    <strong style={{ color: '#0369a1' }}>کھاد کی ہدایت: </strong>{result.fertilizer_adjustment}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* COMMERCIAL CHEMICAL BRANDS — High Contrast Clean Cards */}
             <div>
@@ -879,6 +983,24 @@ export default function DiseasePage() {
                       <div style={{ fontSize: '.88rem', color: 'var(--text-primary)', marginBottom: '.3rem', fontWeight: 600 }}>
                         <strong style={{ color: 'var(--green-800)' }}>مقدار (1 ایکڑ): </strong>{med.dosage} ({med.method || 'سپرے'})
                       </div>
+                      {/* Knapsack 20L Tank Dosage */}
+                      {med.tank_dosage_20l && (
+                        <div style={{
+                          background: '#ecfdf5', border: '1.5px solid #10b981',
+                          borderRadius: 10, padding: '6px 12px', margin: '.4rem 0', direction: 'rtl',
+                          display: 'flex', alignItems: 'center', gap: 8
+                        }}>
+                          <span style={{ fontSize: '1.1rem' }}>🎒</span>
+                          <span style={{ fontSize: '.84rem', color: '#065f46', fontWeight: 800 }}>
+                            <strong>20 لیٹر ڈرمکی خوراک: </strong>{med.tank_dosage_20l}
+                          </span>
+                        </div>
+                      )}
+                      {med.water_volume && (
+                        <div style={{ fontSize: '.82rem', color: '#475569', marginBottom: '.3rem', fontWeight: 600 }}>
+                          <strong style={{ color: '#334155' }}>پانی کا حجم: </strong>{med.water_volume}
+                        </div>
+                      )}
                       {/* Land-size dosage multiplier */}
                       {landSize > 1 && (
                         <div style={{

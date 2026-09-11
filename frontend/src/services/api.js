@@ -49,11 +49,11 @@ export async function askAI(question) {
   return handleResponse(res);
 }
 
-export async function detectDisease(imageBase64, cropName, mimeType = 'image/jpeg', diseaseKey = null) {
+export async function detectDisease(imageBase64, cropName, mimeType = 'image/jpeg', diseaseKey = null, extraContext = {}) {
   const res = await fetch(`${API_URL}/api/ai/disease`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ imageBase64, cropName, mimeType, diseaseKey })
+    body: JSON.stringify({ imageBase64, cropName, mimeType, diseaseKey, ...extraContext })
   });
   return handleResponse(res);
 }
@@ -147,11 +147,12 @@ export async function login({ phone, password }) {
 
 // === Image compression helper ===
 // Uses canvas-based resize as primary (no extra memory from web worker)
-// Falls back to browser-image-compression for complex formats
-export async function compressImage(file, maxSizeMB = 0.4) {
-  // Step 1: Canvas-based resize — works on ALL phones, no memory spike
+// High-resolution image compressor optimized for agricultural vision pathology
+// Preserves leaf lesion borders, fungal pustules, and pest nymphs while staying under 1MB
+export async function compressImage(file, maxSizeMB = 0.8) {
+  // Step 1: Canvas-based resize (1024px) — works on ALL phones, preserves leaf details
   try {
-    const compressed = await canvasResize(file, 800, 0.82);
+    const compressed = await canvasResize(file, 1024, 0.86);
     // If already small enough, use canvas result directly
     if (compressed.size <= maxSizeMB * 1024 * 1024) return compressed;
   } catch {
@@ -162,15 +163,15 @@ export async function compressImage(file, maxSizeMB = 0.4) {
   const imageCompression = (await import('browser-image-compression')).default;
   return imageCompression(file, {
     maxSizeMB,
-    maxWidthOrHeight: 800,
+    maxWidthOrHeight: 1024,
     useWebWorker: false,   // <-- CRITICAL: prevents "low memory" crash on cheap Android
     fileType: 'image/jpeg',
-    initialQuality: 0.82
+    initialQuality: 0.86
   });
 }
 
-// Canvas-based resize: safest on low-RAM devices
-function canvasResize(file, maxDim, quality = 0.82) {
+// Canvas-based resize: safest on low-RAM devices with high diagnostic sharpness
+function canvasResize(file, maxDim, quality = 0.86) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);

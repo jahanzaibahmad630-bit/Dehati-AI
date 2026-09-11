@@ -618,7 +618,8 @@ router.get('/disease-catalog', (req, res) => {
 
 router.post('/disease', diseaseLimiter, optionalAuth, async (req, res) => {
   try {
-    const { imageBase64, cropName, diseaseKey, mimeType = 'image/jpeg' } = req.body;
+    const { imageBase64, cropName, diseaseKey, mimeType = 'image/jpeg', district, symptoms, cropAge } = req.body;
+    const farmerDistrict = district || req.user?.district || null;
 
     if (imageBase64 && Buffer.byteLength(imageBase64, 'base64') > 5 * 1024 * 1024) {
       return res.status(413).json({ error: 'تصویر کا سائز 5MB سے زیادہ نہیں ہونا چاہیے۔' });
@@ -646,9 +647,15 @@ router.post('/disease', diseaseLimiter, optionalAuth, async (req, res) => {
         confidence:              95,
         disease_ur:              tier1.disease_ur || cropName || 'زرعی بیماری',
         disease_en:              tier1.disease_en || diseaseKey || 'Crop Disease',
+        disease_roman:           tier1.disease_roman || '',
         disease:                 tier1.disease || `${tier1.disease_ur || 'بیماری'} (${tier1.disease_en || ''})`,
+        severity:                tier1.severity || 'درمیانہ',
         cause:                   tier1.cause || 'پھپھوندی / کیڑا (Pathogen)',
+        symptoms_analysis:       tier1.symptoms_analysis || '',
+        emergency_action:        tier1.emergency_action || 'فوری طور پر نائٹروجن (یوریا) کا استعمال روکیں اور نکاسی آب بہتر بنائیں',
         treatment:               tier1.treatment || 'مناسب پھپھوندی کش یا دافع حشرات دوائی کا سپرے کریں۔',
+        spray_conditions:        tier1.spray_conditions || 'صبح 9 بجے سے پہلے یا شام کے وقت سپرے کریں۔ تیز ہوا یا دھوپ میں پرہیز کریں۔',
+        fertilizer_adjustment:   tier1.fertilizer_adjustment || 'یوریا کھاد فوری روکیں اور پوٹاش کی متوازن مقدار دیں۔',
         prevention:              tier1.prevention || 'کھیت صاف رکھیں، متوازن کھاد دیں اور پانی کی نکاسی کا انتظام رکھیں۔',
         withholding_period_days: tier1.withholding_period_days || 14,
         organic_alternative:     tier1.organic_alternative,
@@ -678,48 +685,83 @@ router.post('/disease', diseaseLimiter, optionalAuth, async (req, res) => {
       const safeMime     = ALLOWED_MIME.includes(mimeType) ? mimeType : 'image/jpeg';
       const month        = new Date().getMonth() + 1;
       const season       = (month >= 5 && month <= 10) ? 'خریف (Kharif)' : 'ربیع (Rabi)';
-      const cropText     = cropName
-        ? `Farmer specified crop: ${cropName}\n`
-        : 'Farmer specified crop: Auto-detect from image\n';
+
+      let promptText = `Current Agricultural Season in Pakistan: ${season}\n`;
+      if (farmerDistrict) promptText += `Location/District: ${farmerDistrict}, Pakistan\n`;
+      if (cropName) promptText += `Crop specified by farmer: ${cropName}\n`;
+      else promptText += `Crop: Auto-detect crop type from leaf structure\n`;
+      if (cropAge) promptText += `Crop Age / Growth Stage: ${cropAge}\n`;
+      if (symptoms) promptText += `Farmer observations: ${symptoms}\n`;
+      promptText += `Examine the leaf image in detail. Perform microscopic visual pathology triage and provide the complete agronomy diagnosis and prescription in JSON format.`;
 
       const samplePakistaniMeds =
         'Nativo 75WG, Tilt 250EC, Amistar Top, Score 250EC, Ridomil Gold MZ 68WG, ' +
         'Coragen 20SC, Match 050EC, Radiant 120SC, Belt 480SC, Movento 240SC, ' +
         'Confidor 200SL, Polo 500SC, Ulala 50WG, Delegate 250WG, Proclaim 1.9EC, ' +
-        'Cuprocaffaro, Kasumin 2L, Daconil 75WP, Antracol 70WP, Beam 75WP';
+        'Cuprocaffaro, Kasumin 2L, Daconil 75WP, Antracol 70WP, Beam 75WP, ' +
+        'Regent 0.4G, Padan 4G, Ferterra 0.4G, Virtako 40WG, Aliette 80WP, Acrobat MZ';
 
       const systemPrompt =
-`You are Dr. Zara, senior plant pathologist with 20+ years field experience in Punjab and Sindh, Pakistan.
-Analyze the crop leaf image with high diagnostic precision and prescribe verified, DRAP/Punjab Agriculture registered Pakistani brands, exact dosages (per acre), water volume, and withholding periods (PHI).
+`You are Dr. Zara, Chief Plant Pathologist and Senior Agronomist with 25+ years field experience in Punjab, Sindh, and Khyber Pakhtunkhwa, Pakistan.
+Your mission is to perform elite visual agronomic diagnosis and prescribe the highest-standard Pakistani agricultural treatments for farmers.
 
-CRITICAL PAKISTANI MEDICINES LIST:
-Use verified brands: ${samplePakistaniMeds}.
+DIAGNOSTIC TRIAGE PROTOCOL:
+1. Differential Diagnosis: Distinguish carefully between:
+   - Fungal Blights / Rusts / Mildew / Anthracnose (lesions, concentric rings, pustules, water-soaked margins, fungal mycelium)
+   - Bacterial Infections (angular leaf spots, water-soaking, bacterial ooze, leaf blight)
+   - Viral Diseases (leaf curling, yellow vein mosaic, stunting)
+   - Sucking Pests / Chewers (whitefly nymphs, thrips rasping, mites webbing, armyworm/borer frass & holes)
+   - Nutrient Deficiencies & Abiotic Stress (Zinc deficiency chlorosis, Nitrogen burn, drought curl, salt scorch).
+2. Severity Assessment: Classify infection severity:
+   - 'ابتدائی (Early / <15% affected)'
+   - 'درمیانہ (Moderate / 15-40% affected)'
+   - 'شدید (Severe / >40% affected)'
+3. First 24-Hour Emergency Action (پہلا فوری قدم):
+   - What the farmer MUST do immediately (e.g. stop urea/nitrogen to starve fungal growth, drain excess water, isolate field).
+4. Precision Chemical Prescriptions:
+   - Prescribe 2-3 verified brands registered with DRAP and Punjab Agriculture Extension.
+   - Include both Per Acre dosage AND Per 20-Liter Knapsack Sprayer Tank (ڈرمکی) dose! (e.g. "16 تا 20 گرام فی 20 لیٹر ڈرمکی (5 ڈرمکیاں فی ایکڑ)").
+   - Include water volume (100-120 Liters/acre) and nozzle type (Hollow cone nozzle / کھوکھلی کون نوزل).
+5. Optimal Spray Conditions:
+   - Exact hours (صبح 9 بجے سے پہلے یا شام 4 بجے کے بعد).
+   - Weather precautions (ہوا کی رفتار 10 کلومیٹر سے کم، بارش کا امکان نہ ہو، تیز دھوپ میں نہ کریں).
+6. Fertilizer & Irrigation Adjustment:
+   - Practical nutrient tips (e.g. stop Nitrogen/Urea which fuels fungal spread; apply Potash SOP/MOP to harden cell walls).
+7. Organic / Biological Alternatives:
+   - Low-cost farmer remedies: Neem seed extract (5ml/L), wood ash, fermented sour lassi (10%), tobacco extract, garlic spray.
+8. Future Prevention & Resistant Seed Varieties:
+   - Official Pakistani recommended varieties and seed treatment fungicides (e.g. Hombre, Dividend Star, Celest).
 
-Format output strictly as JSON:
+Respond strictly in valid JSON format:
 {
-  "disease_ur": "بیماری کا مستند اردو نام (مثلاً: مکئی کا پتا جھلساؤ)",
-  "disease_en": "English Disease Name (e.g. Northern Corn Leaf Blight)",
-  "confidence": 93,
+  "disease_ur": "بیماری یا کیڑے کا مستند اردو نام (مثلاً: مکئی کا پتا جھلساؤ)",
+  "disease_en": "Standard English Disease Name (e.g. Northern Corn Leaf Blight)",
+  "disease_roman": "Roman Urdu Name (e.g. Makkai ka Patton ka Jhulsa)",
+  "severity": "ابتدائی / درمیانہ / شدید",
+  "confidence": 94,
   "cause": "پھپھوندی / بیکٹیریا / کیڑا اور سائنسی نام (Pathogen)",
-  "treatment": "جامع علاج، سپرے کا طریقہ، وقت اور مرحلہ وار ہدایات",
-  "prevention": "آئندہ فصل کے لیے 3 تا 4 احتیاطی تدابیر اور بیج کا انتخاب",
-  "withholding_period_days": 14,
-  "organic_alternative": "دیسی و قدرتی علاج: نیم کا تیل 5ml فی لیٹر پانی یا راکھ یا کھٹی لسی کا چھڑکاؤ",
+  "symptoms_analysis": "پتوں پر سگار نما بھورے دھبے، پیلا ہالہ اور نچلے پتوں سے اوپر کی طرف پھیلاؤ",
+  "emergency_action": "پہلا فوری قدم: نائٹروجن (یوریا) کھاد فوری روکیں اور کھیت میں پانی کھڑا نہ ہونے دیں",
+  "treatment": "مرحلہ وار علاج اور سپرے کی مکمل فیلڈ ہدایات",
+  "spray_conditions": "صبح 9 بجے سے پہلے یا عصر کے بعد سپرے کریں۔ تیز ہوا یا تیز دھوپ میں سپرے ہرگز نہ کریں۔",
+  "fertilizer_adjustment": "یوریا کا استعمال فوری بند کریں۔ پوٹاش (SOP) کا سپرے پودے کے خلیات کو مضبوط کرے گا۔",
+  "prevention": "1. بیماری سے پاک تصدیق شدہ بیج کاشت کریں۔\n2. بوائی سے پہلے بیج کو فنجی سائیڈ زہر لگائیں۔\n3. فصل کی کٹائی کے بعد باقیات کو زمین میں گہرا دبا دیں۔\n4. نائٹروجن اور پوٹاش کی متوازن مقدار دیں۔",
+  "withholding_period_days": 21,
+  "organic_alternative": "دیسی علاج: 5 ملی لیٹر نیم کا تیل اور 2 گرام سرف فی لیٹر پانی میں ملا کر 7 دن کے وقفے سے سپرے کریں۔ یا 10% کھٹی لسی کا چھڑکاؤ کریں۔",
   "medicines": [
     {
       "brand": "Nativo 75WG",
       "active": "Tebuconazole 50% + Trifloxystrobin 25%",
       "dosage": "80 تا 100 گرام فی ایکڑ",
+      "tank_dosage_20l": "16 تا 20 گرام فی 20 لیٹر ڈرمکی (5 ڈرمکیاں فی ایکڑ)",
       "water_volume": "100-120 لیٹر پانی",
-      "method": "فولیئر سپرے",
+      "method": "فولیئر سپرے (کھوکھلی کون نوزل)",
       "withholding_period_days": 21,
       "suppliers": ["Bayer CropScience"],
       "estimated_price_pkr": "Rs. 1,900 - 2,400"
     }
   ]
 }`;
-
-      const promptText = `Season: ${season}\n${cropText}Analyze this crop image. Return precise diagnosis and localized Pakistani prescription in JSON.`;
 
       let parsed = null;
       let usedProvider = '';
@@ -751,7 +793,7 @@ Format output strictly as JSON:
                 config: {
                   temperature: 0.2,
                   responseMimeType: 'application/json',
-                  maxOutputTokens: 1200
+                  maxOutputTokens: 1400
                 }
               }),
               12000,
@@ -790,7 +832,7 @@ Format output strictly as JSON:
             const claudeRes = await withTimeout(
               claude.messages.create({
                 model:      cModel,
-                max_tokens: 1200,
+                max_tokens: 1400,
                 system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
                 messages: [{
                   role: 'user',
@@ -857,12 +899,18 @@ Format output strictly as JSON:
           disease:                 `${parsed.disease_ur} (${parsed.disease_en || ''})`,
           disease_ur:              parsed.disease_ur,
           disease_en:              parsed.disease_en || '',
-          cause:                   parsed.cause                || 'پھپھوندی / پاتھوجن',
-          treatment:               parsed.treatment            || 'مناسب پھپھوندی کش دوائی کا سپرے کریں۔',
-          prevention:              parsed.prevention           || 'کھیت صاف رکھیں اور متوازن کھاد دیں۔',
+          disease_roman:           parsed.disease_roman || '',
+          severity:                parsed.severity || 'درمیانہ',
+          cause:                   parsed.cause || 'پھپھوندی / پاتھوجن',
+          symptoms_analysis:       parsed.symptoms_analysis || '',
+          emergency_action:        parsed.emergency_action || '',
+          treatment:               parsed.treatment || 'مناسب پھپھوندی کش دوائی کا سپرے کریں۔',
+          spray_conditions:        parsed.spray_conditions || 'صبح 9 بجے سے پہلے یا شام کے وقت سپرے کریں۔',
+          fertilizer_adjustment:   parsed.fertilizer_adjustment || '',
+          prevention:              parsed.prevention || 'کھیت صاف رکھیں اور متوازن کھاد دیں۔',
           withholding_period_days: parsed.withholding_period_days || 14,
           organic_alternative:     parsed.organic_alternative || 'دیسی علاج: نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر سپرے کریں۔',
-          medicines:               parsed.medicines             || [],
+          medicines:               parsed.medicines || [],
           disclaimer:              'استعمال سے پہلے مقامی زرعی افسر سے تصدیق کروائیں۔'
         };
 
@@ -897,8 +945,14 @@ Format output strictly as JSON:
       disease:                 tier1.disease || (cropName ? `${cropName} کی بیماری` : 'فصل کی بیماری'),
       disease_ur:              tier1.disease_ur || (cropName ? `${cropName} کی بیماری` : 'فصل کی بیماری'),
       disease_en:              tier1.disease_en || (cropName ? `${cropName} Disease` : 'Crop Disease'),
+      disease_roman:           tier1.disease_roman || '',
+      severity:                tier1.severity || 'درمیانہ',
       cause:                   tier1.cause || 'پھپھوندی / کیڑا (Pathogen)',
+      symptoms_analysis:       tier1.symptoms_analysis || '',
+      emergency_action:        tier1.emergency_action || 'فوری طور پر نائٹروجن (یوریا) کا استعمال روکیں اور نکاسی آب بہتر بنائیں',
       treatment:               tier1.treatment || 'بیماری کی علامات پر فوری قریبی زرعی دفتر یا ہیلپ لائن 0800-15000 سے رابطہ کریں۔',
+      spray_conditions:        tier1.spray_conditions || 'صبح 9 بجے سے پہلے یا شام کے وقت سپرے کریں۔ تیز ہوا یا تیز دھوپ میں سپرے مت کریں۔',
+      fertilizer_adjustment:   tier1.fertilizer_adjustment || 'یوریا کھاد کا استعمال فوری روکیں۔ پوٹاش (SOP) کا استعمال پودے کو بیماری سے بچاتا ہے۔',
       prevention:              tier1.prevention || 'کھیت صاف رکھیں، متوازن کھاد دیں اور نکاسی آب بہتر بنائیں۔',
       withholding_period_days: tier1.withholding_period_days || 14,
       organic_alternative:     tier1.organic_alternative || 'دیسی علاج: نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر احتیاطی سپرے کریں۔',
