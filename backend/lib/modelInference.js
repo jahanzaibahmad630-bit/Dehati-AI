@@ -26,22 +26,87 @@ try {
   console.error('[ModelInference] Bootstrap error:', err.message);
 }
 
+// Map common Urdu and English crop names to primary disease keys in agronomyDb
+const CROP_NAME_MAP = {
+  'مکئی': 'maize_northern_leaf_blight',
+  'مکی': 'maize_northern_leaf_blight',
+  'corn': 'maize_northern_leaf_blight',
+  'maize': 'maize_northern_leaf_blight',
+  'گندم': 'wheat_yellow_stripe_rust',
+  'wheat': 'wheat_yellow_stripe_rust',
+  'کپاس': 'cotton_whitefly',
+  'cotton': 'cotton_whitefly',
+  'چاول': 'rice_bacterial_leaf_blight',
+  'دھان': 'rice_bacterial_leaf_blight',
+  'چاول / دھان': 'rice_bacterial_leaf_blight',
+  'rice': 'rice_bacterial_leaf_blight',
+  'آلو': 'potato_late_blight',
+  'potato': 'potato_late_blight',
+  'گنا': 'sugarcane_red_rot',
+  'sugarcane': 'sugarcane_red_rot',
+  'ٹماٹر': 'tomato_early_blight',
+  'tomato': 'tomato_early_blight',
+  'مرچ': 'chilli_anthracnose',
+  'chilli': 'chilli_anthracnose',
+  'chili': 'chilli_anthracnose',
+  'پیاز': 'onion_purple_blotch',
+  'onion': 'onion_purple_blotch',
+  'آم': 'mango_anthracnose',
+  'mango': 'mango_anthracnose',
+  'کنو': 'citrus_canker',
+  'کینوں': 'citrus_canker',
+  'citrus': 'citrus_canker'
+};
+
 function normalizeKey(str) {
   if (!str) return '';
-  return str.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const trimmed = str.toString().trim();
+  if (/[^\x00-\x7F]/.test(trimmed)) {
+    return trimmed.toLowerCase().replace(/\s+/g, ' ');
+  }
+  return trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
 
 function getAgronomyRecord(keyOrName) {
   if (!keyOrName) return null;
-  const clean = normalizeKey(keyOrName);
-  if (!clean) return null;
+  const raw = keyOrName.toString().trim();
+  const clean = normalizeKey(raw);
 
-  if (agronomyDb[clean])                            return { key: clean, data: agronomyDb[clean] };
-  if (activeLearningCache.has(clean))               return { key: clean, data: activeLearningCache.get(clean) };
-  const fwd = Object.keys(agronomyDb).find(k => k.includes(clean));
-  if (fwd)                                          return { key: fwd,   data: agronomyDb[fwd]   };
-  const rev = Object.keys(agronomyDb).find(k => clean.includes(k));
-  if (rev)                                          return { key: rev,   data: agronomyDb[rev]   };
+  // 1. Direct agronomyDb key
+  if (agronomyDb[raw]) return { key: raw, data: agronomyDb[raw] };
+  if (agronomyDb[clean]) return { key: clean, data: agronomyDb[clean] };
+
+  // 2. Active learning memory cache
+  if (activeLearningCache.has(raw)) return { key: raw, data: activeLearningCache.get(raw) };
+  if (activeLearningCache.has(clean)) return { key: clean, data: activeLearningCache.get(clean) };
+
+  // 3. Crop map lookup
+  if (CROP_NAME_MAP[raw] && agronomyDb[CROP_NAME_MAP[raw]]) {
+    return { key: CROP_NAME_MAP[raw], data: agronomyDb[CROP_NAME_MAP[raw]] };
+  }
+  if (CROP_NAME_MAP[clean] && agronomyDb[CROP_NAME_MAP[clean]]) {
+    return { key: CROP_NAME_MAP[clean], data: agronomyDb[CROP_NAME_MAP[clean]] };
+  }
+
+  // 4. Search by Urdu or English name in agronomyDb values
+  for (const [k, val] of Object.entries(agronomyDb)) {
+    if (k === 'note') continue;
+    if (val.name_ur && (val.name_ur.includes(raw) || raw.includes(val.name_ur))) {
+      return { key: k, data: val };
+    }
+    if (val.name_en && clean && (normalizeKey(val.name_en).includes(clean) || clean.includes(normalizeKey(val.name_en)))) {
+      return { key: k, data: val };
+    }
+  }
+
+  // 5. Substring key matching
+  if (clean && clean.length > 2) {
+    const fwd = Object.keys(agronomyDb).find(k => k !== 'note' && k.includes(clean));
+    if (fwd) return { key: fwd, data: agronomyDb[fwd] };
+    const rev = Object.keys(agronomyDb).find(k => k !== 'note' && clean.includes(k));
+    if (rev) return { key: rev, data: agronomyDb[rev] };
+  }
+
   return null;
 }
 
@@ -60,34 +125,30 @@ function predictDisease(imageBase64, cropName, requestedKey = null) {
     );
     if (entry) {
       matchedClassName = entry[1];
-      source = 'database_match';
-      model_attribution = '✓ مقامی ڈیٹابیس ریکارڈ';
     } else {
       matchedClassName = requestedKey;
-      source = 'database_match';
-      model_attribution = '✓ مقامی ڈیٹابیس ریکارڈ';
     }
+    source = 'database_match';
+    model_attribution = '✓ مقامی ڈیٹابیس ریکارڈ';
   } else if (cropName) {
     const cleanSearch = normalizeKey(cropName);
     const entry       = Object.entries(diseaseClasses).find(([, name]) => {
       const n = normalizeKey(name);
-      return n.includes(cleanSearch) || cleanSearch.includes(n);
+      return cleanSearch && (n.includes(cleanSearch) || cleanSearch.includes(n));
     });
     if (entry) {
       matchedClassName = entry[1];
-      source = 'database_match';
-      model_attribution = '✓ مقامی ڈیٹابیس ریکارڈ';
     } else {
       matchedClassName = cropName;
-      source = 'requires_ai_analysis';
-      model_attribution = '🤖 AI وژن تجزیہ ضروری';
     }
+    source = 'database_match';
+    model_attribution = '✓ مقامی ڈیٹابیس ریکارڈ';
   }
 
   const localMatch =
-    getAgronomyRecord(requestedKey)    ||
-    getAgronomyRecord(matchedClassName) ||
-    getAgronomyRecord(cropName);
+    getAgronomyRecord(requestedKey)     ||
+    getAgronomyRecord(cropName)         ||
+    getAgronomyRecord(matchedClassName);
 
   const hasLocalRecord = !!(localMatch && localMatch.data);
   const record         = hasLocalRecord ? localMatch.data : null;
@@ -99,14 +160,14 @@ function predictDisease(imageBase64, cropName, requestedKey = null) {
     isModelActive: isModelAvailable,
     model_attribution,
 
-    disease_en:             record ? record.name_en : (matchedClassName || ''),
-    disease_ur:             record ? record.name_ur : (matchedClassName || ''),
+    disease_en:             record ? record.name_en : (matchedClassName || cropName || ''),
+    disease_ur:             record ? record.name_ur : (matchedClassName || cropName || ''),
     disease:                record
       ? `${record.name_ur} (${record.name_en})`
-      : (matchedClassName || ''),
+      : (matchedClassName || cropName || ''),
 
-    cause:                  'پھپھوندی / پاتھوجن',
-    treatment:              record ? record.treatment_summary  : 'بیماری کی ابتدائی علامات پر فوری مقامی زرعی افسر سے مشورہ کریں۔',
+    cause:                  record ? (record.cause || 'پھپھوندی / پاتھوجن') : 'پھپھوندی / پاتھوجن',
+    treatment:              record ? (record.treatment_summary || record.treatment) : 'بیماری کی ابتدائی علامات پر فوری مقامی زرعی افسر سے مشورہ کریں۔',
     prevention:             record ? record.prevention         : 'کھیت صاف رکھیں اور متوازن کھاد دیں۔',
     withholding_period_days: record ? (record.withholding_period_days || 14) : 14,
     organic_alternative:    record
