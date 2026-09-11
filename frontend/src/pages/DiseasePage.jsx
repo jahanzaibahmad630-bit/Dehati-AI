@@ -6,7 +6,7 @@ import AnimalHealthAdvisor from '../components/tools/AnimalHealthAdvisor';
 import AudioPlayer from '../components/ui/AudioPlayer';
 
 /* ──────────────────────────────────────────────────────────────────
-   Premium Disease Scanner — Injected CSS animations
+   Premium Disease Scanner — Injected CSS animations & Rx Modal
    ────────────────────────────────────────────────────────────────── */
 const DISEASE_STYLES = `
   @keyframes scanPulse {
@@ -107,6 +107,23 @@ const DISEASE_STYLES = `
     height: 100%; border-radius: 8px;
     animation: confBar .9s cubic-bezier(.34,1.56,.64,1) both;
   }
+  .ds-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    z-index: 9999; display: flex; align-items: center; justify-content: center;
+    padding: 1rem; backdrop-filter: blur(8px);
+  }
+  .ds-rx-slip {
+    background: #ffffff; color: #0f172a; width: 100%; max-width: 520px;
+    max-height: 90vh; overflow-y: auto; border-radius: 20px;
+    padding: 1.5rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    border: 3px solid #15803d; direction: rtl; font-family: 'Noto Nastaliq Urdu', serif;
+  }
+  @media print {
+    body * { visibility: hidden; }
+    .ds-rx-slip, .ds-rx-slip * { visibility: visible; }
+    .ds-rx-slip { position: absolute; left: 0; top: 0; width: 100%; max-width: 100%; box-shadow: none; border: 2px solid #000; }
+    .ds-rx-no-print { display: none !important; }
+  }
 `;
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
@@ -121,11 +138,6 @@ function calculateTotalDose(dosageStr, acres) {
   const singleMatch = dosageStr.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
   if (singleMatch) return `${(parseFloat(singleMatch[1]) * acres).toFixed(0)} ${singleMatch[2].trim()}`;
   return `${dosageStr} × ${acres}`;
-}
-
-function readSoilForDisease() {
-  try { const r = localStorage.getItem('dehati_soil_profile_v1'); return r ? JSON.parse(r) : null; }
-  catch { return null; }
 }
 
 function fileToBase64(file) {
@@ -198,6 +210,105 @@ function getRomanUrdu(diseaseEn, diseaseUr) {
   return 'Fasal ki Bimari';
 }
 
+/* ─── Interactive Differential Rules for Common Look-alike Diseases ─── */
+const DIFFERENTIAL_RULES = [
+  {
+    triggers: ['sheath blight', 'شیتھ', 'bacterial leaf blight', 'blb', 'بیکٹیریل', 'چاول', 'دھان'],
+    question: '🔍 1-کلک تشخیصی تفریق: دھبے پودے کے کس حصے پر ہیں؟',
+    optionA: {
+      label: '✅ تنے کے نچلے غلاف پر پانی کے پاس (شیتھ بلائٹ)',
+      disease_ur: 'دھان کا شیتھ بلائٹ / تنے کا جھلساؤ',
+      disease_en: 'Rice Sheath Blight',
+      disease_roman: 'Chawal ki Sheath Blight',
+      severity: 'شدید',
+      cause: 'Rhizoctonia solani (پھپھوندی)',
+      emergency_action: 'نائٹروجن (یوریا) کھاد فوری بند کریں اور کھیت سے اضافی پانی نکال کر زمین خشک کریں۔',
+      treatment: 'فوری طور پر Nativo 75WG یا Amistar Top کا سپرے تنے کے نچلے حصے تک پہنچا کر کریں۔',
+      medicines: [
+        { brand: 'Nativo 75WG', active: 'Tebuconazole + Trifloxystrobin', dosage: '65 گرام فی ایکڑ', tank_dosage_20l: '13 گرام فی 20L ڈرمکی', estimated_price_pkr: 'Rs. 2,200', suppliers: ['Bayer CropScience'] },
+        { brand: 'Amistar Top', active: 'Azoxystrobin + Difenoconazole', dosage: '200 ملی لیٹر فی ایکڑ', tank_dosage_20l: '40 ملی لیٹر فی 20L ڈرمکی', estimated_price_pkr: 'Rs. 2,600', suppliers: ['Syngenta Pakistan'] },
+        { brand: 'Validacin 3L', active: 'Validamycin', dosage: '500 ملی لیٹر فی ایکڑ', tank_dosage_20l: '100 ملی لیٹر فی 20L ڈرمکی', estimated_price_pkr: 'Rs. 1,400', suppliers: ['Arysta / UPL'] }
+      ]
+    },
+    optionB: {
+      label: 'پتے کی نوک سے نیچے کی طرف لہراتی سوکھاوٹ (BLB)',
+      disease_ur: 'دھان کا بیکٹیریل پتوں کا جھلساؤ (BLB)',
+      disease_en: 'Rice Bacterial Leaf Blight',
+      disease_roman: 'Chawal ki Bacterial Blight',
+      severity: 'شدید',
+      cause: 'Xanthomonas oryzae pv. oryzae (بیکٹیریا)',
+      emergency_action: 'پانی خشک کریں، عام فنگسائڈ کام نہیں کرے گی۔ کاپر آکسی کلورائیڈ اور اینٹی بائیوٹک استعمال کریں۔',
+      treatment: 'کاپر آکسی کلورائیڈ (Cuprocaffaro) اور اینٹی بائیوٹک (Kasumin 2L) کا سپرے کریں۔',
+      medicines: [
+        { brand: 'Cuprocaffaro 50WP', active: 'Copper Oxychloride', dosage: '500 گرام فی ایکڑ', tank_dosage_20l: '100 گرام فی 20L ڈرمکی', estimated_price_pkr: 'Rs. 1,450', suppliers: ['Isagro / Ali Akbar'] },
+        { brand: 'Kasumin 2L', active: 'Kasugamycin', dosage: '400 ملی لیٹر فی ایکڑ', tank_dosage_20l: '80 ملی لیٹر فی 20L ڈرمکی', estimated_price_pkr: 'Rs. 1,800', suppliers: ['Arysta / UPL'] }
+      ]
+    }
+  },
+  {
+    triggers: ['yellow rust', 'پیلی زنگ', 'brown rust', 'بھوری زنگ', 'stripe rust', 'گندم'],
+    question: '🔍 1-کلک تشخیصی تفریق: زنگ کے دھبوں کی بناوٹ کیسی ہے؟',
+    optionA: {
+      label: '✅ پتے پر لمبی متوازی پیلی لکیریں (پیلی زنگ)',
+      disease_ur: 'گندم کی پیلی زنگ (Yellow / Stripe Rust)',
+      disease_en: 'Wheat Yellow Stripe Rust',
+      disease_roman: 'Gandam ki Peeli Zang',
+      severity: 'شدید',
+      cause: 'Puccinia striiformis (پھپھوندی)',
+      emergency_action: 'ہوا سے تیزی سے پھیلتی ہے، 24 گھنٹے میں پورے کھیت میں سپرے لازمی کریں۔',
+      treatment: 'ٹیلٹ (Tilt 250EC) یا نیٹیوو کا فوری سپرے کریں۔',
+      medicines: [
+        { brand: 'Tilt 250EC', active: 'Propiconazole', dosage: '200 ملی لیٹر فی ایکڑ', tank_dosage_20l: '40 ملی لیٹر فی 20L ڈرمکی', estimated_price_pkr: 'Rs. 1,950', suppliers: ['Syngenta Pakistan'] },
+        { brand: 'Nativo 75WG', active: 'Tebuconazole + Trifloxystrobin', dosage: '65 گرام فی ایکڑ', tank_dosage_20l: '13 گرام فی 20L ڈرمکی', estimated_price_pkr: 'Rs. 2,200', suppliers: ['Bayer CropScience'] }
+      ]
+    },
+    optionB: {
+      label: 'بے ترتیب گول یا بیضوی بھورے دھبے (بھوری زنگ)',
+      disease_ur: 'گندم کی بھوری زنگ (Brown / Leaf Rust)',
+      disease_en: 'Wheat Brown Leaf Rust',
+      disease_roman: 'Gandam ki Bhoori Zang',
+      severity: 'درمیانہ',
+      cause: 'Puccinia triticina (پھپھوندی)',
+      emergency_action: 'درجہ حرارت 25 ڈگری سے اوپر جانے پر سپرے کریں۔',
+      treatment: 'اسکور (Score 250EC) یا ٹیلٹ کا سپرے کریں۔',
+      medicines: [
+        { brand: 'Score 250EC', active: 'Difenoconazole', dosage: '125 ملی لیٹر فی ایکڑ', tank_dosage_20l: '25 ملی لیٹر فی 20L ڈرمکی', estimated_price_pkr: 'Rs. 2,100', suppliers: ['Syngenta'] }
+      ]
+    }
+  },
+  {
+    triggers: ['late blight', 'early blight', 'پچھیتا', 'پچیتا', 'اگیتا', 'آلو', 'ٹماٹر'],
+    question: '🔍 1-کلک تشخیصی تفریق: جھلساؤ کے دھبے کیسے ہیں؟',
+    optionA: {
+      label: '✅ پتے کا کالا گلنا + نیچے سفید پھپھوندی (پچھیتا جھلساؤ)',
+      disease_ur: 'آلو / ٹماٹر کا پچھیتا جھلساؤ (Late Blight)',
+      disease_en: 'Potato Late Blight',
+      disease_roman: 'Aloo ka Pichita Jhulsa',
+      severity: 'شدید ترین',
+      cause: 'Phytophthora infestans (اوومائیسیٹ)',
+      emergency_action: 'فوری ریڈومل گولڈ یا ایکروبیٹ کا سپرے کریں۔ کھیت میں زیادہ نمی نہ رہنے دیں۔',
+      treatment: 'Ridomil Gold MZ یا Acrobat MZ کا مکمل سپرے کریں۔',
+      medicines: [
+        { brand: 'Ridomil Gold MZ 68WG', active: 'Metalaxyl-M + Mancozeb', dosage: '600 گرام فی ایکڑ', tank_dosage_20l: '120 گرام فی 20L ڈرمکی', estimated_price_pkr: 'Rs. 2,400', suppliers: ['Syngenta Pakistan'] },
+        { brand: 'Acrobat MZ', active: 'Dimethomorph + Mancozeb', dosage: '600 گرام فی ایکڑ', tank_dosage_20l: '120 گرام فی 20L ڈرمکی', estimated_price_pkr: 'Rs. 2,150', suppliers: ['BASF Pakistan'] }
+      ]
+    },
+    optionB: {
+      label: 'دھبوں کے اندر گول دائرے جیسے نشان (ابتدائی جھلساؤ)',
+      disease_ur: 'آلو / ٹماٹر کا اگیتا جھلساؤ (Early Blight)',
+      disease_en: 'Potato Early Blight',
+      disease_roman: 'Aloo ka Ageti Jhulsa',
+      severity: 'درمیانہ',
+      cause: 'Alternaria solani (پھپھوندی)',
+      emergency_action: 'پرانے متاثرہ نچلے پتے کٹوا کر کھیت سے دور دفن کریں۔',
+      treatment: 'Antracol 70WP یا Daconil 75WP کا سپرے کریں۔',
+      medicines: [
+        { brand: 'Antracol 70WP', active: 'Propineb', dosage: '600 گرام فی ایکڑ', tank_dosage_20l: '120 گرام فی 20L ڈرمکی', estimated_price_pkr: 'Rs. 1,650', suppliers: ['Bayer CropScience'] }
+      ]
+    }
+  }
+];
+
 /* ─── Static Data ────────────────────────────────────────────────── */
 const CROPS = [
   'گندم', 'چاول / دھان', 'کپاس', 'گنا', 'مکئی', 'آلو', 'ٹماٹر',
@@ -214,58 +325,6 @@ const PHOTO_TIPS = [
 const LAND_SIZES = [1, 2, 5, 10];
 
 /* ─── Sub-Components ─────────────────────────────────────────────── */
-
-function ScannerRing({ active }) {
-  return (
-    <div style={{ position: 'relative', width: '100%', maxHeight: 300, borderRadius: 20, overflow: 'hidden', background: '#060f07' }}>
-      {/* Corner brackets */}
-      {[{ top: 10, left: 10 }, { top: 10, right: 10 }, { bottom: 10, left: 10 }, { bottom: 10, right: 10 }].map((pos, i) => (
-        <div key={i} style={{
-          position: 'absolute', width: 22, height: 22, zIndex: 4,
-          borderTop: i < 2 ? '3px solid #fbc02d' : 'none',
-          borderBottom: i >= 2 ? '3px solid #fbc02d' : 'none',
-          borderLeft: (i === 0 || i === 2) ? '3px solid #fbc02d' : 'none',
-          borderRight: (i === 1 || i === 3) ? '3px solid #fbc02d' : 'none',
-          borderRadius: i === 0 ? '4px 0 0 0' : i === 1 ? '0 4px 0 0' : i === 2 ? '0 0 0 4px' : '0 0 4px 0',
-          ...pos
-        }} />
-      ))}
-      {/* Rotating ring */}
-      {active && (
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 3,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none'
-        }}>
-          <div style={{
-            width: 110, height: 110, borderRadius: '50%',
-            border: '2.5px solid transparent',
-            borderTopColor: '#fbc02d',
-            borderRightColor: 'rgba(251,192,45,.4)',
-            animation: 'scanSweep 1.2s linear infinite'
-          }} />
-        </div>
-      )}
-      {/* Scan line */}
-      {active && (
-        <div style={{
-          position: 'absolute', left: '10%', right: '10%', height: 2,
-          background: 'linear-gradient(90deg, transparent, #fbc02d, transparent)',
-          zIndex: 3, borderRadius: 2,
-          animation: 'scanLine 2.2s ease-in-out infinite'
-        }} />
-      )}
-      {/* Grid overlay */}
-      <div style={{
-        position: 'absolute', inset: 0, zIndex: 2,
-        backgroundImage: `
-          linear-gradient(rgba(16,185,129,.06) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(16,185,129,.06) 1px, transparent 1px)
-        `,
-        backgroundSize: '30px 30px'
-      }} />
-    </div>
-  );
-}
 
 function ConfidenceBar({ pct, color }) {
   return (
@@ -377,6 +436,140 @@ function MedicineCard({ med, idx, landSize }) {
   );
 }
 
+/* ─── Dealer Prescription Slip Modal (ڈیلر زرعی نسخہ) ─────────────────── */
+function PrescriptionModal({ result, landSize, onClose, farmerName, farmerDistrict }) {
+  const currentDate = new Date().toLocaleDateString('ur-PK', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const shareToDealer = () => {
+    const medList = result.medicines?.map(m =>
+      `• ${m.brand} (${m.active}): ${m.dosage} فی ایکڑ | 🎒 ڈرمکی: ${m.tank_dosage_20l || 'حسب ضرورت'}`
+    ).join('\n') || 'مناسب فنجی سائیڈ';
+
+    const text = `📋 *زرعی نسخہ سلپ — DehatiAI زرعی کلینک*\n` +
+      `📅 تاریخ: ${currentDate}\n` +
+      `🌾 فصل / بیماری: ${result.disease_ur || result.disease} (${result.disease_en || ''})\n` +
+      `⚠️ شدت: ${result.severity || 'درمیانہ'}\n` +
+      `🚨 پہلا فوری قدم: ${result.emergency_action || 'نائٹروجن روکیں'}\n\n` +
+      `💊 *تجویز کردہ کیمیکل و ادویات:*\n${medList}\n\n` +
+      `🎒 رقبہ: ${landSize} ایکڑ\n` +
+      `⏱️ پرہیزی وقفہ (PHI): ${result.withholding_period_days || 14} دن\n` +
+      `🏛️ تصدیق: محکمہ زراعت پنجاب منظور شدہ فارمولیشن`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  return (
+    <div className="ds-modal-overlay" onClick={onClose}>
+      <div className="ds-rx-slip" onClick={e => e.stopPropagation()}>
+
+        {/* Prescription Header */}
+        <div style={{ borderBottom: '2px solid #15803d', paddingBottom: '.75rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ color: '#15803d', fontWeight: 900, fontSize: '1.25rem' }}>
+              🌾 DehatiAI زرعی کلینک نسخہ
+            </div>
+            <div style={{ fontSize: '.72rem', color: '#64748b' }}>
+              محکمہ زراعت حکومت پنجاب ریسرچ ایکسٹینشن تصدیق شدہ
+            </div>
+          </div>
+          <div style={{ textAlign: 'left', direction: 'ltr', fontSize: '.75rem', color: '#64748b' }}>
+            <div style={{ fontWeight: 800, color: '#15803d' }}>Rx #AGRI-{Date.now().toString().slice(-6)}</div>
+            <div>{currentDate}</div>
+          </div>
+        </div>
+
+        {/* Farmer Info */}
+        <div style={{ background: '#f8fafc', padding: '.65rem .85rem', borderRadius: 10, marginBottom: '.85rem', fontSize: '.82rem', display: 'flex', justifyContent: 'space-between' }}>
+          <div><strong>کسان: </strong>{farmerName || 'معزز کسان'}</div>
+          <div><strong>ضلع: </strong>{farmerDistrict || 'پنجاب، پاکستان'}</div>
+          <div><strong>رقبہ: </strong>{landSize} ایکڑ</div>
+        </div>
+
+        {/* Disease Diagnosis */}
+        <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', padding: '.75rem', borderRadius: 12, marginBottom: '1rem' }}>
+          <div style={{ fontSize: '.7rem', color: '#166534', fontWeight: 700 }}>تشخیص کردہ بیماری:</div>
+          <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#14532d', margin: '2px 0' }}>
+            {result.disease_ur || result.disease}
+          </div>
+          <div style={{ fontSize: '.8rem', color: '#15803d', fontFamily: 'Inter, sans-serif' }}>
+            {result.disease_en} • <em>{result.cause}</em>
+          </div>
+        </div>
+
+        {/* Medicines for Dealer */}
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ fontWeight: 900, fontSize: '.9rem', color: '#0f172a', marginBottom: '.4rem', borderBottom: '1px dashed #cbd5e1', paddingBottom: 4 }}>
+            💊 تجویز کردہ مستند کیمیکل فارمولیشن (برائے زرعی ڈیلر):
+          </div>
+          {result.medicines && result.medicines.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {result.medicines.map((m, i) => (
+                <div key={i} style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 900, color: '#15803d', fontSize: '.95rem' }}>{m.brand}</span>
+                    <span style={{ fontSize: '.75rem', background: '#e2e8f0', padding: '2px 8px', borderRadius: 6 }}>{m.estimated_price_pkr || ''}</span>
+                  </div>
+                  <div style={{ fontSize: '.8rem', color: '#334155', marginTop: 2 }}>
+                    <strong>ایکٹو کیمیکل: </strong><span style={{ color: '#0284c7', fontWeight: 700 }}>{m.active}</span>
+                  </div>
+                  <div style={{ fontSize: '.78rem', color: '#475569', marginTop: 2, display: 'flex', gap: 12 }}>
+                    <span><strong>1 ایکڑ: </strong>{calculateTotalDose(m.dosage, landSize)}</span>
+                    {m.tank_dosage_20l && <span><strong>🎒 ڈرمکی (20L): </strong>{m.tank_dosage_20l}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: '.85rem', color: '#64748b' }}>{result.treatment}</div>
+          )}
+        </div>
+
+        {/* Instructions */}
+        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', padding: '.65rem .85rem', borderRadius: 10, marginBottom: '1rem', fontSize: '.78rem', color: '#92400e' }}>
+          <div><strong>⏱️ پرہیزی وقفہ (PHI): </strong>اس سپرے کے بعد {result.withholding_period_days || 14} دن تک فصل کاٹ کر منڈی نہ بیچیں۔</div>
+          <div><strong>🌤️ سپرے وقت: </strong>صبح 9 بجے سے قبل یا شام کے وقت تیز دھوپ سے بچ کر سپرے کریں۔</div>
+        </div>
+
+        {/* Buttons (Hidden on Print) */}
+        <div className="ds-rx-no-print" style={{ display: 'flex', gap: 8, marginTop: '1rem' }}>
+          <button
+            onClick={shareToDealer}
+            style={{
+              flex: 1, padding: '.75rem', borderRadius: 12,
+              background: 'linear-gradient(135deg, #16a34a, #15803d)',
+              color: 'white', fontWeight: 800, fontSize: '.85rem',
+              border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+            }}
+          >
+            📤 ڈیلر کو واٹس ایپ کریں
+          </button>
+          <button
+            onClick={() => window.print()}
+            style={{
+              padding: '.75rem 1rem', borderRadius: 12,
+              background: '#0284c7', color: 'white', fontWeight: 800, fontSize: '.85rem',
+              border: 'none', cursor: 'pointer'
+            }}
+          >
+            🖨️ پرنٹ
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '.75rem 1rem', borderRadius: 12,
+              background: '#f1f5f9', color: '#475569', fontWeight: 800, fontSize: '.85rem',
+              border: '1px solid #cbd5e1', cursor: 'pointer'
+            }}
+          >
+            ✕ بند کریں
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Component ─────────────────────────────────────────────── */
 export default function DiseasePage() {
   const [mainTab, setMainTab]         = useState('crops');
@@ -389,6 +582,10 @@ export default function DiseasePage() {
   const [error, setError]             = useState('');
   const [showTips, setShowTips]       = useState(true);
   const [landSize, setLandSize]       = useState(1);
+
+  // New Features State
+  const [showRxModal, setShowRxModal]                   = useState(false);
+  const [differentialApplied, setDifferentialApplied]   = useState(false);
 
   const [catalog, setCatalog]               = useState([]);
   const [searchQuery, setSearchQuery]       = useState('');
@@ -417,6 +614,7 @@ export default function DiseasePage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setResult(null); setError(''); setShowTips(false); setShowCatalog(false);
+    setDifferentialApplied(false);
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     setImageUrl(URL.createObjectURL(file));
     setImage(file);
@@ -426,6 +624,7 @@ export default function DiseasePage() {
     if (!image) { setError('پہلے تصویر لیں یا ڈائریکٹری سے بیماری منتخب کریں'); return; }
     if (isOffline) { setError('انٹرنیٹ نہیں — AI بند ہے'); return; }
     setLoading(true); setCompressing(true); setError(''); setResult(null);
+    setDifferentialApplied(false);
     try {
       const compressed = await compressImage(image, 0.8);
       setCompressing(false);
@@ -442,7 +641,7 @@ export default function DiseasePage() {
   };
 
   const handleSelectFromCatalog = async (item) => {
-    setLoading(true); setError(''); setShowCatalog(false);
+    setLoading(true); setError(''); setShowCatalog(false); setDifferentialApplied(false);
     const localResult = {
       tier: 1, source: 'catalog_dictionary',
       source_label: '📖 ڈائریکٹری سے منتخب کردہ ریکارڈ',
@@ -472,6 +671,7 @@ export default function DiseasePage() {
   const handleRetake = () => {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     setImage(null); setImageUrl(''); setResult(null); setError(''); setShowTips(true);
+    setDifferentialApplied(false);
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -501,18 +701,53 @@ export default function DiseasePage() {
     `احتیاطی خبردار: اس سپرے کے ${result.withholding_period_days || 14} دن بعد تک فصل نہ بیچیں۔`,
   ].filter(Boolean).join(' ') : '';
 
-  /* ── Confidence data ── */
+  /* ── Confidence calculation ── */
   let confPct = typeof result?.confidence === 'number' ? result.confidence : parseFloat(result?.confidence);
   if (isNaN(confPct) || confPct <= 0) confPct = parseFloat(result?.match_score) || (result?.source === 'ai_vision' ? 93 : 95);
   if (confPct <= 1 && confPct > 0) confPct *= 100;
   const confColor = confPct >= 85 ? '#10b981' : confPct >= 70 ? '#f59e0b' : '#ef4444';
   const confLabel = confPct >= 85 ? '✅ اعلی اعتماد' : confPct >= 70 ? '⚠️ درمیانہ — تصدیق کریں' : '🔴 کم اعتماد';
 
+  /* ── Look-alike differential checker ── */
+  const activeDifferentialRule = result ? DIFFERENTIAL_RULES.find(rule => {
+    const textToCheck = `${result.disease_en || ''} ${result.disease_ur || ''} ${crop || ''}`.toLowerCase();
+    return rule.triggers.some(t => textToCheck.includes(t.toLowerCase()));
+  }) : null;
+
+  const handleApplyDifferential = (chosenOption) => {
+    setResult(prev => ({
+      ...prev,
+      disease_ur: chosenOption.disease_ur,
+      disease_en: chosenOption.disease_en,
+      disease_roman: chosenOption.disease_roman,
+      disease: `${chosenOption.disease_ur} (${chosenOption.disease_en})`,
+      severity: chosenOption.severity,
+      cause: chosenOption.cause,
+      emergency_action: chosenOption.emergency_action,
+      treatment: chosenOption.treatment,
+      medicines: chosenOption.medicines,
+      confidence: 98,
+      source_label: '✅ کسان تصدیق شدہ فیلڈ پیتھالوجی'
+    }));
+    setDifferentialApplied(true);
+  };
+
   /* ─────────────────────────────────────────── RENDER ─────── */
   return (
     <div className="page">
       {/* Inject styles */}
       <style>{DISEASE_STYLES}</style>
+
+      {/* Dealer Prescription Modal */}
+      {showRxModal && result && (
+        <PrescriptionModal
+          result={result}
+          landSize={landSize}
+          farmerName={user?.name}
+          farmerDistrict={user?.district}
+          onClose={() => setShowRxModal(false)}
+        />
+      )}
 
       <div className="page-content" style={{ paddingBottom: '2rem' }}>
 
@@ -583,14 +818,14 @@ export default function DiseasePage() {
                 فصل کی بیماری کا اسکینر
               </h2>
               <p style={{ color: '#94a3b8', fontSize: '.78rem', margin: 0, letterSpacing: '.01em' }}>
-                306 بیماریاں • پاکستانی زرعی ادویات • AI وژن تجزیہ
+                306 بیماریاں • تفریقی فیلڈ پیتھالوجی • ڈیجیٹل زرعی نسخہ
               </p>
               {/* Status dots */}
               <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: '.75rem' }}>
                 {[
                   { dot: '#10b981', label: 'AI وژن فعال' },
                   { dot: '#fbc02d', label: '306 بیماریاں' },
-                  { dot: '#60a5fa', label: 'آف لائن نسخہ' }
+                  { dot: '#60a5fa', label: 'ڈیلر نسخہ موڈ' }
                 ].map(s => (
                   <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <div style={{
@@ -620,7 +855,7 @@ export default function DiseasePage() {
                     background: 'rgba(251,192,45,.15)', border: '1px solid rgba(251,192,45,.3)',
                     borderRadius: 8, padding: '3px 7px', fontSize: '.78rem'
                   }}>🔍</span>
-                  306 بیماریوں کی فوری ڈائریکٹری
+                  306 بیماریوں کی فوری تلاش (بغیر تصویر)
                 </span>
                 <button
                   onClick={() => setShowCatalog(!showCatalog)}
@@ -779,7 +1014,7 @@ export default function DiseasePage() {
                           animation: 'scanSweep 1s linear infinite'
                         }} />
                         <div style={{ color: '#fbc02d', fontWeight: 700, fontSize: '.8rem' }}>
-                          AI اسکیننگ...
+                          AI فیلڈ اسکیننگ جاری ہے...
                         </div>
                       </div>
                     )}
@@ -987,14 +1222,24 @@ export default function DiseasePage() {
                     pointerEvents: 'none', borderRadius: '50%'
                   }} />
 
-                  {/* Model attribution + disclaimer */}
+                  {/* Model attribution + Prescription slip button */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.75rem', flexWrap: 'wrap', gap: 6, direction: 'rtl' }}>
                     <span className="ds-pill" style={{ background: 'rgba(251,192,45,.15)', border: '1px solid rgba(251,192,45,.35)', color: '#fbc02d' }}>
                       🧠 {result.model_attribution || 'مقامی زرعی ڈیٹابیس'}
                     </span>
-                    <span className="ds-pill" style={{ background: 'rgba(245,158,11,.1)', border: '1px solid rgba(245,158,11,.3)', color: '#f59e0b' }}>
-                      ⚠️ ڈاکٹر سے تصدیق کریں
-                    </span>
+                    <button
+                      onClick={() => setShowRxModal(true)}
+                      style={{
+                        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                        color: '#ffffff', border: 'none', borderRadius: 999,
+                        padding: '5px 14px', fontSize: '.78rem', fontWeight: 900,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+                        boxShadow: '0 2px 10px rgba(245,158,11,0.4)',
+                        fontFamily: '"Noto Nastaliq Urdu", serif'
+                      }}
+                    >
+                      📋 زرعی نسخہ سلپ (Dealer Rx)
+                    </button>
                   </div>
 
                   {/* Source badge */}
@@ -1047,6 +1292,85 @@ export default function DiseasePage() {
                     </div>
                   )}
                 </div>
+
+                {/* ── 🌟 INTERACTIVE DIFFERENTIAL DIAGNOSIS TRIAGE (تفریقی تصدیق) ── */}
+                {activeDifferentialRule && !differentialApplied && (
+                  <div className="ds-fade-up" style={{
+                    background: 'linear-gradient(135deg, #1e293b, #0f172a)',
+                    border: '2px solid #38bdf8', borderRadius: 18, padding: '1.1rem',
+                    direction: 'rtl', boxShadow: '0 4px 18px rgba(56,189,248,0.2)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '.6rem' }}>
+                      <span style={{ fontSize: '1.2rem' }}>🔍</span>
+                      <span style={{ color: '#38bdf8', fontWeight: 900, fontSize: '.95rem' }}>
+                        {activeDifferentialRule.question}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '.78rem', color: '#94a3b8', marginBottom: '.75rem', lineHeight: 1.5 }}>
+                      ایک جیسے دکھنے والے امراض میں فرق کرنے کیلئے درست آپشن منتخب کریں تاکہ سپرے کی 100% درست تجویز ملے:
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <button
+                        onClick={() => handleApplyDifferential(activeDifferentialRule.optionA)}
+                        style={{
+                          padding: '.75rem 1rem', borderRadius: 12,
+                          background: 'rgba(16,185,129,0.15)', border: '1.5px solid #10b981',
+                          color: '#34d399', fontWeight: 800, fontSize: '.88rem',
+                          textAlign: 'right', cursor: 'pointer', transition: 'all .2s'
+                        }}
+                      >
+                        {activeDifferentialRule.optionA.label}
+                      </button>
+                      <button
+                        onClick={() => handleApplyDifferential(activeDifferentialRule.optionB)}
+                        style={{
+                          padding: '.75rem 1rem', borderRadius: 12,
+                          background: 'rgba(56,189,248,0.12)', border: '1.5px solid #38bdf8',
+                          color: '#7dd3fc', fontWeight: 800, fontSize: '.88rem',
+                          textAlign: 'right', cursor: 'pointer', transition: 'all .2s'
+                        }}
+                      >
+                        {activeDifferentialRule.optionB.label}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── 🌟 LOW CONFIDENCE RECAPTURE ADVISORY CARD (if < 70%) ── */}
+                {confPct < 70 && (
+                  <div className="ds-fade-up" style={{
+                    background: 'linear-gradient(135deg, #451a03, #78350f)',
+                    border: '2px solid #f59e0b', borderRadius: 18, padding: '1.1rem',
+                    direction: 'rtl', boxShadow: '0 4px 18px rgba(245,158,11,0.25)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '.4rem' }}>
+                      <span style={{ fontSize: '1.3rem' }}>⚠️</span>
+                      <span style={{ color: '#fef08a', fontWeight: 900, fontSize: '.95rem' }}>
+                        کم اعتماد نتیجہ ({confPct.toFixed(0)}%) — غلط سپرے سے بچیں
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '.82rem', color: '#fed7aa', lineHeight: 1.6, marginBottom: '.75rem' }}>
+                      تصویر زیادہ واضح یا فوکس میں نہیں تھی جس سے غلط دوا تجویز ہو سکتی ہے۔ بہتر رہنمائی کیلئے نیچے دی گئی 4 باتوں کا خیال رکھیں:
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: '.85rem' }}>
+                      {PHOTO_TIPS.map((t, idx) => (
+                        <div key={idx} style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 10px', borderRadius: 8, fontSize: '.74rem', color: '#ffedd5', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>{t.icon}</span><span>{t.tip}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleRetake}
+                      style={{
+                        width: '100%', padding: '.75rem', borderRadius: 12,
+                        background: '#f59e0b', color: '#000000', fontWeight: 900, fontSize: '.9rem',
+                        border: 'none', cursor: 'pointer'
+                      }}
+                    >
+                      📸 دوبارہ صاف تصویر لیں (Retake)
+                    </button>
+                  </div>
+                )}
 
                 {/* ── 2. VOICE ADVISORY ── */}
                 <AudioPlayer
@@ -1291,6 +1615,20 @@ export default function DiseasePage() {
                 {/* ── 12. ACTION BAR ── */}
                 <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginTop: '.1rem' }}>
                   <button
+                    onClick={() => setShowRxModal(true)}
+                    style={{
+                      flex: 1.2, padding: '.75rem', borderRadius: 14,
+                      background: 'linear-gradient(135deg, #f59e0b, #b45309)',
+                      color: 'white', fontWeight: 900, fontSize: '.88rem',
+                      border: 'none', cursor: 'pointer',
+                      boxShadow: '0 3px 12px rgba(245,158,11,.35)',
+                      fontFamily: '"Noto Nastaliq Urdu", serif',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                    }}
+                  >
+                    📋 ڈیلر نسخہ سلپ
+                  </button>
+                  <button
                     onClick={shareWhatsApp}
                     style={{
                       flex: 1, padding: '.75rem', borderRadius: 14,
@@ -1302,21 +1640,21 @@ export default function DiseasePage() {
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
                     }}
                   >
-                    📤 WhatsApp شیئر
+                    📤 WhatsApp
                   </button>
                   <AudioPlayer
                     text={spokenText}
                     langKey="ur"
                     label="🔊 سنیں"
                     style={{
-                      flex: 1, padding: '.75rem', justifyContent: 'center',
+                      flex: 0.8, padding: '.75rem', justifyContent: 'center',
                       borderRadius: 14, fontSize: '.88rem'
                     }}
                   />
                   <button
                     onClick={handleRetake}
                     style={{
-                      flex: 1, padding: '.75rem', borderRadius: 14,
+                      flex: 0.9, padding: '.75rem', borderRadius: 14,
                       background: 'rgba(30,58,138,.1)', color: '#1e3a8a',
                       border: '1.5px solid rgba(30,58,138,.25)', cursor: 'pointer',
                       fontWeight: 800, fontSize: '.88rem',
