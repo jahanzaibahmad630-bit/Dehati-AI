@@ -94,7 +94,8 @@ const ROMAN_URDU_MAP = {
   'rice blast':                    'Chawal / Dhan ka Jhalsa',
   'rice brown spot':               'Chawal ka Bhoora Dhaba',
   'rice bacterial blight':         'Chawal ki Bacterial Blight',
-  'rice sheath blight':            'Chawal ki Patti Blight',
+  'rice sheath blight':            'Chawal ki Sheath Blight / Tanay ka Jhulsa',
+  'sheath blight':                 'Chawal ki Sheath Blight / Tanay ka Jhulsa',
   'potato late blight':            'Aloo ki Pichli Jhulsa Bimari',
   'potato early blight':           'Aloo ki Ageti Jhulsa Bimari',
   'tomato leaf curl':              'Tamatar ka Patta Morna',
@@ -675,7 +676,7 @@ export default function DiseasePage() {
             <p style={{ marginTop: '.75rem', color: '#10b981', fontWeight: 600 }}>
               {compressing
                 ? '⏳ تصویر کمپریس ہو رہی ہے...'
-                : '🔬 بیماری تشخیص ہو رہی ہے...'}
+                : '🔬 AI وژن تفصیلی تجزیہ کر رہا ہے (چند سیکنڈ انتظار فرمائیں)...'}
             </p>
             <div style={{ marginTop: '.5rem', display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
               <div style={{ fontSize: '.7rem', color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
