@@ -10,7 +10,9 @@ const AGRONOMY_PATH = path.join(__dirname, 'agronomyDatabase.json');
 
 let diseaseClasses   = {};
 let agronomyDb       = {};
-let isModelAvailable = false;
+const MODEL_PTH_PATH = path.join(__dirname, '../models/ResNet50-Plant-model-80.pth');
+const ONNX_PATH      = path.join(__dirname, '../models/resnet50_cbam.onnx');
+let isModelAvailable = fs.existsSync(MODEL_PTH_PATH) || fs.existsSync(ONNX_PATH);
 const activeLearningCache = new Map();
 
 try {
@@ -21,6 +23,9 @@ try {
   if (fs.existsSync(AGRONOMY_PATH)) {
     agronomyDb = JSON.parse(fs.readFileSync(AGRONOMY_PATH, 'utf8'));
     console.log(`✅ Agronomy DB: ${Object.keys(agronomyDb).length} verified prescriptions`);
+  }
+  if (isModelAvailable) {
+    console.log(`✅ Local Model Weights Detected (pth/onnx): active`);
   }
 } catch (err) {
   console.error('[ModelInference] Bootstrap error:', err.message);
