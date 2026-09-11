@@ -233,7 +233,19 @@ def main():
         dropout=config["dropout"],
         freeze_backbone=True,
         unfreeze_last_n=config["unfreeze_last_n"]
-    ).to(device)
+    )
+    pddd_path = r"E:\torch_cache\ResNet50-Plant-model-80.pth"
+    if os.path.exists(pddd_path):
+        print("🌿 Loading PlantPAD / PDDD-PreTrain (400,000 plant disease images) weights...")
+        try:
+            sd = torch.load(pddd_path, map_location="cpu")
+            sd.pop("fc.weight", None)
+            sd.pop("fc.bias", None)
+            model.load_state_dict(sd, strict=False)
+            print("✅ Initialized backbone with PlantPAD weights!")
+        except Exception as e:
+            print(f"Warning: Could not load PlantPAD weights: {e}")
+    model = model.to(device)
 
     # Class-weighted loss with label smoothing
     class_counts = torch.bincount(torch.tensor([s[1] for s in train_dataset.samples]))
