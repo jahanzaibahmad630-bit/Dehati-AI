@@ -10,6 +10,12 @@ import json
 import argparse
 import torch
 
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 from models.resnet_cbam import ResNet50_CBAM
 
 
@@ -48,20 +54,38 @@ def export_to_onnx(
     os.makedirs(os.path.dirname(os.path.abspath(output_onnx_path)), exist_ok=True)
 
     print(f"🔄 Exporting to ONNX: {output_onnx_path} (opset={opset_version})...")
-    torch.onnx.export(
-        model,
-        dummy_input,
-        output_onnx_path,
-        export_params=True,
-        opset_version=opset_version,
-        do_constant_folding=True,
-        input_names=["image"],
-        output_names=["logits"],
-        dynamic_axes={
-            "image": {0: "batch_size"},
-            "logits": {0: "batch_size"}
-        }
-    )
+    try:
+        torch.onnx.export(
+            model,
+            dummy_input,
+            output_onnx_path,
+            export_params=True,
+            opset_version=opset_version,
+            do_constant_folding=True,
+            input_names=["image"],
+            output_names=["logits"],
+            dynamic_axes={
+                "image": {0: "batch_size"},
+                "logits": {0: "batch_size"}
+            },
+            dynamo=False
+        )
+    except TypeError:
+        # For torch versions without dynamo param
+        torch.onnx.export(
+            model,
+            dummy_input,
+            output_onnx_path,
+            export_params=True,
+            opset_version=opset_version,
+            do_constant_folding=True,
+            input_names=["image"],
+            output_names=["logits"],
+            dynamic_axes={
+                "image": {0: "batch_size"},
+                "logits": {0: "batch_size"}
+            }
+        )
 
     print(f"✅ Export successful! ONNX model saved to: {output_onnx_path}")
     file_size_mb = os.path.getsize(output_onnx_path) / (1024 * 1024)

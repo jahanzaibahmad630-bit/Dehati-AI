@@ -26,12 +26,12 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
   const { email, password } = req.body;
 
   const isProd = process.env.NODE_ENV === 'production';
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || (isProd ? null : 'admin@dehati.ai');
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@dehati.ai';
   const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProd ? null : 'Admin@12345');
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@12345';
 
-  if (isProd && !ADMIN_EMAIL && !ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD) {
-    return res.status(500).json({ error: 'Admin credentials not configured in production environment' });
+  if (!ADMIN_EMAIL || (!ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD)) {
+    return res.status(500).json({ error: 'Admin credentials not configured' });
   }
 
   if (!email || !password) {

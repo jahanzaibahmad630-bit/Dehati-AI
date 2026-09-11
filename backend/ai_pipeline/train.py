@@ -247,17 +247,16 @@ def main():
             print(f"Warning: Could not load PlantPAD weights: {e}")
     model = model.to(device)
 
-    # Class-weighted loss with label smoothing
-    class_counts = torch.bincount(torch.tensor([s[1] for s in train_dataset.samples]))
-    class_counts = torch.clamp(class_counts, min=1)
-    class_weights = (1.0 / class_counts.float())
-    class_weights = (class_weights / class_weights.sum() * len(class_counts)).to(device)
+    # Since WeightedRandomSampler balances class sampling per batch,
+    # we use unweighted CrossEntropyLoss with label smoothing (0.08)
+    # to prevent over-penalizing majority classes like Wheat Yellow/Brown Rust.
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.08)
 
-    criterion = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=0.1)
-
-    # Differentiated learning rates
+    # Differentiated learning rates for deep hierarchical fine-tuning
+    l3_params = [p for p in model.layer3.parameters() if p.requires_grad]
     optimizer = optim.AdamW([
-        {"params": model.layer4.parameters(), "lr": config["learning_rate"] * 0.1},
+        {"params": l3_params, "lr": config["learning_rate"] * 0.1},
+        {"params": model.layer4.parameters(), "lr": config["learning_rate"] * 0.25},
         {"params": model.cbam.parameters(), "lr": config["learning_rate"]},
         {"params": model.classifier.parameters(), "lr": config["learning_rate"]},
     ], weight_decay=config["weight_decay"])

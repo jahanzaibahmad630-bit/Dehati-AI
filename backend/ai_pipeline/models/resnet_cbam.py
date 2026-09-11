@@ -90,11 +90,11 @@ class ResNet50_CBAM(nn.Module):
 
     def _freeze_backbone(self, unfreeze_last_n=2):
         """
-        Freeze early layers (conv1 through layer3 and beginning of layer4).
-        Unfreeze the last N bottleneck blocks of layer4 + CBAM + classifier head.
-        This provides transfer learning stability on agricultural domain adaptations.
+        Freeze early layers (conv1 through layer2).
+        Unfreeze layer4 + top blocks of layer3 + CBAM + classifier head.
+        This provides high accuracy fine-tuning on fine foliar lesions.
         """
-        # Freeze all parameters
+        # Freeze all parameters first
         for param in self.parameters():
             param.requires_grad = False
 
@@ -104,10 +104,13 @@ class ResNet50_CBAM(nn.Module):
         for param in self.classifier.parameters():
             param.requires_grad = True
 
-        # Unfreeze last N blocks of layer4
-        layer4_blocks = list(self.layer4.children())
+        # Unfreeze all blocks of layer4
+        for param in self.layer4.parameters():
+            param.requires_grad = True
+
+        # Unfreeze top blocks of layer3 (1024-dim features)
         if unfreeze_last_n > 0:
-            for block in layer4_blocks[-unfreeze_last_n:]:
+            for block in list(self.layer3.children())[-unfreeze_last_n:]:
                 for param in block.parameters():
                     param.requires_grad = True
 
