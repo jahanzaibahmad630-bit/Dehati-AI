@@ -1,5 +1,56 @@
 {
   "note": "Pakistan Agronomy Prescription Dictionary — Ground-truth agronomic advisories verified for Punjab & Sindh farming ecosystems. Formulation strength varies by brand — confirm exact rate on the product label.",
+  "wheat_black_rust": {
+    "name_ur": "گندم کا کالا زنگ (بلیک / سٹیم رسٹ)",
+    "name_en": "Wheat Black / Stem Rust",
+    "treatment_summary": "تنے اور پتوں پر لمبوترے گہرے بھورے سے کالے چھالے نظر آتے ہی فوری طور پر فنجی سائیڈ سپرے کریں۔ گرم موسم میں یہ بیماری دانے کو بالکل باریک کر دیتی ہے۔",
+    "withholding_period_days": 30,
+    "organic_alternative": "نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر احتیاطی سپرے کریں یا لکڑی کی راکھ پتوں پر چھڑکیں۔",
+    "medicines": [
+      {
+        "brand": "Nativo 75WG",
+        "active": "Tebuconazole 50% + Trifloxystrobin 25%",
+        "dosage": "65 گرام فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 30,
+        "suppliers": [
+          "Bayer"
+        ],
+        "estimated_price_pkr": "Rs. 1,600 - 2,100",
+        "tank_dosage_20l": "13 گرام فی 20 لیٹر ڈرمکی (5 ڈرمکیاں فی ایکڑ)"
+      },
+      {
+        "brand": "Tilt 250EC",
+        "active": "Propiconazole 25%",
+        "dosage": "200 ملی لیٹر فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 30,
+        "suppliers": [
+          "Syngenta",
+          "FMC"
+        ],
+        "estimated_price_pkr": "Rs. 1,250 - 1,600",
+        "tank_dosage_20l": "40 ملی لیٹر فی 20 لیٹر ڈرمکی (5 ڈرمکیاں فی ایکڑ)"
+      },
+      {
+        "brand": "Score 250EC",
+        "active": "Difenoconazole 25%",
+        "dosage": "125 ملی لیٹر فی ایکڑ",
+        "method": "سپرے",
+        "withholding_period_days": 21,
+        "suppliers": [
+          "Syngenta"
+        ],
+        "estimated_price_pkr": "Rs. 1,450 - 1,900",
+        "tank_dosage_20l": "25 ملی لیٹر فی 20 لیٹر ڈرمکی (5 ڈرمکیاں فی ایکڑ)"
+      }
+    ],
+    "prevention": "کالے زنگ کے خلاف منظور شدہ مزاحم اقسام کاشت کریں۔ بوائی بروقت کریں اور متوازن فاسفورس و پوٹاش کا استعمال کریں۔",
+    "severity": "شدید (High Risk / Stem Lodging)",
+    "emergency_action": "تنے پر کالی پاؤڈر والی پھپھوندی نظر آنے پر بغیر کسی تاخیر کے سسٹمک فنجی سائیڈ سپرے کریں تاکہ تنے کے گرنے (Lodging) سے بچاؤ ہو سکے۔",
+    "spray_conditions": "صبح شبنم سوکھنے کے بعد یا شام کو سپرے کریں۔ کھوکھلی کون نوزل استعمال کریں تاکہ تنے کے نچلے حصے تک دوا پہنچے۔",
+    "fertilizer_adjustment": "یوریا کھاد فوری روکیں اور پوٹاش (SOP) کا استعمال پودے کے خلیات کو سخت اور تنے کو مضبوط بناتا ہے۔"
+  },
   "wheat_brown_rust": {
     "name_ur": "گندم کا بھورا زنگ (براؤن رسٹ)",
     "name_en": "Wheat Brown Rust",

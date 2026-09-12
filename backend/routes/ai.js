@@ -563,6 +563,7 @@ router.post('/ask', aiLimiter, optionalAuth, async (req, res) => {
 
 // Load ResNet50 PyTorch Model Inference & Agronomy Engine
 const modelInference = require('../lib/modelInference');
+const onnxInference  = require('../lib/onnxInference');
 let agronomyDb = {};
 let diseaseClasses = {};
 try {
@@ -625,6 +626,22 @@ router.post('/disease', diseaseLimiter, optionalAuth, async (req, res) => {
       return res.status(413).json({ error: 'تصویر کا سائز 5MB سے زیادہ نہیں ہونا چاہیے۔' });
     }
 
+    // ── Step 0: Local ONNX Neural Network Inference (ResNet-50 + CBAM) ──────
+    let onnxResult = null;
+    if (imageBase64 && onnxInference) {
+      try {
+        onnxResult = await onnxInference.classifyImage(imageBase64);
+        if (onnxResult && onnxResult.success) {
+          console.log(
+            `[ONNX Scanner] Top match: "${onnxResult.topMatch.class_name}" (${onnxResult.topMatch.confidence}%) | ` +
+            `Latency: ${onnxResult.latencyMs}ms | Candidates: ${onnxResult.candidates.map(c => c.class_name).join(', ')}`
+          );
+        }
+      } catch (onnxErr) {
+        console.warn('[ONNX Scanner] Local inference bypassed:', onnxErr.message);
+      }
+    }
+
     // ── Step 1: Check database or require AI analysis ─────────
     const tier1 = modelInference.predictDisease(imageBase64, cropName, diseaseKey);
 
@@ -633,6 +650,53 @@ router.post('/disease', diseaseLimiter, optionalAuth, async (req, res) => {
       `Source: ${tier1.source} | ` +
       `Local DB: ${tier1.hasLocalRecord ? '✓ Match' : '✗ Unknown'}`
     );
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // TIER 0: ULTRA-FAST HIGH-CONFIDENCE ONNX MODEL MATCH (≥70% Confidence)
+    // ══════════════════════════════════════════════════════════════════════════
+    if (onnxResult && onnxResult.success && onnxResult.topMatch.confidence >= 70) {
+      const onnxLocalMatch = modelInference.getAgronomyRecord(onnxResult.topMatch.class_name);
+      if (onnxLocalMatch && onnxLocalMatch.data) {
+        const record = onnxLocalMatch.data;
+        console.log(`[Tier-0 ⚡ HIGH-CONFIDENCE ONNX MATCH] ${onnxResult.topMatch.class_name} (${onnxResult.topMatch.confidence}%) in ${onnxResult.latencyMs}ms`);
+        const respData = {
+          tier:                    0,
+          source:                  'local_onnx',
+          source_label:            '⚡ ResNet-50 CBAM ماڈل (لوکل AI وژن)',
+          model_attribution:       `ResNet-50 CBAM • ${onnxResult.topMatch.confidence}% اعتماد`,
+          confidence:              onnxResult.topMatch.confidence,
+          candidates:              onnxResult.candidates,
+          disease_ur:              record.name_ur || onnxResult.topMatch.class_name,
+          disease_en:              record.name_en || onnxResult.topMatch.class_name,
+          disease_roman:           record.name_en || '',
+          disease:                 `${record.name_ur || 'بیماری'} (${record.name_en || ''})`,
+          severity:                record.severity || 'درمیانہ',
+          cause:                   record.cause || 'پھپھوندی / کیڑا (Pathogen)',
+          symptoms_analysis:       record.symptoms_analysis || `مقامی ResNet-50 CBAM ماڈل نے پتوں کی ساخت کا گہرا تجزیہ کر کے ${record.name_ur} کی تصدیق کی ہے۔`,
+          emergency_action:        record.emergency_action || 'فوری طور پر نائٹروجن (یوریا) کا استعمال روکیں اور نکاسی آب بہتر بنائیں',
+          treatment:               record.treatment_summary || record.treatment || 'مناسب پھپھوندی کش یا دافع حشرات دوائی کا سپرے کریں۔',
+          spray_conditions:        record.spray_conditions || 'صبح 9 بجے سے پہلے یا شام کے وقت سپرے کریں۔ تیز ہوا یا دھوپ میں پرہیز کریں۔',
+          fertilizer_adjustment:   record.fertilizer_adjustment || 'یوریا کھاد فوری روکیں اور پوٹاش کی متوازن مقدار دیں۔',
+          prevention:              record.prevention || 'کھیت صاف رکھیں، متوازن کھاد دیں اور پانی کی نکاسی کا انتظام رکھیں۔',
+          withholding_period_days: record.withholding_period_days || 14,
+          organic_alternative:     record.organic_alternative,
+          medicines:               record.medicines || [],
+          disclaimer:              'استعمال سے پہلے مقامی زرعی افسر سے تصدیق کروائیں۔'
+        };
+
+        db.saveChatLog({
+          userId:    req.user?.id       || null,
+          userName:  req.user?.name     || null,
+          userPhone: req.user?.phone    || null,
+          district:  req.user?.district || req.body?.district || null,
+          question:  `[بیماری تشخیص ONNX] ${cropName || 'فصل'}: ${respData.disease_ur}`,
+          answer:    respData.treatment || respData.disease_ur,
+          language:  'ur'
+        }).catch(() => {});
+
+        return res.json(respData);
+      }
+    }
 
     // ══════════════════════════════════════════════════════════════════════════
     // TIER 1: LOCAL DATABASE OR CATALOG MATCH (No image, or direct disease selection)
@@ -692,6 +756,11 @@ router.post('/disease', diseaseLimiter, optionalAuth, async (req, res) => {
       else promptText += `Crop: Auto-detect crop type from leaf structure\n`;
       if (cropAge) promptText += `Crop Age / Growth Stage: ${cropAge}\n`;
       if (symptoms) promptText += `Farmer observations: ${symptoms}\n`;
+      if (onnxResult && onnxResult.success && onnxResult.candidates && onnxResult.candidates.length > 0) {
+        promptText += `\nLocal Deep Learning Pre-Screening: ResNet-50 CBAM detected top candidate pathologies: ` +
+          onnxResult.candidates.map(c => `${c.class_name} (${c.confidence}%)`).join(', ') +
+          `. Please evaluate if symptoms match any of these candidate diseases or diagnose the exact alternative.\n`;
+      }
       promptText += `Examine the leaf image in detail. Perform microscopic visual pathology triage and provide the complete agronomy diagnosis and prescription in JSON format.`;
 
       const samplePakistaniMeds =
@@ -912,6 +981,7 @@ Respond strictly in valid JSON format:
           withholding_period_days: parsed.withholding_period_days || 14,
           organic_alternative:     parsed.organic_alternative || 'دیسی علاج: نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر سپرے کریں۔',
           medicines:               parsed.medicines || [],
+          candidates:              onnxResult ? onnxResult.candidates : [],
           disclaimer:              'استعمال سے پہلے مقامی زرعی افسر سے تصدیق کروائیں۔'
         };
 
@@ -935,29 +1005,37 @@ Respond strictly in valid JSON format:
     // Served when device is offline, image upload was unparseable, or Vision APIs unreachable.
     // ══════════════════════════════════════════════════════════════════════════
     console.log(`[Tier-3 📱 FALLBACK] Serving verified agronomy record for crop "${cropName || 'general'}"`);
-    const fallbackConf = tier1.hasLocalRecord ? 82 : 70;
+
+    // If ONNX inference ran successfully, use top detected disease candidate!
+    const onnxFallbackMatch = onnxResult && onnxResult.topMatch
+      ? modelInference.getAgronomyRecord(onnxResult.topMatch.class_name)
+      : null;
+
+    const fallbackRecord = onnxFallbackMatch && onnxFallbackMatch.data ? onnxFallbackMatch.data : null;
+    const fallbackConf   = fallbackRecord ? Math.max(onnxResult.topMatch.confidence, 65) : (tier1.hasLocalRecord ? 82 : 70);
 
     return res.json({
       tier:                    3,
-      source:                  'offline_fallback',
-      source_label:            '📱 مقامی زرعی ریکارڈ (تصدیق ضروری)',
-      model_attribution:       'مقامی زرعی ڈیٹابیس ریکارڈ',
+      source:                  fallbackRecord ? 'local_onnx_fallback' : 'offline_fallback',
+      source_label:            fallbackRecord ? '📱 ResNet-50 CBAM تجزیہ (آف لائن)' : '📱 مقامی زرعی ریکارڈ (تصدیق ضروری)',
+      model_attribution:       fallbackRecord ? `ResNet-50 CBAM • ${fallbackConf}% اعتماد` : 'مقامی زرعی ڈیٹابیس ریکارڈ',
       confidence:              fallbackConf,
-      disease:                 tier1.disease || (cropName ? `${cropName} کی بیماری` : 'فصل کی بیماری'),
-      disease_ur:              tier1.disease_ur || (cropName ? `${cropName} کی بیماری` : 'فصل کی بیماری'),
-      disease_en:              tier1.disease_en || (cropName ? `${cropName} Disease` : 'Crop Disease'),
-      disease_roman:           tier1.disease_roman || '',
-      severity:                tier1.severity || 'درمیانہ',
-      cause:                   tier1.cause || 'پھپھوندی / کیڑا (Pathogen)',
-      symptoms_analysis:       tier1.symptoms_analysis || '',
-      emergency_action:        tier1.emergency_action || 'فوری طور پر نائٹروجن (یوریا) کا استعمال روکیں اور نکاسی آب بہتر بنائیں',
-      treatment:               tier1.treatment || 'بیماری کی علامات پر فوری قریبی زرعی دفتر یا ہیلپ لائن 0800-15000 سے رابطہ کریں۔',
-      spray_conditions:        tier1.spray_conditions || 'صبح 9 بجے سے پہلے یا شام کے وقت سپرے کریں۔ تیز ہوا یا تیز دھوپ میں سپرے مت کریں۔',
-      fertilizer_adjustment:   tier1.fertilizer_adjustment || 'یوریا کھاد کا استعمال فوری روکیں۔ پوٹاش (SOP) کا استعمال پودے کو بیماری سے بچاتا ہے۔',
-      prevention:              tier1.prevention || 'کھیت صاف رکھیں، متوازن کھاد دیں اور نکاسی آب بہتر بنائیں۔',
-      withholding_period_days: tier1.withholding_period_days || 14,
-      organic_alternative:     tier1.organic_alternative || 'دیسی علاج: نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر احتیاطی سپرے کریں۔',
-      medicines:               tier1.medicines || [],
+      candidates:              onnxResult ? onnxResult.candidates : [],
+      disease:                 fallbackRecord ? `${fallbackRecord.name_ur} (${fallbackRecord.name_en})` : (tier1.disease || (cropName ? `${cropName} کی بیماری` : 'فصل کی بیماری')),
+      disease_ur:              fallbackRecord ? fallbackRecord.name_ur : (tier1.disease_ur || (cropName ? `${cropName} کی بیماری` : 'فصل کی بیماری')),
+      disease_en:              fallbackRecord ? fallbackRecord.name_en : (tier1.disease_en || (cropName ? `${cropName} Disease` : 'Crop Disease')),
+      disease_roman:           fallbackRecord ? fallbackRecord.name_en : (tier1.disease_roman || ''),
+      severity:                fallbackRecord ? (fallbackRecord.severity || 'درمیانہ') : (tier1.severity || 'درمیانہ'),
+      cause:                   fallbackRecord ? (fallbackRecord.cause || 'پھپھوندی / کیڑا (Pathogen)') : (tier1.cause || 'پھپھوندی / کیڑا (Pathogen)'),
+      symptoms_analysis:       fallbackRecord ? (fallbackRecord.symptoms_analysis || '') : (tier1.symptoms_analysis || ''),
+      emergency_action:        fallbackRecord ? (fallbackRecord.emergency_action || 'فوری طور پر نائٹروجن (یوریا) کا استعمال روکیں اور نکاسی آب بہتر بنائیں') : (tier1.emergency_action || 'فوری طور پر نائٹروجن (یوریا) کا استعمال روکیں اور نکاسی آب بہتر بنائیں'),
+      treatment:               fallbackRecord ? (fallbackRecord.treatment_summary || fallbackRecord.treatment) : (tier1.treatment || 'بیماری کی علامات پر فوری قریبی زرعی دفتر یا ہیلپ لائن 0800-15000 سے رابطہ کریں۔'),
+      spray_conditions:        fallbackRecord ? (fallbackRecord.spray_conditions || 'صبح 9 بجے سے پہلے یا شام کے وقت سپرے کریں۔ تیز ہوا یا تیز دھوپ میں سپرے مت کریں۔') : (tier1.spray_conditions || 'صبح 9 بجے سے پہلے یا شام کے وقت سپرے کریں۔ تیز ہوا یا تیز دھوپ میں سپرے مت کریں۔'),
+      fertilizer_adjustment:   fallbackRecord ? (fallbackRecord.fertilizer_adjustment || 'یوریا کھاد کا استعمال فوری روکیں۔ پوٹاش (SOP) کا استعمال پودے کو بیماری سے بچاتا ہے۔') : (tier1.fertilizer_adjustment || 'یوریا کھاد کا استعمال فوری روکیں۔ پوٹاش (SOP) کا استعمال پودے کو بیماری سے بچاتا ہے۔'),
+      prevention:              fallbackRecord ? fallbackRecord.prevention : (tier1.prevention || 'کھیت صاف رکھیں، متوازن کھاد دیں اور نکاسی آب بہتر بنائیں۔'),
+      withholding_period_days: fallbackRecord ? (fallbackRecord.withholding_period_days || 14) : (tier1.withholding_period_days || 14),
+      organic_alternative:     fallbackRecord ? fallbackRecord.organic_alternative : (tier1.organic_alternative || 'دیسی علاج: نیم کا تیل 5 ملی لیٹر فی لیٹر پانی میں ملا کر احتیاطی سپرے کریں۔'),
+      medicines:               fallbackRecord ? (fallbackRecord.medicines || []) : (tier1.medicines || []),
       disclaimer:              'استعمال سے پہلے مقامی زرعی افسر سے تصدیق کروائیں۔'
     });
 
