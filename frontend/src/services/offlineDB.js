@@ -9,6 +9,9 @@ const DB_NAME    = 'dehati_offline_v2';
 const DB_VERSION = 1;
 const QUEUE_KEY  = 'dehati_offline_queue';
 
+import { AGRONOMY_DATABASE, OFFLINE_DISEASE_CATALOG, getOfflineDisease, searchOfflineCatalog } from '../data/agronomyData';
+export { AGRONOMY_DATABASE, OFFLINE_DISEASE_CATALOG, getOfflineDisease, searchOfflineCatalog };
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PILLAR 1: 110 Pre-packaged Urdu Farming Q&A Pairs (100% Offline Access)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -855,6 +858,14 @@ export async function searchOffline(query) {
       return { found: true, source: 'faq', ...faqResult };
     }
 
+    // 3. Offline Agronomy Disease & Prescription Database
+    const agroMatch = getOfflineDisease(query);
+    if (agroMatch && agroMatch.treatment_summary) {
+      const medSummary = agroMatch.medicines?.map(m => `• ${m.brand}: ${m.dosage} (ڈرمکی: ${m.tank_dosage_20l})`).join('\n') || '';
+      const ans = `🌿 ${agroMatch.name_ur} (${agroMatch.name_en}):\n${agroMatch.treatment_summary}\n\n💊 تجویز کردہ دوائیں:\n${medSummary}\n\n⏱️ پرہیزی وقفہ: ${agroMatch.withholding_period_days || 14} دن`;
+      return { found: true, source: 'agronomy_db', answer: ans, question: query, score: 0.85 };
+    }
+
     return { found: false };
   } catch (err) {
     console.warn('searchOffline error, falling back to in-memory FAQ:', err);
@@ -866,6 +877,14 @@ export async function searchOffline(query) {
     if (best && best.score >= 0.25) {
       return { found: true, source: 'faq', answer: best.entry.a, question: best.entry.q, score: best.score };
     }
+
+    const agroFallback = getOfflineDisease(query);
+    if (agroFallback && agroFallback.treatment_summary) {
+      const medSummary = agroFallback.medicines?.map(m => `• ${m.brand}: ${m.dosage} (ڈرمکی: ${m.tank_dosage_20l})`).join('\n') || '';
+      const ans = `🌿 ${agroFallback.name_ur} (${agroFallback.name_en}):\n${agroFallback.treatment_summary}\n\n💊 تجویز کردہ دوائیں:\n${medSummary}\n\n⏱️ پرہیزی وقفہ: ${agroFallback.withholding_period_days || 14} دن`;
+      return { found: true, source: 'agronomy_db', answer: ans, question: query, score: 0.85 };
+    }
+
     return { found: false };
   }
 }

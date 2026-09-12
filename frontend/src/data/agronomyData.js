@@ -1,4 +1,9 @@
-{
+/**
+ * DehatiAI — Offline Agronomy Database
+ * Ground-truth prescriptions for Punjab & Sindh agriculture (100% Offline)
+ */
+
+export const AGRONOMY_DATABASE = {
   "note": "Pakistan Agronomy Prescription Dictionary — Ground-truth agronomic advisories verified for Punjab & Sindh farming ecosystems. Formulation strength varies by brand — confirm exact rate on the product label.",
   "wheat_black_rust": {
     "name_ur": "گندم کا کالا زنگ (بلیک / سٹیم رسٹ)",
@@ -1110,4 +1115,43 @@
     ],
     "prevention": "پودوں کے درمیان مناسب فاصلہ رکھیں تاکہ ہوا اور دھوپ تلے تک پہنچ سکے، یوریا کھاد متوازن رکھیں اور فصل کی باقیات کو گہرا ہل چلا کر مٹی میں دبائیں۔"
   }
+};
+
+export const OFFLINE_DISEASE_CATALOG = Object.entries(AGRONOMY_DATABASE)
+  .filter(([k]) => k !== 'note')
+  .map(([key, detail], idx) => ({
+    id: idx + 1,
+    key,
+    name_en: detail.name_en || key,
+    name_ur: detail.name_ur || key,
+    has_local_remedy: true,
+    model_name: 'مقامی تصدیق شدہ زرعی ڈیٹابیس',
+    detail
+  }));
+
+export function getOfflineDisease(keyOrCrop) {
+  if (!keyOrCrop) return null;
+  const raw = keyOrCrop.toString().trim().toLowerCase();
+  if (AGRONOMY_DATABASE[raw]) return { key: raw, detail: AGRONOMY_DATABASE[raw], ...AGRONOMY_DATABASE[raw] };
+
+  for (const [k, v] of Object.entries(AGRONOMY_DATABASE)) {
+    if (k === 'note') continue;
+    if (k.includes(raw) || raw.includes(k)) return { key: k, detail: v, ...v };
+    if (v.name_ur && (v.name_ur.includes(raw) || raw.includes(v.name_ur))) return { key: k, detail: v, ...v };
+    if (v.name_en && (v.name_en.toLowerCase().includes(raw) || raw.includes(v.name_en.toLowerCase()))) return { key: k, detail: v, ...v };
+  }
+  return null;
 }
+
+export function searchOfflineCatalog(query) {
+  if (!query || !query.trim()) return OFFLINE_DISEASE_CATALOG;
+  const q = query.trim().toLowerCase();
+  return OFFLINE_DISEASE_CATALOG.filter(item => {
+    return (
+      item.key.includes(q) ||
+      (item.name_ur && item.name_ur.includes(q)) ||
+      (item.name_en && item.name_en.toLowerCase().includes(q))
+    );
+  });
+}
+

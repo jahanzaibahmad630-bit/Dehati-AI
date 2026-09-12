@@ -2,7 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useOffline } from '../hooks/useOffline';
 import { useAuth } from '../context/AuthContext';
 import { detectDisease, getDiseaseCatalog, compressImage } from '../services/api';
+import { OFFLINE_DISEASE_CATALOG, getOfflineDisease } from '../data/agronomyData';
 import AnimalHealthAdvisor from '../components/tools/AnimalHealthAdvisor';
+
 import AudioPlayer from '../components/ui/AudioPlayer';
 
 /* ──────────────────────────────────────────────────────────────────
@@ -129,16 +131,32 @@ const DISEASE_STYLES = `
 /* ─── Helpers ────────────────────────────────────────────────────── */
 function calculateTotalDose(dosageStr, acres) {
   if (!dosageStr || !acres || acres <= 1) return dosageStr;
-  const rangeMatch = dosageStr.match(/^(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)\s*(.*)$/);
+
+  // Multi-medicine alternatives separated by ' یا '
+  if (dosageStr.includes(' یا ')) {
+    return dosageStr.split(' یا ')
+      .map(part => calculateTotalDose(part.trim(), acres))
+      .join(' یا ');
+  }
+
+  // Range match: e.g. "80 تا 100 گرام فی ایکڑ", "125-150 ملی لیٹر", "600–800 گرام"
+  const rangeMatch = dosageStr.match(/^(\d+(?:\.\d+)?)\s*(?:[-–—]|تا|سے|to)\s*(\d+(?:\.\d+)?)\s*(.*)$/);
   if (rangeMatch) {
     const min = (parseFloat(rangeMatch[1]) * acres).toFixed(0);
     const max = (parseFloat(rangeMatch[2]) * acres).toFixed(0);
     return `${min} تا ${max} ${rangeMatch[3].trim()}`;
   }
+
+  // Single quantity match: e.g. "200 ملی لیٹر فی ایکڑ", "65 گرام"
   const singleMatch = dosageStr.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
-  if (singleMatch) return `${(parseFloat(singleMatch[1]) * acres).toFixed(0)} ${singleMatch[2].trim()}`;
+  if (singleMatch) {
+    const total = (parseFloat(singleMatch[1]) * acres).toFixed(0);
+    return `${total} ${singleMatch[2].trim()}`;
+  }
+
   return `${dosageStr} × ${acres}`;
 }
+
 
 function fileToBase64(file) {
   return new Promise((res, rej) => {
@@ -442,8 +460,9 @@ function PrescriptionModal({ result, landSize, onClose, farmerName, farmerDistri
 
   const shareToDealer = () => {
     const medList = result.medicines?.map(m =>
-      `• ${m.brand} (${m.active}): ${m.dosage} فی ایکڑ | 🎒 ڈرمکی: ${m.tank_dosage_20l || 'حسب ضرورت'}`
+      `• ${m.brand} (${m.active}): ${calculateTotalDose(m.dosage, landSize)} (${landSize > 1 ? `${landSize} ایکڑ کل` : '1 ایکڑ'}) | 🎒 ڈرمکی: ${m.tank_dosage_20l || 'حسب ضرورت'}${landSize > 1 ? ` (${landSize * 5} ڈرمکیاں کل)` : ''}`
     ).join('\n') || 'مناسب فنجی سائیڈ';
+
 
     const text = `📋 *زرعی نسخہ سلپ — DehatiAI زرعی کلینک*\n` +
       `📅 تاریخ: ${currentDate}\n` +
@@ -512,9 +531,14 @@ function PrescriptionModal({ result, landSize, onClose, farmerName, farmerDistri
                   <div style={{ fontSize: '.8rem', color: '#334155', marginTop: 2 }}>
                     <strong>ایکٹو کیمیکل: </strong><span style={{ color: '#0284c7', fontWeight: 700 }}>{m.active}</span>
                   </div>
-                  <div style={{ fontSize: '.78rem', color: '#475569', marginTop: 2, display: 'flex', gap: 12 }}>
-                    <span><strong>1 ایکڑ: </strong>{calculateTotalDose(m.dosage, landSize)}</span>
-                    {m.tank_dosage_20l && <span><strong>🎒 ڈرمکی (20L): </strong>{m.tank_dosage_20l}</span>}
+                  <div style={{ fontSize: '.78rem', color: '#475569', marginTop: 2, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <span><strong>{landSize > 1 ? `${landSize} ایکڑ کل خوراک:` : '1 ایکڑ:'} </strong>{calculateTotalDose(m.dosage, landSize)}</span>
+                    {m.tank_dosage_20l && (
+                      <span>
+                        <strong>🎒 ڈرمکی (20L): </strong>{m.tank_dosage_20l}
+                        {landSize > 1 && <span style={{ color: '#059669', fontWeight: 800 }}> ({landSize * 5} ڈرمکیاں کل)</span>}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -587,7 +611,7 @@ export default function DiseasePage() {
   const [showRxModal, setShowRxModal]                   = useState(false);
   const [differentialApplied, setDifferentialApplied]   = useState(false);
 
-  const [catalog, setCatalog]               = useState([]);
+  const [catalog, setCatalog]               = useState(OFFLINE_DISEASE_CATALOG);
   const [searchQuery, setSearchQuery]       = useState('');
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [showCatalog, setShowCatalog]       = useState(false);
@@ -604,8 +628,19 @@ export default function DiseasePage() {
     let active = true;
     setCatalogLoading(true);
     getDiseaseCatalog()
-      .then(r => { if (active && r?.catalog) setCatalog(r.catalog); })
-      .catch(e => console.warn('Catalog:', e.message))
+      .then(r => {
+        if (active) {
+          if (r?.catalog && r.catalog.length > 0) {
+            setCatalog(r.catalog);
+          } else {
+            setCatalog(OFFLINE_DISEASE_CATALOG);
+          }
+        }
+      })
+      .catch(e => {
+        console.warn('Catalog network request bypassed, active offline agronomy DB:', e.message);
+        if (active) setCatalog(OFFLINE_DISEASE_CATALOG);
+      })
       .finally(() => { if (active) setCatalogLoading(false); });
     return () => { active = false; };
   }, []);
@@ -618,26 +653,6 @@ export default function DiseasePage() {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     setImageUrl(URL.createObjectURL(file));
     setImage(file);
-  };
-
-  const handleDetect = async () => {
-    if (!image) { setError('پہلے تصویر لیں یا ڈائریکٹری سے بیماری منتخب کریں'); return; }
-    if (isOffline) { setError('انٹرنیٹ نہیں — AI بند ہے'); return; }
-    setLoading(true); setCompressing(true); setError(''); setResult(null);
-    setDifferentialApplied(false);
-    try {
-      const compressed = await compressImage(image, 0.8);
-      setCompressing(false);
-      const base64 = await fileToBase64(compressed);
-      const userDistrict = user?.district || (() => {
-        try { return JSON.parse(localStorage.getItem('dehati_user') || '{}').district; } catch { return ''; }
-      })();
-      const data = await detectDisease(base64, crop || null, compressed.type || 'image/jpeg', null, { district: userDistrict });
-      setResult(data);
-    } catch (err) {
-      setCompressing(false);
-      setError(err.message || 'تجزیہ ناکام — دوبارہ کوشش کریں');
-    } finally { setLoading(false); }
   };
 
   const handleSelectFromCatalog = async (item) => {
@@ -661,12 +676,67 @@ export default function DiseasePage() {
       medicines: item.detail?.medicines || []
     };
     setResult(localResult);
-    try {
-      const data = await detectDisease(null, crop || item.name_en, 'image/jpeg', item.key);
-      if (data && (data.disease_ur || data.treatment)) setResult(data);
-    } catch { /* keep localResult */ }
-    finally { setLoading(false); }
+    if (!isOffline) {
+      try {
+        const data = await detectDisease(null, crop || item.name_en, 'image/jpeg', item.key);
+        if (data && (data.disease_ur || data.treatment)) setResult(data);
+      } catch { /* keep localResult */ }
+    }
+    setLoading(false);
   };
+
+  const handleDetect = async () => {
+    if (!image) { setError('پہلے تصویر لیں یا ڈائریکٹری سے بیماری منتخب کریں'); return; }
+
+    // Smart Offline Mode Handling
+    if (isOffline) {
+      const offlineMatch = crop ? getOfflineDisease(crop) : null;
+      if (offlineMatch && offlineMatch.name_ur) {
+        handleSelectFromCatalog({
+          name_ur: offlineMatch.name_ur,
+          name_en: offlineMatch.name_en,
+          key: offlineMatch.key,
+          model_name: '📶 آف لائن زرعی ڈیٹابیس (بغیر انٹرنیٹ)',
+          detail: offlineMatch
+        });
+        return;
+      }
+      setShowCatalog(true);
+      setError('📶 آف لائن موڈ: انٹرنیٹ دستیاب نہیں ہے۔ نیچے دی گئی ڈائریکٹری سے بیماری منتخب کریں اور فوری نسخہ حاصل کریں:');
+      return;
+    }
+
+    setLoading(true); setCompressing(true); setError(''); setResult(null);
+    setDifferentialApplied(false);
+    try {
+      const compressed = await compressImage(image, 0.8);
+      setCompressing(false);
+      const base64 = await fileToBase64(compressed);
+      const userDistrict = user?.district || (() => {
+        try { return JSON.parse(localStorage.getItem('dehati_user') || '{}').district; } catch { return ''; }
+      })();
+      const data = await detectDisease(base64, crop || null, compressed.type || 'image/jpeg', null, { district: userDistrict });
+      setResult(data);
+    } catch (err) {
+      setCompressing(false);
+      // Graceful network outage fallback: try local offline agronomy match for selected crop
+      const offlineMatch = crop ? getOfflineDisease(crop) : null;
+      if (offlineMatch && offlineMatch.name_ur) {
+        handleSelectFromCatalog({
+          name_ur: offlineMatch.name_ur,
+          name_en: offlineMatch.name_en,
+          key: offlineMatch.key,
+          model_name: '📶 آف لائن مقامی نسخہ (انٹرنیٹ منقطع)',
+          detail: offlineMatch
+        });
+      } else {
+        setShowCatalog(true);
+        setError('📶 انٹرنیٹ کمزور ہے — آف لائن ڈائریکٹری سے بیماری منتخب کریں اور مکمل نسخہ دیکھیں');
+      }
+    } finally { setLoading(false); }
+  };
+
+
 
   const handleRetake = () => {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
@@ -678,7 +748,7 @@ export default function DiseasePage() {
   const shareWhatsApp = () => {
     if (!result) return;
     const medSummary = result.medicines?.length > 0
-      ? result.medicines.map(m => `🧪 ${m.brand} (${m.active}): ${m.dosage}${m.tank_dosage_20l ? ` | 🎒 ڈرمکی: ${m.tank_dosage_20l}` : ''}`).join('\n')
+      ? result.medicines.map(m => `🧪 ${m.brand} (${m.active}): ${calculateTotalDose(m.dosage, landSize)}${landSize > 1 ? ` (${landSize} ایکڑ کل)` : ''}${m.tank_dosage_20l ? ` | 🎒 ڈرمکی: ${m.tank_dosage_20l}` : ''}${landSize > 1 ? ` (${landSize * 5} ڈرمکیاں)` : ''}`).join('\n')
       : '';
     const text = `🌾 DehatiAI فصل تشخیص و نسخہ:\n\n🔬 بیماری: ${result.disease_ur || result.disease}\n${result.severity ? `⚠️ شدت: ${result.severity}\n` : ''}${result.emergency_action ? `🚨 فوری قدم: ${result.emergency_action}\n` : ''}⚡ وجہ: ${result.cause}\n💊 علاج: ${result.treatment}\n\n${medSummary ? `تجویز کردہ ادویات:\n${medSummary}\n\n` : ''}${result.spray_conditions ? `🌤️ سپرے وقت: ${result.spray_conditions}\n` : ''}⚠️ پرہیزی دن: ${result.withholding_period_days || 14} دن\n\n🤖 DehatiAI - dehati-ai.vercel.app`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
