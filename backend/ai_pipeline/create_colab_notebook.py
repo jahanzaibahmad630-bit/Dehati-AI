@@ -352,6 +352,12 @@ notebook = {
             "source": [
                 "# Step 6: Export to ONNX (<50ms Node.js inference) & Auto-Download\n",
                 "print('Exporting to ONNX format...')\n",
+                "if os.path.exists('best_model.pth'):\n",
+                "    ckpt = torch.load('best_model.pth', map_location=device)\n",
+                "    if 'model' not in locals():\n",
+                "        model = ResNet50_CBAM(num_classes=len(ckpt['classes']), pretrained=False).to(device)\n",
+                "    model.load_state_dict(ckpt['model_state_dict'])\n",
+                "    print(f'✅ Loaded best model checkpoint (Val Acc: {ckpt.get(\"val_acc\", 0.0):.2f}%)')\n",
                 "model.eval()\n",
                 "dummy_input = torch.randn(1, 3, 224, 224).to(device)\n",
                 "torch.onnx.export(\n",
