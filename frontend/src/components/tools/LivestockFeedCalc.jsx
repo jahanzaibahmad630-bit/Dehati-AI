@@ -41,6 +41,7 @@ export default function LivestockFeedCalc() {
   // Lactometer Correction State (UVAS / Zeal calibration at 60°F)
   const [observedLR, setObservedLR] = useState('');
   const [milkTempF, setMilkTempF]   = useState('');
+  const [lactAnimalType, setLactAnimalType] = useState('buffalo');
   const [lactResult, setLactResult] = useState(null);
 
   // Switch animal defaults dynamically
@@ -53,9 +54,10 @@ export default function LivestockFeedCalc() {
     else if (type === 'dry') { setAnimalWeight('500'); setMilkYield('0'); }
     else if (type === 'goat') { setAnimalWeight('45'); setMilkYield('2'); }
     else if (type === 'horse') { setAnimalWeight('400'); setMilkYield('0'); }
-    else if (type === 'poultry') { setAnimalWeight('1.8'); setMilkYield('0'); setAnimalCount('50'); }
+    else if (type === 'poultry') { setAnimalWeight('2'); setMilkYield('0'); }
   };
 
+  // Lactometer calculation (Zeal standard: 60°F)
   const calculateLactometer = () => {
     const lr = parseFloat(observedLR);
     const t = parseFloat(milkTempF);
@@ -65,7 +67,7 @@ export default function LivestockFeedCalc() {
     const specificGravity = +(1 + correctedLR / 1000).toFixed(3);
 
     // Standard pure milk CLR baseline (UVAS standard: 30 for Buffalo, 28 for Cow)
-    const stdCLR = animalType === 'cow' ? 28 : 30;
+    const stdCLR = lactAnimalType === 'cow' ? 28 : 30;
     const waterAdulterationPct = correctedLR < stdCLR
       ? Math.min(100, Math.max(0, +(((stdCLR - correctedLR) / stdCLR) * 100).toFixed(1)))
       : 0;
@@ -74,7 +76,7 @@ export default function LivestockFeedCalc() {
     const snfPct = +(correctedLR / 4 + 0.5).toFixed(1);
 
     // Realistic fat estimation based on dairy species baseline
-    const estimatedFatPct = +(Math.max(2.5, (correctedLR >= 28 ? (animalType === 'cow' ? 3.8 + (correctedLR - 28) * 0.15 : 6.2 + (correctedLR - 30) * 0.2) : 3.2))).toFixed(1);
+    const estimatedFatPct = +(Math.max(2.5, (correctedLR >= 28 ? (lactAnimalType === 'cow' ? 3.8 + (correctedLR - 28) * 0.15 : 6.2 + (correctedLR - 30) * 0.2) : 3.2))).toFixed(1);
 
     setLactResult({
       observedLR: lr,
@@ -747,6 +749,36 @@ export default function LivestockFeedCalc() {
             </div>
           </div>
 
+          {/* Animal Type Toggle */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <button
+              type="button"
+              onClick={() => { setLactAnimalType('buffalo'); setLactResult(null); }}
+              style={{
+                flex: 1, padding: '7px', borderRadius: 8,
+                border: `2px solid ${lactAnimalType === 'buffalo' ? '#7c3aed' : '#e5e7eb'}`,
+                background: lactAnimalType === 'buffalo' ? '#f5f3ff' : 'white',
+                color: lactAnimalType === 'buffalo' ? '#6d28d9' : '#374151',
+                fontWeight: 800, fontSize: '.78rem', cursor: 'pointer'
+              }}
+            >
+              🐃 بھینس کا دودھ (CLR: 30)
+            </button>
+            <button
+              type="button"
+              onClick={() => { setLactAnimalType('cow'); setLactResult(null); }}
+              style={{
+                flex: 1, padding: '7px', borderRadius: 8,
+                border: `2px solid ${lactAnimalType === 'cow' ? '#7c3aed' : '#e5e7eb'}`,
+                background: lactAnimalType === 'cow' ? '#f5f3ff' : 'white',
+                color: lactAnimalType === 'cow' ? '#6d28d9' : '#374151',
+                fontWeight: 800, fontSize: '.78rem', cursor: 'pointer'
+              }}
+            >
+              🐄 گائے کا دودھ (CLR: 28)
+            </button>
+          </div>
+
           {/* Inputs */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
             <div>
@@ -860,7 +892,7 @@ export default function LivestockFeedCalc() {
 
               {/* Instructions */}
               <div style={{ background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 10, padding: '8px 12px', fontSize: '.7rem', color: '#78350f', lineHeight: 1.5 }}>
-                💡 <strong>UVAS ڈیری ہدایت:</strong> دوہنے کے فوری بعد دودھ کا نمونہ 60°F (15.5°C) پر ٹھنڈا کر کے لیکٹومیٹر ڈالیں۔ یا یہ درجہ حرارت کریکشن ٹول استعمال کریں۔ ہیلپ لائن: 0800-17000
+                💡 <strong>UVAS ڈیری ہدایت:</strong> دوہنے کے فوری بعد دودھ کا نمونہ 60°F (15.5°C) پر ٹھنڈا کر کے لیکٹومیٹر ڈالیں۔ یا یہ درجہ حرارت کریکشن ٹول استعمال کریں۔ محکمہ لائیوسٹاک ہیلپ لائن: 0800-15000
               </div>
             </div>
           )}

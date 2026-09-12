@@ -1,14 +1,22 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
-// JWT_SECRET is NEVER exported — kept module-private
+// Generate cryptographically random in-memory secret on server start if not set in environment
+const EPHEMERAL_SECRET = crypto.randomBytes(64).toString('hex');
+
 const isProduction = process.env.NODE_ENV === 'production';
 if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
-  console.warn('⚠️ WARNING: JWT_SECRET is missing or < 32 chars in production. Using fallback secret.');
+  console.warn('⚠️ WARNING: JWT_SECRET is missing or < 32 chars in production. Using ephemeral random secret.');
 }
 
 const JWT_SECRET = (process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32)
   ? process.env.JWT_SECRET
-  : 'dehati-ai-production-fallback-secret-2026-punjab-agri-auth-token-v1';
+  : EPHEMERAL_SECRET;
+
+// Separate admin signing key to prevent privilege escalation via user token forgery
+const ADMIN_JWT_SECRET = (process.env.ADMIN_JWT_SECRET && process.env.ADMIN_JWT_SECRET.length >= 32)
+  ? process.env.ADMIN_JWT_SECRET
+  : crypto.createHmac('sha256', JWT_SECRET).update('admin-privilege-key-salt-2026').digest('hex');
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -39,7 +47,7 @@ function requireAdmin(req, res, next) {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, ADMIN_JWT_SECRET);
     if (!decoded.isAdmin) {
       return res.status(403).json({ error: 'Admin access required' });
     }
@@ -80,7 +88,7 @@ function signToken(user) {
 function signAdminToken(email) {
   return jwt.sign(
     { email, isAdmin: true, role: 'admin' },
-    JWT_SECRET,
+    ADMIN_JWT_SECRET,
     { expiresIn: '8h' }
   );
 }

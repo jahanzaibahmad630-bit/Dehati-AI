@@ -166,7 +166,7 @@ export default function LandConverter() {
             <div style={{ padding: '4px 12px' }}>
               {[
                 { name: 'مربع (Murabba = 25 قلعے)', val: results['مربع (Murabba)'], sub: '200 کنال' },
-                { name: 'قلعہ / ایکڑ (Killa = 8 کنال)', val: results['ایکڑ (قلعہ)'], sub: '160 مرلے (36×40 کرم)' },
+                { name: `قلعہ / ایکڑ (${standard === 'urban' ? '9.68 کنال' : 'Killa = 8 کنال'})`, val: results['ایکڑ (قلعہ)'], sub: standard === 'urban' ? '193.6 مرلے (شہریہ پیمائش 225 فٹ/مرلہ)' : '160 مرلے (36×40 کرم)' },
                 { name: 'جریب (Jareeb = 4 کنال)', val: results['جریب (Jareeb)'], sub: 'آدھا ایکڑ (80 مرلے)' },
                 { name: 'کنال (Kanal = 20 مرلے)', val: results['کنال (Kanal)'], sub: `${kanalSqft.toLocaleString('en-PK')} مربع فٹ` },
                 { name: 'مرلہ (Marla = 9 سرسائی)', val: results['مرلہ (Marla)'], sub: `${marlaSqft} مربع فٹ` },

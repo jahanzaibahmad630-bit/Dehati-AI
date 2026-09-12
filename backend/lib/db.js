@@ -286,7 +286,13 @@ async function getAllUsers({ page = 1, limit = 20, search = '' } = {}) {
       .select('id,name,phone,district,land_size,created_at,is_guest', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
-    if (search) q = q.or(`name.ilike.%${search}%,phone.ilike.%${search}%`);
+    if (search) {
+      // SEC-04: Sanitize PostgREST query characters [,().%*] to prevent filter injection
+      const cleanSearch = String(search).replace(/[^\w\s\u0600-\u06FF]/gi, '').trim().slice(0, 50);
+      if (cleanSearch) {
+        q = q.or(`name.ilike.%${cleanSearch}%,phone.ilike.%${cleanSearch}%`);
+      }
+    }
     const { data, count, error } = await q;
     if (error) console.error('❌ getAllUsers error:', error.message);
     return { users: data || [], total: count || 0 };
@@ -1055,7 +1061,20 @@ async function clearFarmerProfile(userId) {
 }
 
 /**
+ * Sanitize untrusted user profile text to prevent prompt injection or markdown breakout
+ */
+function sanitizeContextString(str, maxLen = 60) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/[<>{}[\]\\`]/g, '') // strip markup and code delimiters
+    .replace(/[\r\n\t]+/g, ' ')   // flatten newlines
+    .trim()
+    .slice(0, maxLen);
+}
+
+/**
  * Build a concise Urdu context summary from farmer profile for AI prompt injection.
+ * Encapsulated within <farmer_profile_data> sandbox to prevent prompt injection.
  * Returns empty string if profile is null/empty (zero overhead).
  */
 function buildFarmerContext(profile) {
@@ -1064,14 +1083,24 @@ function buildFarmerContext(profile) {
 
   // Tehsil / Sub-district
   if (profile.tehsil) {
-    parts.push('تحصیل: ' + profile.tehsil);
+    const sTehsil = sanitizeContextString(profile.tehsil, 40);
+    if (sTehsil) parts.push('تحصیل: ' + sTehsil);
   }
 
   // Water & Irrigation
   const waterParts = [];
-  if (profile.water_source) waterParts.push('ذریعہ: ' + profile.water_source);
-  if (profile.warabandi_day && profile.warabandi_day !== 'وارابندی نہیں') waterParts.push('وارابندی: ' + profile.warabandi_day);
-  if (profile.irrigation_method) waterParts.push('طریقہ: ' + profile.irrigation_method);
+  if (profile.water_source) {
+    const s = sanitizeContextString(profile.water_source, 30);
+    if (s) waterParts.push('ذریعہ: ' + s);
+  }
+  if (profile.warabandi_day && profile.warabandi_day !== 'وارابندی نہیں') {
+    const s = sanitizeContextString(profile.warabandi_day, 30);
+    if (s) waterParts.push('وارابندی: ' + s);
+  }
+  if (profile.irrigation_method) {
+    const s = sanitizeContextString(profile.irrigation_method, 30);
+    if (s) waterParts.push('طریقہ: ' + s);
+  }
   if (waterParts.length > 0) {
     parts.push('آبپاشی (' + waterParts.join(' | ') + ')');
   }
@@ -1079,10 +1108,14 @@ function buildFarmerContext(profile) {
   // Crops
   const crops = profile.crops;
   if (Array.isArray(crops) && crops.length > 0) {
-    const cropTexts = crops.slice(0, 3).map(c => {
-      let t = c.name || '';
-      if (c.acres) t += ` ${c.acres} ایکڑ`;
-      if (c.variety) t += ` (${c.variety})`;
+    const cropTexts = crops.slice(0, 4).map(c => {
+      let t = sanitizeContextString(c.name || '', 30);
+      const acres = parseFloat(c.acres);
+      if (!isNaN(acres) && acres > 0) t += ` ${acres} ایکڑ`;
+      if (c.variety) {
+        const v = sanitizeContextString(c.variety, 30);
+        if (v) t += ` (${v})`;
+      }
       return t;
     }).filter(Boolean);
     if (cropTexts.length) parts.push('فصلیں: ' + cropTexts.join('، '));
@@ -1091,12 +1124,17 @@ function buildFarmerContext(profile) {
   // Livestock
   const livestock = profile.livestock;
   if (Array.isArray(livestock) && livestock.length > 0) {
-    const lvTexts = livestock.slice(0, 3).map(l => {
+    const lvTexts = livestock.slice(0, 4).map(l => {
       let t = '';
-      if (l.count) t += l.count + ' ';
-      t += l.type || '';
-      if (l.breed) t += ` ${l.breed}`;
-      if (l.milk_liters) t += ` (${l.milk_liters} لیٹر دودھ)`;
+      const cnt = parseInt(l.count, 10);
+      if (!isNaN(cnt) && cnt > 0) t += cnt + ' ';
+      t += sanitizeContextString(l.type || '', 20);
+      if (l.breed) {
+        const b = sanitizeContextString(l.breed, 25);
+        if (b) t += ` ${b}`;
+      }
+      const milk = parseFloat(l.milk_liters);
+      if (!isNaN(milk) && milk > 0) t += ` (${milk} لیٹر دودھ)`;
       return t.trim();
     }).filter(Boolean);
     if (lvTexts.length) parts.push('مویشی: ' + lvTexts.join('، '));
@@ -1106,14 +1144,17 @@ function buildFarmerContext(profile) {
   const soil = profile.soil;
   if (soil && typeof soil === 'object' && Object.keys(soil).length > 0) {
     const soilParts = [];
-    if (soil.ph) soilParts.push('pH ' + soil.ph);
-    if (soil.ec) soilParts.push('EC ' + soil.ec);
-    if (soil.om) soilParts.push('OM ' + soil.om + '%');
+    const ph = parseFloat(soil.ph);
+    const ec = parseFloat(soil.ec);
+    const om = parseFloat(soil.om);
+    if (!isNaN(ph)) soilParts.push('pH ' + ph);
+    if (!isNaN(ec)) soilParts.push('EC ' + ec);
+    if (!isNaN(om)) soilParts.push('OM ' + om + '%');
     if (soilParts.length) parts.push('مٹی: ' + soilParts.join('، '));
   }
 
   if (parts.length === 0) return '';
-  return '\n🗂️ کسان پروفائل (میرا فارم): ' + parts.join(' | ');
+  return '\n\n<farmer_profile_data>\n[کسان فارم معلومات: ' + parts.join(' | ') + ']\n</farmer_profile_data>';
 }
 
 module.exports = {

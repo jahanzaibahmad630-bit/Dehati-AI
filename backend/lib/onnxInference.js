@@ -46,13 +46,69 @@ async function initSession() {
 // Auto-initialize
 initSession().catch(() => {});
 
+const MAX_IMAGE_DIM = 4096;
+
 /**
- * Decode image buffer (JPEG or PNG) to raw RGBA Uint8Array
+ * Inspect JPEG/PNG headers to check dimensions BEFORE full buffer decompression.
+ * Protects against decompression bomb DoS attacks (e.g. 40,000 x 40,000 pixel images).
+ */
+function checkImageSafety(buffer) {
+  if (!buffer || buffer.length < 24) {
+    throw new Error('Image buffer too small or corrupt');
+  }
+
+  // PNG check (IHDR header starts at byte 12, width at 16, height at 20)
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    const width = buffer.readUInt32BE(16);
+    const height = buffer.readUInt32BE(20);
+    if (width <= 0 || height <= 0 || width > MAX_IMAGE_DIM || height > MAX_IMAGE_DIM) {
+      throw new Error(`Image dimensions (${width}x${height}) exceed safety limits (max ${MAX_IMAGE_DIM}x${MAX_IMAGE_DIM})`);
+    }
+    return { width, height, type: 'png' };
+  }
+
+  // JPEG check (Parse Start-of-Frame markers for width/height)
+  if (buffer[0] === 0xff && buffer[1] === 0xd8) {
+    let offset = 2;
+    while (offset < buffer.length - 8) {
+      if (buffer[offset] !== 0xff) {
+        offset++;
+        continue;
+      }
+      while (buffer[offset] === 0xff && offset < buffer.length) {
+        offset++;
+      }
+      if (offset >= buffer.length) break;
+      const marker = buffer[offset++];
+      if (marker === 0xd9 || marker === 0xda) break; // End of image or Start of Scan
+
+      const len = buffer.readUInt16BE(offset);
+      // SOF markers
+      if ((marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) || (marker >= 0xc9 && marker <= 0xcb)) {
+        const height = buffer.readUInt16BE(offset + 3);
+        const width = buffer.readUInt16BE(offset + 5);
+        if (width <= 0 || height <= 0 || width > MAX_IMAGE_DIM || height > MAX_IMAGE_DIM) {
+          throw new Error(`Image dimensions (${width}x${height}) exceed safety limits (max ${MAX_IMAGE_DIM}x${MAX_IMAGE_DIM})`);
+        }
+        return { width, height, type: 'jpeg' };
+      }
+      offset += len;
+    }
+    return { width: 0, height: 0, type: 'jpeg' };
+  }
+
+  return { width: 0, height: 0, type: 'unknown' };
+}
+
+/**
+ * Decode image buffer (JPEG or PNG) to raw RGBA Uint8Array with memory guards
  */
 function decodeImage(buffer) {
+  checkImageSafety(buffer);
+
   // Check JPEG magic bytes: FF D8 FF
   if (buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    const decoded = jpeg.decode(buffer, { useTArray: true });
+    const decoded = jpeg.decode(buffer, { useTArray: true, maxMemoryUsageInMB: 64 });
     return { data: decoded.data, width: decoded.width, height: decoded.height };
   }
 
@@ -64,7 +120,7 @@ function decodeImage(buffer) {
 
   // Fallback attempt JPEG
   try {
-    const decoded = jpeg.decode(buffer, { useTArray: true });
+    const decoded = jpeg.decode(buffer, { useTArray: true, maxMemoryUsageInMB: 64 });
     return { data: decoded.data, width: decoded.width, height: decoded.height };
   } catch {
     throw new Error('Unsupported image format. Only JPEG and PNG are supported for local ONNX inference.');

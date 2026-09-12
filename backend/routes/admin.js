@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto  = require('crypto');
 const bcrypt  = require('bcryptjs');
 const { requireAdmin, signAdminToken } = require('../middleware/auth');
 const { adminLoginLimiter } = require('../middleware/rateLimit');
@@ -20,15 +21,20 @@ let announcements = [];
 let announcementIdCounter = 1;
 
 
-// â”€â”€â”€ POST /api/admin/login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── POST /api/admin/login ──────────────────────────────────────────────────
 // Rate-limited: 10 attempts per 15 min per IP (brute-force protection)
 router.post('/login', adminLoginLimiter, async (req, res) => {
   const { email, password } = req.body;
 
   const isProd = process.env.NODE_ENV === 'production';
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@dehati.ai';
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || (isProd ? null : 'admin@dehati.ai');
   const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@12345';
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProd ? null : 'Admin@12345');
+
+  if (isProd && (!ADMIN_EMAIL || (!ADMIN_PASSWORD_HASH && ADMIN_PASSWORD === 'Admin@12345'))) {
+    console.error('🚨 SECURITY: Default admin credentials rejected in production!');
+    return res.status(500).json({ error: 'Production admin credentials must be explicitly configured via ADMIN_PASSWORD_HASH or ADMIN_PASSWORD' });
+  }
 
   if (!ADMIN_EMAIL || (!ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD)) {
     return res.status(500).json({ error: 'Admin credentials not configured' });
@@ -38,7 +44,7 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Email and password required' });
   }
 
-  const emailMatch = ADMIN_EMAIL && email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const emailMatch = email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   let passwordMatch = false;
   if (ADMIN_PASSWORD_HASH) {
@@ -48,10 +54,14 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
       passwordMatch = false;
     }
   } else if (ADMIN_PASSWORD) {
-    passwordMatch = (password === ADMIN_PASSWORD);
+    // Constant-time string comparison to prevent timing attacks
+    const a = Buffer.from(String(password));
+    const b = Buffer.from(String(ADMIN_PASSWORD));
+    passwordMatch = a.length === b.length && crypto.timingSafeEqual(a, b);
   }
 
   if (!emailMatch || !passwordMatch) {
+    await logAuditAction({ actionType: 'ADMIN_LOGIN_FAILED', target: email || 'unknown', ip: req.ip }).catch(() => {});
     return res.status(401).json({ error: 'Invalid admin credentials' });
   }
 

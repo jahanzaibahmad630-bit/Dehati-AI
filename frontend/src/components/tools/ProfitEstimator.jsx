@@ -131,7 +131,11 @@ export default function ProfitEstimator() {
     });
   };
 
-  const fmt = n => Math.abs(n).toLocaleString('ur-PK');
+  const fmt = n => {
+    const num = Math.round(n);
+    if (num < 0) return `-${Math.abs(num).toLocaleString('ur-PK')}`;
+    return num.toLocaleString('ur-PK');
+  };
 
   return (
     <div dir="rtl" style={{ ...nas }}>
@@ -251,7 +255,7 @@ export default function ProfitEstimator() {
         </div>
 
         <button className="btn btn-primary btn-full" id="profit-calc-btn"
-          disabled={!crop || !acres}
+          disabled={!crop || isNaN(parseFloat(acres)) || parseFloat(acres) <= 0}
           onClick={calculate}
           style={{ width: '100%', marginTop: 14, fontSize: '1rem', padding: '0.85rem', background: 'linear-gradient(135deg, #14532d, #15803d)', color: 'white', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', ...nas }}
         >
@@ -286,14 +290,14 @@ export default function ProfitEstimator() {
             {/* Net Profit Banner */}
             <div style={{ background: result.netProfit >= 0 ? 'linear-gradient(135deg, #14532d, #15803d)' : 'linear-gradient(135deg, #7f1d1d, #dc2626)', borderRadius: 14, padding: '1rem', textAlign: 'center', marginBottom: 8, color: 'white' }}>
               <div style={{ color: 'rgba(255,255,255,.85)', fontSize: '0.78rem', ...nas }}>
-                {result.netProfit >= 0 ? '🎉 خالص متوقع منافع' : '⚠️ متوقع نقصان'}
+                {result.netProfit >= 0 ? '🎉 خالص متوقع منافع' : '⚠️ متوقع مالی نقصان (خسارہ)'}
               </div>
               <div style={{ color: 'white', fontWeight: 900, fontSize: '2.1rem', fontFamily: 'Inter', margin: '4px 0' }} dir="ltr">
-                ₨{fmt(result.netProfit)}
+                {result.netProfit < 0 ? '-' : ''}₨{Math.abs(Math.round(result.netProfit)).toLocaleString('ur-PK')}
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 6, fontSize: '.8rem' }}>
                 <div>ROI: <strong style={{ fontFamily: 'Inter' }}>{result.roi}%</strong></div>
-                <div>فی ایکڑ منافع: <strong style={{ fontFamily: 'Inter' }}>₨{fmt(result.netProfit / result.a)}</strong></div>
+                <div>فی ایکڑ {result.netProfit >= 0 ? 'منافع' : 'نقصان'}: <strong style={{ fontFamily: 'Inter' }}>₨{fmt(result.netProfit / result.a)}</strong></div>
               </div>
             </div>
 

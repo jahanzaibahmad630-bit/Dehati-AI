@@ -33,17 +33,24 @@ export default function BreakevenCalc() {
   };
 
   const calculate = () => {
-    const c = parseFloat(cost) || 0;
-    const y = parseFloat(yieldAmt) || 0;
-    const rent = includeRent ? (parseFloat(rentCost) || 0) : 0;
-    if (y <= 0 || (c + rent) <= 0) return;
+    const parsedCost = parseFloat(cost);
+    const parsedYield = parseFloat(yieldAmt);
+    const parsedRent = includeRent ? (parseFloat(rentCost) || 0) : 0;
 
+    if (isNaN(parsedCost) || parsedCost <= 0 || isNaN(parsedYield) || parsedYield <= 0 || parsedRent < 0) {
+      return;
+    }
+
+    const c = parsedCost;
+    const y = parsedYield;
+    const rent = parsedRent;
     const totalCostPerAcre = c + rent;
     const bePerMaund = Math.ceil(totalCostPerAcre / y);
 
     const preset = CROP_PRESETS[selectedCrop];
     const msp = preset?.msp || null;
-    const effectivePrice = parseFloat(mandiPrice) || msp || bePerMaund;
+    const enteredMandi = parseFloat(mandiPrice);
+    const effectivePrice = (!isNaN(enteredMandi) && enteredMandi > 0) ? enteredMandi : (msp || bePerMaund);
     const profitPerMaund = effectivePrice - bePerMaund;
     const totalProfitPerAcre = profitPerMaund * y;
 
@@ -189,7 +196,7 @@ export default function BreakevenCalc() {
 
         {/* Calculate Button */}
         <button
-          onClick={calculate} disabled={!cost || !yieldAmt}
+          onClick={calculate} disabled={!cost || !yieldAmt || parseFloat(cost) <= 0 || parseFloat(yieldAmt) <= 0}
           style={{ width: '100%', marginTop: 12, padding: '0.8rem', background: 'linear-gradient(135deg, #166534, #15803d)', color: 'white', borderRadius: 10, border: 'none', fontWeight: 800, fontSize: '.95rem', cursor: 'pointer', ...nas }}
         >
           ✓ بریک ایون و محفوظ ریٹ حساب لگائیں

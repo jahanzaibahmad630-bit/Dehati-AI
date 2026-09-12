@@ -161,11 +161,13 @@ export default function TubeWellCost() {
     // Farmer's total turn in minutes
     const farmerTotalMin = (minPerAcre * myA) + farmerBharaiMin - farmerNikalMin;
 
-    const turnHours = Math.floor(farmerTotalMin / 60);
-    const turnMinutes = Math.round(farmerTotalMin % 60);
+    const roundedFarmerMin = Math.round(farmerTotalMin);
+    const turnHours = Math.floor(roundedFarmerMin / 60);
+    const turnMinutes = roundedFarmerMin % 60;
 
-    const perAcreH = Math.floor(minPerAcre / 60);
-    const perAcreM = Math.round(minPerAcre % 60);
+    const roundedPerAcre = Math.round(minPerAcre);
+    const perAcreH = Math.floor(roundedPerAcre / 60);
+    const perAcreM = roundedPerAcre % 60;
 
     setWarabandiResult({
       cca, myA, dist,

@@ -139,12 +139,13 @@ function calculateTotalDose(dosageStr, acres) {
       .join(' یا ');
   }
 
-  // Range match: e.g. "80 تا 100 گرام فی ایکڑ", "125-150 ملی لیٹر", "600–800 گرام"
-  const rangeMatch = dosageStr.match(/^(\d+(?:\.\d+)?)\s*(?:[-–—]|تا|سے|to)\s*(\d+(?:\.\d+)?)\s*(.*)$/);
+  // Range match: e.g. "80 تا 100 گرام فی ایکڑ", "80 گرام تا 100 گرام", "125-150 ملی لیٹر", "600–800 گرام"
+  const rangeMatch = dosageStr.match(/^(\d+(?:\.\d+)?)\s*([^\d\s]+)?\s*(?:[-–—]|تا|سے|to)\s*(\d+(?:\.\d+)?)\s*(.*)$/i);
   if (rangeMatch) {
     const min = (parseFloat(rangeMatch[1]) * acres).toFixed(0);
-    const max = (parseFloat(rangeMatch[2]) * acres).toFixed(0);
-    return `${min} تا ${max} ${rangeMatch[3].trim()}`;
+    const max = (parseFloat(rangeMatch[3]) * acres).toFixed(0);
+    const unit = rangeMatch[4]?.trim() || rangeMatch[2]?.trim() || '';
+    return `${min} تا ${max} ${unit}`;
   }
 
   // Single quantity match: e.g. "200 ملی لیٹر فی ایکڑ", "65 گرام"
@@ -742,6 +743,8 @@ export default function DiseasePage() {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     setImage(null); setImageUrl(''); setResult(null); setError(''); setShowTips(true);
     setDifferentialApplied(false);
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
     if (fileRef.current) fileRef.current.value = '';
   };
 

@@ -131,7 +131,8 @@ export default function CropBudgetCalc() {
   const [customCosts, setCustomCosts]     = useState({});   // { [cropId]: { [costKey]: number } }
   const [showCostEditor, setShowCostEditor] = useState(false);
 
-  const a = parseFloat(acres) || 1;
+  const parsedAcres = parseFloat(acres);
+  const a = (!isNaN(parsedAcres) && parsedAcres > 0) ? parsedAcres : 1;
 
   const getVal = (min, max) => {
     if (priceScenario === 'low') return min;

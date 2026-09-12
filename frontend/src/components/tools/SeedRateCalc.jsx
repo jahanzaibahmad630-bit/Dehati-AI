@@ -113,7 +113,7 @@ export default function SeedRateCalc() {
   const cropData = CERTIFIED_VARIETIES[crop];
 
   const calculate = () => {
-    if (!cropData || !acres || parseFloat(acres) <= 0) return;
+    if (!cropData || !acres || isNaN(parseFloat(acres)) || parseFloat(acres) <= 0) return;
     const a = parseFloat(acres);
     const selectedTiming = cropData.timings.find(t => t.id === timing) || cropData.timings[0];
 
@@ -320,7 +320,7 @@ export default function SeedRateCalc() {
 
         {/* Action Button */}
         <button className="btn btn-primary btn-full" id="seed-calc-btn"
-          disabled={!crop || !acres}
+          disabled={!crop || !acres || isNaN(parseFloat(acres)) || parseFloat(acres) <= 0}
           onClick={calculate}
           style={{ width: '100%', marginTop: 12, fontSize: '0.95rem', padding: '0.8rem', background: 'linear-gradient(135deg, #14532d, #16a34a)', color: 'white', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', ...nas }}
         >

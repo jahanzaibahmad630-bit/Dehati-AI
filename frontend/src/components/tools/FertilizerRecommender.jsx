@@ -170,9 +170,9 @@ const COLORS = ['#15803d', '#ca8a04', '#7c3aed', '#0369a1'];
 const DISCLAIMER = '⚠️ یہ تجاویز ادارہ تحقیقات برائے زرخیزی زمین پنجاب (SFRI) اور ایوب زرعی تحقیقاتی ادارہ (AARI) فیصل آباد کے 2024-26 ریسرچ اعداد پر مبنی ہیں۔ ذاتی مٹی ٹیسٹ کے بغیر یہ علاقائی اوسط ہے۔ تصدیق کیلئے: 0800-17000';
 const nas = { fontFamily: '"Noto Nastaliq Urdu", serif', direction: 'rtl' };
 
-// Market vs Kissan Card Subsidized Prices (PKR per 50kg bag / kg zinc) — 2024–2026
-const MARKET_PRICES  = { dap: 14200, urea: 4600, sop: 15500, zinc: 380 };
-const SUBSIDY_PRICES = { dap: 12500, urea: 3950, sop: 13500, zinc: 320 };
+// Market vs Kissan Card Subsidized Prices (PKR per 50kg bag / kg zinc / kg gypsum) — 2024–2026
+const MARKET_PRICES  = { dap: 14200, urea: 4600, sop: 15500, zinc: 380, gypsum: 18 };
+const SUBSIDY_PRICES = { dap: 12500, urea: 3950, sop: 13500, zinc: 320, gypsum: 15 };
 
 export default function FertilizerRecommender() {
   // Load last used crop from localStorage (farmer's habit)
@@ -188,7 +188,7 @@ export default function FertilizerRecommender() {
   };
   const [acres, setAcres] = useState(getDefaultAcres);
   const [soil, setSoil] = useState('دوہمی');
-  const [soilCondition, setSoilCondition] = useState('normal');
+  const [soilCondition, setSoilCondition] = useState('medium');
   const [showSubsidy, setShowSubsidy] = useState(false);
   const [soilProfile, setSoilProfile] = useState(null);
   const [result, setResult] = useState(null);
@@ -276,8 +276,8 @@ export default function FertilizerRecommender() {
       };
     });
 
-    const marketCost = (totalDap * MARKET_PRICES.dap) + (totalUrea * MARKET_PRICES.urea) + (totalSop * MARKET_PRICES.sop) + (totalZinc * MARKET_PRICES.zinc);
-    const subsidyCost = (totalDap * SUBSIDY_PRICES.dap) + (totalUrea * SUBSIDY_PRICES.urea) + (totalSop * SUBSIDY_PRICES.sop) + (totalZinc * SUBSIDY_PRICES.zinc);
+    const marketCost = (totalDap * MARKET_PRICES.dap) + (totalUrea * MARKET_PRICES.urea) + (totalSop * MARKET_PRICES.sop) + (totalZinc * MARKET_PRICES.zinc) + (totalGypsum * (MARKET_PRICES.gypsum || 18));
+    const subsidyCost = (totalDap * SUBSIDY_PRICES.dap) + (totalUrea * SUBSIDY_PRICES.urea) + (totalSop * SUBSIDY_PRICES.sop) + (totalZinc * SUBSIDY_PRICES.zinc) + (totalGypsum * (SUBSIDY_PRICES.gypsum || 15));
 
     setResult({
       crop,

@@ -160,6 +160,12 @@ export default function AnimalHealthAdvisor() {
 
 
 
+  useEffect(() => {
+    return () => {
+      if (scanImageUrl) URL.revokeObjectURL(scanImageUrl);
+    };
+  }, [scanImageUrl]);
+
   const handleScanFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -176,6 +182,8 @@ export default function AnimalHealthAdvisor() {
     setScanImageUrl('');
     setScanResult(null);
     setScanError('');
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleScanAnalyze = async () => {
@@ -252,10 +260,11 @@ export default function AnimalHealthAdvisor() {
     setAiLoading(true); setAiError(''); setAiResult('');
     try {
       const pregTag = isPregnant ? ' [نوٹ: جانور گابھن / حاملہ ہے — اسقاطِ حمل والی ادویات جیسے Dexamethasone یا Dalmazin سخت ممنوع ہیں]' : '';
-      const weightTag = animalWeight ? ` [وزن: ${animalWeight} kg]` : '';
+      const tierLabel = weightTier === 'tier1' ? 'چھوٹا بچھڑا/کٹڑا (<150kg)' : weightTier === 'tier2' ? 'درمیانہ جانور (150-350kg)' : 'بڑا دودھ والا بالغ جانور (>350kg)';
+      const weightTag = animalWeight ? ` [وزن: ${animalWeight} kg (${tierLabel})]` : ` [جسامت/گروپ: ${tierLabel}]`;
       const symptomsWithExtra = (selectedSymptoms.join(', ') + pregTag + weightTag).trim();
       const questionWithExtra = ((aiQuestion || searchQuery) + pregTag + weightTag).trim();
-      const data = await askAnimalHealth(catLabel, symptomsWithExtra, questionWithExtra, animalWeight);
+      const data = await askAnimalHealth(catLabel, symptomsWithExtra, questionWithExtra, animalWeight || tierLabel);
       setAiResult(data.answer);
     } catch (err) {
       setAiError(err.message || 'جواب نہیں ملا — دوبارہ کوشش کریں');
